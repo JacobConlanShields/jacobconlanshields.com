@@ -591,3 +591,6 @@ button:hover{ background: rgba(255,255,255,.06); }
   font-size: 12.5px !important;
   line-height: 1.2 !important;
 }
+.clips-viewport--one{
+  height: calc(240px * 16 / 9 + 52px); /* thumb height + title area */
+}
