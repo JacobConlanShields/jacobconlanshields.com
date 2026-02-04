@@ -381,3 +381,47 @@ button:hover{ background: rgba(255,255,255,.06); }
     font-size: 12px;
   }
 }
+/* =========================
+   CLIPS: show 1 at a time (one-card-tall vertical scroller)
+   ========================= */
+
+@media (min-width: 901px){
+  /* The vertical scroller itself */
+  .row--clips{
+    display: flex;
+    flex-direction: column;      /* vertical list */
+    gap: 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    /* make the scroller only 1-card tall */
+    height: 360px;               /* fallback */
+    max-height: 360px;
+
+    /* scroll behavior */
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 6px 2px;
+  }
+
+  /* each card snaps into place */
+  .row--clips .card{
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    max-width: 140px;            /* keep your smaller size */
+  }
+
+  /* ensure the portrait thumb stays portrait */
+  .row--clips .thumb{ aspect-ratio: 9 / 16; }
+}
+
+/* Optional: on mobile, keep it horizontal like “social swipe” */
+@media (max-width: 900px){
+  .row--clips{
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+  }
+  .row--clips .card{ scroll-snap-align: start; }
+}
