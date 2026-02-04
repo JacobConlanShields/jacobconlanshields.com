@@ -206,3 +206,69 @@ button:hover{ background: rgba(255,255,255,.06); }
 
 .small{ font-size: 13px; }
 .nowrap{ white-space: nowrap; }
+/* =========================
+   PODCAST PAGE FIXES
+   ========================= */
+
+/* 2) tighter layout: reduce empty vertical space */
+main{
+  margin: 28px auto;          /* was 60px */
+}
+
+h1, h2{
+  margin: 0 0 10px;
+}
+
+.lede{
+  margin: 8px 0 16px;
+  color: var(--muted);
+}
+
+/* each playlist section */
+.row-block{
+  margin: 18px 0 26px;        /* tighter than before */
+}
+
+/* header row tighter */
+.row-head{
+  margin-bottom: 8px;
+}
+
+/* 3) make thumbnails/cards smaller (~25% smaller than 320px) */
+.card{
+  flex: 0 0 240px;            /* was 320px */
+  border-radius: 14px;
+}
+
+/* 4) force true horizontal carousel on desktop + mobile */
+.row{
+  display: flex;
+  flex-wrap: nowrap !important;  /* critical: prevents stacking */
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 12px;
+  padding: 6px 2px 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* if any wrapper accidentally becomes a grid, this protects it */
+.row > *{
+  flex: 0 0 auto;
+}
+
+/* controls tighter */
+.row-controls{
+  margin: 6px 0 8px;
+}
+
+/* optional: smaller buttons to match tighter aesthetic */
+.icon-btn{
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.btn{
+  padding: 9px 12px;
+  border-radius: 12px;
+}
