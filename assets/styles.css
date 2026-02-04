@@ -28,6 +28,106 @@ main{
   margin: 28px auto;
   padding: 0 20px;
 }
+/* =========================
+   PODCAST MOCKUP LAYOUT
+   ========================= */
+
+.podcast-page{
+  max-width: 1120px; /* a bit wider so left rows + clips fit nicely */
+}
+
+/* Tight vertical rhythm */
+.podcast-title{ margin: 0 0 8px; }
+.lede{ margin: 6px 0 12px; }
+.tight-hr{
+  margin: 14px 0;
+  border: none;
+  border-top: 1px solid var(--line);
+}
+.row-block--tight{ margin: 0; }
+
+/* Two-column top area */
+.podcast-topgrid{
+  display: grid;
+  grid-template-columns: 1fr 260px; /* right column fixed */
+  gap: 18px;
+  align-items: start;
+}
+
+/* mobile: stack */
+@media (max-width: 900px){
+  .podcast-topgrid{ grid-template-columns: 1fr; }
+}
+
+/* Left column: keep rows from flowing under the right column */
+.top-left{ min-width: 0; } /* prevents overflow pushing layout */
+.top-right{ width: 260px; }
+
+/* Horizontal rows: smaller so everything fits */
+.row--small .card{
+  flex: 0 0 230px;
+}
+.row--small .card-title{
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+/* --- CLIPS: vertical “social scroll” --- */
+.row-head--clips{
+  align-items: center;
+}
+.clips-viewport{
+  /* exactly one card tall */
+  height: 310px;        /* adjust once if you want slightly taller/shorter */
+  overflow: hidden;     /* hides “next” clip */
+}
+.clips-rail{
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  /* inertia + snap */
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+
+  /* optional: thinner scrollbar */
+  scrollbar-width: thin;
+}
+.clips-rail::-webkit-scrollbar{ width: 10px; }
+.clips-rail::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 999px; }
+
+/* Clips cards are SMALL (25% size feel) and portrait */
+.clips-rail .card{
+  width: 240px;         /* fixed width matches the column */
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+.clips-rail .thumb{
+  aspect-ratio: 9 / 16;
+}
+
+/* Ensure your normal .row stays horizontal */
+.row{
+  display:flex;
+  flex-wrap: nowrap !important;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Snap for horizontal rows too (nice feel) */
+.row{
+  scroll-snap-type: x mandatory;
+}
+.row .card{
+  scroll-snap-align: start;
+}
+
 
 a{
   color: var(--link);
