@@ -9,6 +9,7 @@
 
 <body>
   <main>
+    <!-- NAV -->
     <p class="nav">
       <a href="/">← Back to home</a>
       <span class="dot">•</span>
@@ -17,7 +18,7 @@
       <a href="/pages/contact/">Contact</a>
     </p>
 
-    <!-- HERO: left intro + right Clips carousel (desktop). Stacks on mobile. -->
+    <!-- HERO: left intro + right Clips (vertical, one-at-a-time) -->
     <section class="podcast-hero">
       <div class="hero-left">
         <h1>Quality Values Podcast</h1>
@@ -26,6 +27,7 @@
           Long-form conversations about values, craft, and systems — with people I’m learning from.
         </p>
 
+        <!-- ONE Open on YouTube button (goes to FULL playlist link you specified) -->
         <a class="btn"
            href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
            target="_blank" rel="noopener">
@@ -37,51 +39,55 @@
         <div class="row-head">
           <h2 class="row-title">Clips</h2>
 
+          <!-- For vertical clips: up/down buttons (still uses your arrow buttons) -->
           <div class="row-controls">
-            <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-clips" data-dir="-1">◀</button>
-            <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-clips" data-dir="1">▶</button>
+            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-axis="y" data-dir="-1">▲</button>
+            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-axis="y" data-dir="1">▼</button>
           </div>
         </div>
 
         <div class="status" id="status-clips"></div>
-        <<div class="row row--clips row-vertical" id="row-clips"></div>
+
+        <!-- IMPORTANT: clips has unique ID row-clips and has vertical classes -->
+        <div class="row row--clips row-vertical" id="row-clips" aria-label="Clips"></div>
       </div>
     </section>
 
     <hr>
 
-    <!-- Full Podcast -->
+    <!-- Full Podcast (horizontal) -->
     <section class="row-block">
       <div class="row-head">
         <h2 class="row-title">Full Podcast (Latest)</h2>
 
         <div class="row-controls">
-          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-full" data-dir="-1">◀</button>
-          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1">▶</button>
+          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-full" data-axis="x" data-dir="-1">◀</button>
+          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-axis="x" data-dir="1">▶</button>
         </div>
       </div>
 
       <div class="status" id="status-full"></div>
-      <div class="row row--clips" id="row-clips"></div>
+      <!-- IMPORTANT: full row is row-full (not row-clips) -->
+      <div class="row" id="row-full" aria-label="Full podcast episodes"></div>
     </section>
 
-    <!-- Highlights -->
+    <!-- Highlights (horizontal) -->
     <section class="row-block">
       <div class="row-head">
         <h2 class="row-title">Highlight Episodes</h2>
 
         <div class="row-controls">
-          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-dir="-1">◀</button>
-          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
+          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-axis="x" data-dir="-1">◀</button>
+          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-axis="x" data-dir="1">▶</button>
         </div>
       </div>
 
       <div class="status" id="status-highlights"></div>
-      <div class="row" id="row-highlights"></div>
+      <div class="row" id="row-highlights" aria-label="Highlight episodes"></div>
     </section>
   </main>
 
-  <!-- ONE modal player (only once) -->
+  <!-- ONE modal player -->
   <div class="modal" id="playerModal" aria-hidden="true">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-label="Video player">
@@ -91,26 +97,29 @@
   </div>
 
   <script>
-    // Playlist IDs
+    // =========================
+    // CONFIG
+    // =========================
     const PLAYLIST_FULL = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
     const PLAYLIST_HIGHLIGHTS = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
     const PLAYLIST_CLIPS = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
 
-    // How many cards to show
+    // how many items to render from each feed
     const COUNT_FULL = 14;
     const COUNT_HIGHLIGHTS = 12;
     const COUNT_CLIPS = 18;
 
-    // YouTube playlist feed (XML)
+    // YouTube playlist feed XML
     const FEED = (playlistId) =>
       `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // ✅ Use your Cloudflare Worker as the CORS-safe proxy
-    // Replace YOUR_WORKER_URL_HERE with your real Worker URL:
-    // "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url="
+    // Cloudflare Worker proxy (CORS-safe)
     const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
     const PROXY = (url) => WORKER_PROXY + encodeURIComponent(url);
 
+    // =========================
+    // UTIL
+    // =========================
     function escapeHtml(s) {
       return (s || "").replace(/[&<>"']/g, (c) => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
@@ -128,7 +137,6 @@
           || e.getElementsByTagName("videoId")[0]?.textContent?.trim()
           || "";
 
-        // Prefer feed thumb if present; fallback to ytimg
         const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
         const thumb = feedThumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
@@ -148,9 +156,18 @@
       `;
     }
 
+    // =========================
+    // LOAD PLAYLIST INTO ROW
+    // =========================
     async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
       const row = document.getElementById(rowId);
       const status = document.getElementById(statusId);
+
+      // hard guard so you never get "Cannot set properties of null" again
+      if (!row || !status) {
+        console.error("Missing element(s):", { rowId, statusId, row, status });
+        return;
+      }
 
       status.textContent = "Loading…";
 
@@ -160,7 +177,6 @@
         const xml = await resp.text();
 
         const items = parseFeed(xml).slice(0, limit);
-
         if (!items.length) {
           status.textContent = "No videos found right now.";
           row.innerHTML = "";
@@ -175,7 +191,9 @@
       }
     }
 
-    // Modal player
+    // =========================
+    // MODAL PLAYER
+    // =========================
     const modal = document.getElementById("playerModal");
     const playerWrap = document.getElementById("playerWrap");
 
@@ -197,17 +215,35 @@
       playerWrap.innerHTML = "";
     }
 
+    // =========================
+    // EVENTS: cards, close, scroll buttons
+    // =========================
     document.addEventListener("click", (e) => {
-      const btn = e.target.closest(".card");
-      if (btn?.dataset.video) openPlayer(btn.dataset.video);
+      // open video
+      const card = e.target.closest(".card");
+      if (card?.dataset.video) openPlayer(card.dataset.video);
 
+      // close modal
       if (e.target.matches("[data-close]")) closePlayer();
 
+      // scroll buttons (x for rows, y for vertical clips)
       const scrollBtn = e.target.closest("[data-row][data-dir]");
       if (scrollBtn) {
         const row = document.getElementById(scrollBtn.dataset.row);
+        if (!row) return;
+
         const dir = Number(scrollBtn.dataset.dir);
-        row.scrollBy({ left: dir * Math.round(row.clientWidth * 0.9), behavior: "smooth" });
+        const axis = scrollBtn.dataset.axis || "x";
+
+        if (axis === "y") {
+          // snap-by-one-card vertical: scroll exactly one viewport height
+          const amt = Math.round(row.clientHeight) * dir;
+          row.scrollBy({ top: amt, behavior: "smooth" });
+        } else {
+          // horizontal: scroll about one viewport width
+          const amt = Math.round(row.clientWidth * 0.9) * dir;
+          row.scrollBy({ left: amt, behavior: "smooth" });
+        }
       }
     });
 
@@ -215,10 +251,21 @@
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
 
-    // Load all three rows
+    // =========================
+    // LOAD ALL ROWS
+    // =========================
     loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
     loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
     loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
   </script>
+
+  <!--
+    NOTE:
+    This page expects your styles.css to include:
+    - normal horizontal carousel styles for .row
+    - vertical one-card viewport + snap for .row-vertical
+    - smaller clip card sizing for .row--clips
+    If you want, paste your current styles.css and I’ll return a single clean replacement file.
+  -->
 </body>
 </html>
