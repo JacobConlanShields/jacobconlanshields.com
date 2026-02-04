@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact — Jacob Conlon Shields</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 720px; margin: 48px auto; padding: 0 16px; line-height: 1.5; }
+    a { color: inherit; }
+    label { display:block; margin-top: 16px; font-weight: 600; }
+    input, textarea { width: 100%; padding: 10px; margin-top: 6px; font: inherit; }
+    textarea { min-height: 160px; }
+    button { margin-top: 16px; padding: 10px 14px; font: inherit; cursor: pointer; }
+    .hint { font-size: 0.95rem; opacity: 0.8; margin-top: 6px; }
+    .toplinks { margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+
+  <div class="toplinks">
+    <a href="/">← Back to home</a> · <a href="/pages/projects/">Projects</a>
+  </div>
+
+  <h1>Contact</h1>
+
+  <p>
+    Email: <a href="mailto:jacobconlanshields@gmail.com">jacobconlanshields@gmail.com</a>
+  </p>
+
+  <h2>Send a message</h2>
+  <p class="hint">
+    Version 1 (free, durable): this uses your email app to send the message.
+    Later we can upgrade to a true “send from the page” form without exposing your email.
+  </p>
+
+  <form id="contactForm">
+    <label for="replyTo">Your email (required)</label>
+    <input type="email" id="replyTo" name="replyTo" required placeholder="you@example.com" />
+
+    <label for="subject">Subject (optional)</label>
+    <input type="text" id="subject" name="subject" placeholder="Subject" />
+
+    <label for="message">Message (required)</label>
+    <textarea id="message" name="message" required placeholder="Write your message..."></textarea>
+
+    <button type="submit">Open email draft</button>
+    <p class="hint">If nothing happens, your browser may be blocking popups or you may not have a default mail app set.</p>
+  </form>
+
+  <script>
+    const toEmail = "jacobconlanshields@gmail.com";
+
+    document.getElementById("contactForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const replyTo = document.getElementById("replyTo").value.trim();
+      const subject = document.getElementById("subject").value.trim();
+      const message = document.getElementById("message").value.trim();
+
+      // Build email body with reply-to info at the top
+      const bodyLines = [
+        `Reply-to: ${replyTo}`,
+        ``,
+        message
+      ];
+
+      const mailto =
+        `mailto:${encodeURIComponent(toEmail)}` +
+        `?subject=${encodeURIComponent(subject || "Website contact")}` +
+        `&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+
+      window.location.href = mailto;
+    });
+  </script>
+
+</body>
+</html>
