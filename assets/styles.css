@@ -1,12 +1,3 @@
-/* =========================================================
-   styles.css — clean rebuild for Podcast layout + carousels
-   Goal:
-   - “Latest” and “Highlights” rows are the same (capped) width
-   - Clips column is fixed-height, shows ~2–3 items (queue visible),
-     and scrolls INSIDE (does not extend the page)
-   - Tight vertical spacing on load
-   ========================================================= */
-
 /* =========================
    Global theme (dark)
    ========================= */
@@ -19,33 +10,32 @@
   --line: rgba(255,255,255,.14);
   --link: #c7b6ff;
 
-  /* Layout widths */
+  /* LAYOUT */
   --page-max: 1120px;
+  --gutter: 18px;
 
-  /* IMPORTANT: this is the width of the LEFT area (Latest + Highlights).
-     Make it smaller if you want more breathing room for Clips. */
-  --left-max: 740px;
+  /* HORIZONTAL CARDS (Latest + Highlights) */
+  --card-w: 260px;          /* width of each horizontal card */
+  --card-radius: 14px;
+  --row-gap: 12px;
 
-  /* Clips column */
-  --clips-col: 300px;
+  /* CLIPS (vertical rail) — already ~30% smaller vs your earlier 240px */
+  --clips-col-w: 170px;     /* container width */
+  --clips-card-w: 170px;    /* card width inside column */
 
-  /* Card sizing (left rows) */
-  --card-w: 230px;   /* width of each horizontal card */
-  --gap: 12px;
-
-  /* Clips card sizing */
-  --clip-w: 280px;        /* clips card width */
-  --clip-title-h: 56px;   /* reserved title block height */
-  --clip-gap: 12px;       /* vertical gap between clips */
+  /* Clip viewport height: show ~2-3 items total */
+  /* Each clip card height = thumb(9:16) + title block */
+  --clip-title-h: 54px;     /* title block height */
+  --clip-gap: 10px;         /* vertical gap between clips */
+  --clips-visible: 2.35;    /* 2-ish cards + a peek */
 }
 
-/* Reset / base */
+/* reset / base */
 *{ box-sizing: border-box; }
 
 html, body{
   margin: 0;
   padding: 0;
-  height: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -54,10 +44,11 @@ html, body{
 
 main{
   max-width: var(--page-max);
-  margin: 22px auto;
+  margin: 28px auto;
   padding: 0 20px;
 }
 
+/* links */
 a{
   color: var(--link);
   text-decoration: underline;
@@ -65,6 +56,7 @@ a{
 }
 a:visited{ color: var(--link); }
 
+/* typography */
 p{ color: var(--muted); margin: 0 0 12px; }
 
 h1, h2{
@@ -72,27 +64,17 @@ h1, h2{
   letter-spacing: -0.02em;
 }
 
-hr{
-  border: none;
-  border-top: 1px solid var(--line);
-  margin: 10px 0; /* tighter */
-}
-
 /* =========================
-   Nav
+   Navigation + buttons
    ========================= */
 
 .nav{
   display:flex;
   gap:10px;
   align-items:center;
-  margin: 0 0 12px; /* tighter */
+  margin: 0 0 18px;
 }
 .nav .dot{ opacity:.5; }
-
-/* =========================
-   Buttons
-   ========================= */
 
 .btn{
   display:inline-block;
@@ -116,20 +98,64 @@ hr{
 }
 .icon-btn:hover{ background: rgba(255,255,255,.06); }
 
+/* =========================
+   HR spacing (tight)
+   ========================= */
+
+hr{
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 12px 0;  /* tighter than default */
+}
+
+/* =========================
+   Page intro spacing
+   ========================= */
+
+.podcast-title{ margin: 0 0 8px; }
+
+.lede{
+  margin: 6px 0 12px;
+  color: var(--muted);
+  max-width: 70ch;
+}
+
+/* If you want a forced line break in your lede, use <br> in HTML */
+.lede br{ display:block; }
+
+/* =========================
+   SECTION HEAD + ROW CONTROLS
+   ========================= */
+
+.row-head{
+  display:flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 8px;
+}
+
+.row-controls{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  margin: 0;
+}
+
 .status{
-  min-height: 0;
-  margin: 4px 0 6px; /* tighter */
+  min-height: 18px;
+  margin: 2px 0 6px;
   color: var(--muted);
   font-size: 13px;
 }
 
 /* =========================
-   Cards (default)
+   CARDS (shared)
    ========================= */
 
 .card{
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--card-radius);
   background: var(--card);
   padding: 0;
   text-align: left;
@@ -137,12 +163,16 @@ hr{
   overflow: hidden;
 }
 
+/* default: horizontal carousel card width */
+.card{ width: var(--card-w); }
+
 .thumb{
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
 }
+
 .thumb img{
   width:100%;
   height:100%;
@@ -171,71 +201,7 @@ hr{
 }
 
 /* =========================
-   Podcast page layout
-   ========================= */
-
-/* Replace old hero grid with one consistent grid:
-   Left column contains title + Latest + Highlights
-   Right column is Clips */
-.podcast-topgrid{
-  display: grid;
-  grid-template-columns: minmax(0, var(--left-max)) var(--clips-col);
-  gap: 22px;
-  align-items: start;
-}
-
-/* Mobile stack */
-@media (max-width: 980px){
-  .podcast-topgrid{
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Left column should never stretch under clips */
-.top-left{
-  min-width: 0;
-  max-width: var(--left-max);
-}
-
-/* Clips column */
-.top-right{
-  width: var(--clips-col);
-}
-
-/* Tighter intro spacing */
-.podcast-title{ margin: 0 0 6px; }
-.lede{
-  margin: 6px 0 10px;
-  color: var(--muted);
-  max-width: 62ch;
-}
-
-/* =========================
-   Row blocks + headers
-   ========================= */
-
-.row-block{
-  margin: 10px 0 12px; /* tighter overall */
-}
-
-.row-head{
-  display:flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 0 0 6px;
-}
-
-.row-controls{
-  display:flex;
-  gap:10px;
-  justify-content:flex-end;
-  margin: 0;
-}
-
-/* =========================
-   Horizontal carousels (Latest + Highlights)
-   - CAPPED to the same width (left column)
+   Horizontal carousel rows
    ========================= */
 
 .row{
@@ -243,144 +209,161 @@ hr{
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
-  gap: var(--gap);
-  padding: 6px 2px 8px;
+  gap: var(--row-gap);
+  padding: 6px 2px 10px;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 
-  /* snap */
   scroll-snap-type: x mandatory;
   scroll-padding-left: 2px;
-
-  /* Critical: keep the row width capped so Clips fits */
-  max-width: var(--left-max);
 }
 
 .row::-webkit-scrollbar{ height: 10px; }
 .row::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 999px; }
 
 .row > .card{
-  flex: 0 0 var(--card-w);
+  flex: 0 0 auto;
   scroll-snap-align: start;
 }
 
-/* Slightly smaller titles in horizontal rows */
-.row .card-title{
-  font-size: 13px;
-  line-height: 1.25;
+/* =========================
+   The 2-column “row + clips” grid
+   Use this wrapper around:
+   - Latest row + clips
+   - Highlights row + clips
+   ========================= */
+
+.podcast-grid{
+  display: grid;
+  grid-template-columns: 1fr var(--clips-col-w);
+  gap: var(--gutter);
+  align-items: start;
+}
+
+.podcast-left{ min-width: 0; } /* prevent overflow pushing layout */
+.podcast-right{
+  width: var(--clips-col-w);
+  justify-self: end;
+}
+
+/* stack on mobile */
+@media (max-width: 900px){
+  .podcast-grid{
+    grid-template-columns: 1fr;
+  }
+  .podcast-right{
+    width: 100%;
+    justify-self: stretch;
+  }
 }
 
 /* =========================
-   Clips: fixed-height vertical scroller (2–3 visible)
+   CLIPS vertical rail
    ========================= */
 
-/* We compute one clip card height:
-   thumb height = clip-w * 16/9 (because portrait 9/16 => height is bigger)
-   Actually portrait aspect-ratio is 9/16, so height = clip-w * (16/9).
-*/
-.clips-shell{
-  /* You can wrap your clips row in <div class="clips-shell"> ... </div>
-     BUT if you don't have it, this still works because we also style #row-clips below. */
-}
+/* portrait thumb height: w*(16/9) because aspect ratio is 9/16 (tall) */
+@media (min-width: 901px){
+  .clips-viewport{
+    /* show about 2.35 clips */
+    height: calc(
+      ( (var(--clips-card-w) * 16 / 9) + var(--clip-title-h) ) * var(--clips-visible)
+      + (var(--clip-gap) * 2)
+    );
+    overflow: hidden;
+    border-radius: var(--card-radius);
+  }
 
-/* Make clips cards portrait */
-#row-clips .thumb,
-.row--clips .thumb{
-  aspect-ratio: 9 / 16;
-}
+  .row--clips{
+    width: var(--clips-col-w);
+    max-width: var(--clips-col-w);
 
-/* Vertical list behavior on desktop */
-@media (min-width: 981px){
-  /* IMPORTANT: your Clips container must be the ONE with id="row-clips"
-     on the Clips side. (Do not reuse row-clips for other rows.) */
-
-  /* Force the Clips column container to be a vertical scroller */
-  #row-clips{
-    display: flex;
+    display:flex;
     flex-direction: column;
     gap: var(--clip-gap);
 
     overflow-y: auto;
     overflow-x: hidden;
-
-    /* Show ~2.35 cards (queue visible) */
-    height: calc(
-      (var(--clip-w) * (16/9) + var(--clip-title-h)) * 2.35
-      + (var(--clip-gap) * 2)
-    );
-
     padding: 2px;
-    scrollbar-width: thin;
 
-    /* Snap */
+    -webkit-overflow-scrolling: touch;
     scroll-snap-type: y mandatory;
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
 
-    /* Keep it inside the right column width */
-    width: var(--clips-col);
-    max-width: var(--clips-col);
+    scrollbar-width: thin;
   }
 
-  #row-clips::-webkit-scrollbar{ width: 10px; }
-  #row-clips::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 999px; }
+  .row--clips::-webkit-scrollbar{ width: 10px; }
+  .row--clips::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 999px; }
 
-  /* Clip cards size */
-  #row-clips > .card{
-    width: var(--clip-w);
-    max-width: 100%;
+  .row--clips .card{
+    width: var(--clips-card-w);
     flex: 0 0 auto;
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
 
-  /* Make clip titles a predictable height so the viewport math works */
-  #row-clips .card-title{
-    height: var(--clip-title-h);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    font-size: 12.5px;
+  .row--clips .thumb{
+    aspect-ratio: 9 / 16;
+  }
+
+  .row--clips .card-title{
+    padding: 9px 9px 10px;
+    font-size: 12px;
     line-height: 1.2;
-    padding: 10px 10px 12px;
+
+    /* keeps clip titles from becoming huge */
+    max-height: var(--clip-title-h);
+    overflow: hidden;
   }
 }
 
-/* Mobile: make Clips a horizontal row again (feels better on touch) */
-@media (max-width: 980px){
-  #row-clips{
+/* Mobile behavior: make clips a horizontal swipe row */
+@media (max-width: 900px){
+  .clips-viewport{
+    height: auto;
+    overflow: visible;
+  }
+
+  .row--clips{
+    width: 100%;
     display:flex;
     flex-direction: row;
+    gap: 12px;
     overflow-x: auto;
     overflow-y: hidden;
-    gap: 12px;
-    padding: 6px 2px 8px;
+    padding: 6px 2px 10px;
 
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
-
-    max-width: 100%;
   }
 
-  #row-clips > .card{
-    flex: 0 0 220px;
+  .row--clips .card{
+    width: 200px;
+    flex: 0 0 auto;
     scroll-snap-align: start;
   }
 
-  #row-clips .thumb{ aspect-ratio: 9 / 16; }
+  .row--clips .thumb{ aspect-ratio: 9 / 16; }
 }
 
 /* =========================
-   Make “Latest” + “Highlights” the same left width ALWAYS
-   (extra safety)
+   Section spacing (tight)
    ========================= */
 
-.top-left .row{
-  width: 100%;
-  max-width: var(--left-max);
+.row-block{
+  margin: 14px 0 18px;
 }
+
+.row-block--tight{
+  margin: 10px 0 14px;
+}
+
+/* =========================
+   Safety: prevent any accidental “duplicate row--clips rules”
+   If old CSS had .clips-rail/.clips-viewport etc, this file ignores them.
+   ========================= */
+
 
 /* =========================
    Modal player
@@ -434,35 +417,6 @@ hr{
   height:100%;
   border:0;
 }
-
-/* =========================
-   Forms (contact page)
-   ========================= */
-
-label{ display:block; margin-top:16px; font-weight:600; }
-
-input, textarea{
-  width: 100%;
-  background: #0f0f0f;
-  color: var(--text);
-  border: 1px solid var(--line);
-  padding: 10px;
-  margin-top: 6px;
-  font: inherit;
-  border-radius: 10px;
-}
-
-button{
-  margin-top: 16px;
-  padding: 10px 14px;
-  font: inherit;
-  cursor: pointer;
-  background: #0f0f0f;
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-button:hover{ background: rgba(255,255,255,.06); }
 
 /* =========================
    Utilities
