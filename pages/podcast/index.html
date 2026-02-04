@@ -2,155 +2,185 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Podcast — Jacob Shields</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Podcast — Jacob Shields</title>
   <link rel="stylesheet" href="/assets/styles.css" />
-
-  <style>
-    .nav { margin-bottom: 24px; }
-    .muted { color: var(--muted); }
-
-    .section { margin: 36px 0 46px; }
-    .section h2 { margin: 0 0 10px; }
-
-    /* Netflix-ish row */
-    .strip-wrap{
-      position: relative;
-      margin-top: 12px;
-    }
-    .strip{
-      display: flex;
-      gap: 14px;
-      overflow-x: auto;
-      padding: 10px 6px 14px;
-      scroll-snap-type: x mandatory;
-    }
-    .card{
-      flex: 0 0 360px;
-      scroll-snap-align: start;
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-    .card iframe{
-      width: 100%;
-      height: 202px; /* 16:9-ish */
-      border: 0;
-      display: block;
-      background: #000;
-    }
-    .card .label{
-      padding: 10px 12px;
-      font-size: 14px;
-      color: var(--muted);
-    }
-
-    .controls{
-      display:flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .btn{
-      display:inline-block;
-      padding: 7px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.04);
-      color: var(--text);
-      text-decoration: none;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-    .btn:hover{ background: rgba(255,255,255,.07); }
-
-    .hint{ margin-top: 10px; font-size: 13px; color: var(--muted); }
-  </style>
 </head>
+
 <body>
   <main>
-    <p class="nav">
-      <a href="/">← Back to home</a> ·
-      <a href="/pages/projects/">Projects</a> ·
+    <nav class="nav">
+      <a href="/">← Back to home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
       <a href="/pages/contact/">Contact</a>
-    </p>
+    </nav>
 
     <h1>Podcast</h1>
-    <p class="muted">These rows are live YouTube playlist embeds. They update automatically when you add videos to the playlists.</p>
+    <p class="muted">
+      Selected episodes from the <span class="nowrap">:contentReference[oaicite:0]{index=0}</span>.
+      Browse full conversations or jump into highlights.
+    </p>
 
-    <!-- Full Podcast -->
-    <section class="section">
-      <div class="controls">
+    <section class="row-block" data-playlist="PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg">
+      <div class="row-head">
         <h2>Full Podcast (Latest)</h2>
         <a class="btn" target="_blank" rel="noopener"
-           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg">
-          Open on YouTube
-        </a>
+           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg">Open on YouTube</a>
       </div>
 
-      <div class="strip-wrap">
-        <div class="strip">
-          <!-- These show the playlist starting at different positions -->
-          <div class="card">
-            <iframe loading="lazy"
-              src="https://www.youtube.com/embed/videoseries?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg&index=0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen></iframe>
-            <div class="label">Latest episodes</div>
-          </div>
-
-          <div class="card">
-            <iframe loading="lazy"
-              src="https://www.youtube.com/embed/videoseries?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg&index=5"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen></iframe>
-            <div class="label">More from the feed</div>
-          </div>
-
-          <div class="card">
-            <iframe loading="lazy"
-              src="https://www.youtube.com/embed/videoseries?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg&index=10"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen></iframe>
-            <div class="label">Older</div>
-          </div>
-        </div>
+      <div class="row-controls">
+        <button class="icon-btn" aria-label="Scroll left" data-dir="-1">◀</button>
+        <button class="icon-btn" aria-label="Scroll right" data-dir="1">▶</button>
       </div>
 
-      <p class="hint">Tip: you can add more cards by copying one and changing <code>&index=</code> (0, 5, 10, 15…).</p>
+      <div class="row" role="list"></div>
+      <p class="muted small status"></p>
     </section>
 
-    <!-- Highlights -->
-    <section class="section">
-      <div class="controls">
+    <section class="row-block" data-playlist="PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0">
+      <div class="row-head">
         <h2>Highlight Episodes</h2>
         <a class="btn" target="_blank" rel="noopener"
-           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0">
-          Open on YouTube
-        </a>
+           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0">Open on YouTube</a>
       </div>
 
-      <div class="strip-wrap">
-        <div class="strip">
-          <div class="card">
-            <iframe loading="lazy"
-              src="https://www.youtube.com/embed/videoseries?list=PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0&index=0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen></iframe>
-            <div class="label">Highlights</div>
-          </div>
-
-          <div class="card">
-            <iframe loading="lazy"
-              src="https://www.youtube.com/embed/videoseries?list=PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0&index=5"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen></iframe>
-            <div class="label">More highlights</div>
-          </div>
-        </div>
+      <div class="row-controls">
+        <button class="icon-btn" aria-label="Scroll left" data-dir="-1">◀</button>
+        <button class="icon-btn" aria-label="Scroll right" data-dir="1">▶</button>
       </div>
+
+      <div class="row" role="list"></div>
+      <p class="muted small status"></p>
     </section>
   </main>
+
+  <!-- Modal player -->
+  <div class="modal" id="playerModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Video player">
+      <button class="modal-close" data-close aria-label="Close">✕</button>
+      <div class="player-wrap" id="playerWrap"></div>
+    </div>
+  </div>
+
+  <script>
+    const FEED = (playlistId) =>
+      `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+
+    // Same-origin proxy (Cloudflare Pages Function)
+    const PROXY = (url) => `/yt?url=${encodeURIComponent(url)}`;
+
+    function parseFeed(xmlText) {
+      const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+      const entries = Array.from(doc.getElementsByTagName("entry"));
+
+      return entries.map((e) => {
+        const title = e.getElementsByTagName("title")[0]?.textContent?.trim() || "";
+        const videoId = e.getElementsByTagName("yt:videoId")[0]?.textContent?.trim()
+          || e.getElementsByTagName("videoId")[0]?.textContent?.trim()
+          || "";
+        const thumb =
+          e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url")
+          || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+        return { title, videoId, thumb };
+      }).filter(x => x.videoId);
+    }
+
+    function cardHTML(item) {
+      // Thumbnail card: click opens modal with embedded player
+      return `
+        <button class="card" type="button" data-video="${item.videoId}" title="${escapeHtml(item.title)}">
+          <div class="thumb">
+            <img src="${item.thumb}" alt="${escapeHtml(item.title)}" loading="lazy" />
+            <div class="play">▶</div>
+          </div>
+          <div class="card-title">${escapeHtml(item.title)}</div>
+        </button>
+      `;
+    }
+
+    function escapeHtml(s) {
+      return (s || "").replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[c]));
+    }
+
+    async function loadRow(section) {
+      const playlistId = section.dataset.playlist;
+      const row = section.querySelector(".row");
+      const status = section.querySelector(".status");
+
+      status.textContent = "Loading…";
+
+      try {
+        const resp = await fetch(PROXY(FEED(playlistId)));
+        if (!resp.ok) throw new Error(`Feed error: ${resp.status}`);
+        const xml = await resp.text();
+
+        const items = parseFeed(xml);
+
+        if (!items.length) {
+          status.textContent = "No videos found right now.";
+          return;
+        }
+
+        row.innerHTML = items.map(cardHTML).join("");
+        status.textContent = "";
+      } catch (err) {
+        status.textContent = "Could not load videos right now.";
+        console.error(err);
+      }
+    }
+
+    // Scroll buttons
+    document.querySelectorAll(".row-block").forEach((section) => {
+      const row = section.querySelector(".row");
+      section.querySelectorAll("[data-dir]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const dir = Number(btn.dataset.dir);
+          row.scrollBy({ left: dir * 800, behavior: "smooth" });
+        });
+      });
+    });
+
+    // Modal player
+    const modal = document.getElementById("playerModal");
+    const playerWrap = document.getElementById("playerWrap");
+
+    function openPlayer(videoId) {
+      modal.setAttribute("aria-hidden", "false");
+      modal.classList.add("open");
+      playerWrap.innerHTML =
+        `<iframe
+          src="https://www.youtube.com/embed/${videoId}?autoplay=1"
+          title="YouTube video player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen></iframe>`;
+    }
+
+    function closePlayer() {
+      modal.setAttribute("aria-hidden", "true");
+      modal.classList.remove("open");
+      playerWrap.innerHTML = "";
+    }
+
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(".card");
+      if (btn?.dataset.video) openPlayer(btn.dataset.video);
+
+      if (e.target.matches("[data-close]")) closePlayer();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
+    });
+
+    // Load both rows
+    document.querySelectorAll(".row-block").forEach(loadRow);
+  </script>
 </body>
 </html>
