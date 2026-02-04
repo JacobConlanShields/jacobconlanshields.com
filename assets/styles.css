@@ -302,3 +302,39 @@ h1, h2{
     grid-template-columns: 1fr;
   }
 }
+/* tighter vertical rhythm */
+.podcast-hero { margin-bottom: 18px; }
+.row-block { margin: 18px 0 26px; }
+.row-head { margin-bottom: 8px; }
+hr { margin: 18px 0; }
+.lede { margin: 10px 0 14px; }
+
+/* hero layout: clips carousel up-right on desktop, stacked on mobile */
+.podcast-hero{
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 900px){
+  .podcast-hero{ grid-template-columns: 1fr; }
+}
+
+/* make default cards smaller (~25% smaller than your earlier big ones) */
+.card{ flex: 0 0 240px; }  /* was 320px */
+
+/* show status text subtly */
+.status{
+  min-height: 18px;
+  margin: 6px 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* CLIPS: portrait/social feel */
+.row--clips .card{ flex: 0 0 170px; }
+.row--clips .thumb{ aspect-ratio: 9 / 16; }
+.row--clips .card-title{
+  font-size: 13px;
+  line-height: 1.25;
+}
