@@ -525,3 +525,69 @@ button:hover{ background: rgba(255,255,255,.06); }
   }
   .row--clips .card{ scroll-snap-align: start; }
 }
+/* =========================
+   PODCAST PAGE: SPACING + CLIPS FIT
+   Paste at VERY bottom of styles.css
+   ========================= */
+
+/* 1) tighten space between the hr and the Full Podcast block */
+.podcast-topgrid .tight-hr{
+  margin: 8px 0 10px !important;   /* was ~14px */
+}
+
+/* 2) reduce space inside the Full Podcast section */
+.row-block--tight{
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.row-block--tight .row-head{
+  margin: 0 0 6px !important;      /* reduce gap under the header */
+  padding: 0 !important;
+}
+
+/* if your .status line exists, keep it tight too */
+.row-block--tight .status{
+  margin: 2px 0 6px !important;
+  min-height: 0 !important;
+}
+
+/* reduce spacing above the horizontal thumbnails row */
+.row-block--tight .row{
+  padding-top: 4px !important;
+}
+
+/* 3) FIX: clips card is cut off — make viewport height match ONE full card */
+.top-right{ align-self: start; }
+
+/* these values ensure you see the FULL portrait thumb + title (no clipping) */
+.clips-viewport{
+  height: 360px !important;        /* increase until full card shows */
+  overflow: hidden !important;
+}
+
+/* keep snap/inertia */
+.clips-rail{
+  height: 100% !important;
+  padding-bottom: 0 !important;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* lock clips cards to the same size so the viewport can fit exactly 1 */
+.clips-rail .card{
+  width: 240px !important;
+  /* if anything else is adding vertical growth, this keeps it consistent */
+}
+
+/* keep the portrait shape for clips */
+.clips-rail .thumb{
+  aspect-ratio: 9 / 16;
+}
+
+/* make the clips title take less space if needed */
+.clips-rail .card-title{
+  padding: 10px 10px 12px !important;
+  font-size: 12.5px !important;
+  line-height: 1.2 !important;
+}
