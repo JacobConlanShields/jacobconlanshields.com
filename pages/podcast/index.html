@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Podcast — Jacob Shields</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+
+  <style>
+    .nav { margin-bottom: 24px; }
+    .note { color: #cfcfcf; font-size: 0.95rem; }
+
+    .playerWrap { margin: 18px 0 34px; }
+    .player {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0f0f0f;
+    }
+    .player iframe {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      border: 0;
+    }
+
+    .rowHeader {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 20px 0 10px;
+    }
+    .rowHeader h2 { margin: 0; }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 10px 8px 14px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      background: #101010;
+    }
+    .row::-webkit-scrollbar { height: 10px; }
+    .row::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 999px; }
+
+    .card {
+      flex: 0 0 auto;
+      width: 220px;
+      scroll-snap-align: start;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0f0f0f;
+      cursor: pointer;
+      transition: transform 120ms ease;
+    }
+    .card:hover { transform: translateY(-2px); }
+    .thumb { width: 100%; display:block; background:#000; }
+    .meta { padding: 10px 10px 12px; }
+    .title { color:#fff; font-size: 0.95rem; line-height: 1.25; margin: 0 0 6px; }
+    .date { color:#cfcfcf; font-size: 0.82rem; margin: 0; }
+
+    .btn {
+      border: 1px solid #2a2a2a;
+      background: #0f0f0f;
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .errorBox {
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 14px;
+      background: #0f0f0f;
+      margin-top: 10px;
+      color: #cfcfcf;
+    }
+    code { color: #fff; }
+  </style>
+</head>
+
+<body>
+  <main>
+    <p class="nav">
+      <a href="/">Home</a> |
+      <a href="/pages/projects/">Projects</a> |
+      <a href="/pages/writing/">Writing</a> |
+      <a href="/pages/podcast/">Podcast</a> |
+      <a href="/contact/">Contact</a>
+    </p>
+
+    <h1>Podcast</h1>
+    <p class="note">
+      These rows auto-update from your YouTube playlists. Add videos to a playlist and the site updates automatically.
+    </p>
+
+    <div class="playerWrap">
+      <div class="player">
+        <iframe id="mainPlayer"
+          src="https://www.youtube.com/embed/?rel=0"
+          title="Podcast Player"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen></iframe>
+      </div>
+      <p id="nowPlaying" class="note" style="margin-top:10px;"></p>
+    </div>
+
+    <section class="playlist" data-title="Full Podcast (Latest)" data-playlist-id="PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg">
+      <div class="rowHeader">
+        <h2>Full Podcast (Latest)</h2>
+        <div>
+          <button class="btn left">◀</button>
+          <button class="btn right">▶</button>
+        </div>
+      </div>
+      <div class="row"></div>
+      <div class="errorBox" hidden></div>
+    </section>
+
+    <section class="playlist" data-title="Highlight Episodes" data-playlist-id="PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0">
+      <div class="rowHeader">
+        <h2>Highlight Episodes</h2>
+        <div>
+          <button class="btn left">◀</button>
+          <button class="btn right">▶</button>
+        </div>
+      </div>
+      <div class="row"></div>
+      <div class="errorBox" hidden></div>
+    </section>
+
+    <hr />
+    <p class="note">
+      If the rows stay empty, it’s usually because the browser blocked reading YouTube’s playlist feed (CORS).
+      If that happens, tell me and we’ll add a tiny Cloudflare Worker proxy to make it 100% reliable.
+    </p>
+  </main>
+
+  <script>
+    // If direct RSS fetch is blocked by the browser, we’ll set this later:
+    // const FEED_PROXY = "/api/youtube-feed?playlistId=";
+    const FEED_PROXY = null;
+
+    const player = document.getElementById("mainPlayer");
+    const nowPlaying = document.getElementById("nowPlaying");
+
+    function setPlayer(videoId, title) {
+      player.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?rel=0`;
+      nowPlaying.textContent = title ? `Now playing: ${title}` : "";
+    }
+
+    function ytThumb(videoId) {
+      return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    }
+
+    function parsePlaylistFeed(xmlText) {
+      const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+      const entries = Array.from(doc.getElementsByTagName("entry"));
+      return entries.map(entry => {
+        const videoId = entry.getElementsByTagName("yt:videoId")[0]?.textContent?.trim();
+        const title = entry.getElementsByTagName("title")[0]?.textContent?.trim();
+        const published = entry.getElementsByTagName("published")[0]?.textContent?.trim();
+        return { videoId, title, published };
+      }).filter(x => x.videoId);
+    }
+
+    async function fetchPlaylistFeed(playlistId) {
+      const url = FEED_PROXY
+        ? `${FEED_PROXY}${encodeURIComponent(playlistId)}`
+        : `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}`;
+
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Feed request failed: ${res.status}`);
+      return res.text();
+    }
+
+    function humanDate(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (isNaN(d)) return "";
+      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function scrollRow(rowEl, dir) {
+      const cardWidth = 232;
+      rowEl.scrollBy({ left: dir * cardWidth * 3, behavior: "smooth" });
+    }
+
+    async function renderSection(section) {
+      const playlistId = section.dataset.playlistId;
+      const title = section.dataset.title || "Playlist";
+      const row = section.querySelector(".row");
+      const err = section.querySelector(".errorBox");
+
+      section.querySelector(".left").addEventListener("click", () => scrollRow(row, -1));
+      section.querySelector(".right").addEventListener("click", () => scrollRow(row, 1));
+
+      try {
+        const xml = await fetchPlaylistFeed(playlistId);
+        const items = parsePlaylistFeed(xml);
+        items.sort((a, b) => new Date(b.published) - new Date(a.published));
+
+        const slice = items.slice(0, 24);
+        row.innerHTML = "";
+
+        slice.forEach((item, idx) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <img class="thumb" src="${ytThumb(item.videoId)}" alt="">
+            <div class="meta">
+              <p class="title">${escapeHtml(item.title || `${title} #${idx+1}`)}</p>
+              <p class="date">${humanDate(item.published)}</p>
+            </div>
+          `;
+          card.addEventListener("click", () => setPlayer(item.videoId, item.title));
+          row.appendChild(card);
+        });
+
+        if (slice[0] && (player.src.endsWith("/embed/?rel=0") || player.src.includes("/embed/?rel=0"))) {
+          setPlayer(slice[0].videoId, slice[0].title);
+        }
+
+        err.hidden = true;
+      } catch (e) {
+        err.hidden = false;
+        err.innerHTML = `
+          <strong>${escapeHtml(title)}:</strong> could not load playlist feed.<br><br>
+          Likely cause: browser blocked cross-site feed fetching (CORS).<br>
+          Fix: add a tiny Cloudflare Worker proxy and set <code>FEED_PROXY</code>.<br><br>
+          Error: ${escapeHtml(String(e.message || e))}
+        `;
+      }
+    }
+
+    function escapeHtml(s) {
+      return (s || "").replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      }[c]));
+    }
+
+    document.querySelectorAll(".playlist").forEach(renderSection);
+  </script>
+</body>
+</html>
