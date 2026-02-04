@@ -120,4 +120,124 @@
     }
 
     function parseFeed(xmlText) {
-      const doc = new DOMParser().parseFromString(xmlText,
+      const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+      const entries = Array.from(doc.getElementsByTagName("entry"));
+
+      return entries.map((e) => {
+        const title = e.getElementsByTagName("title")[0]?.textContent?.trim() || "";
+        const videoId =
+          e.getElementsByTagName("yt:videoId")[0]?.textContent?.trim()
+          || e.getElementsByTagName("videoId")[0]?.textContent?.trim()
+          || "";
+
+        const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
+        const thumb = feedThumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+        return { title, videoId, thumb };
+      }).filter(x => x.videoId);
+    }
+
+    function cardHTML(item) {
+      return `
+        <button class="card" type="button" data-video="${item.videoId}" title="${escapeHtml(item.title)}">
+          <div class="thumb">
+            <img src="${item.thumb}" alt="${escapeHtml(item.title)}" loading="lazy" />
+            <div class="play">▶</div>
+          </div>
+          <div class="card-title">${escapeHtml(item.title)}</div>
+        </button>
+      `;
+    }
+
+    async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
+      const row = document.getElementById(rowId);
+      const status = document.getElementById(statusId);
+
+      // guard against null (prevents your error)
+      if (!row || !status) return;
+
+      status.textContent = "Loading…";
+
+      try {
+        const resp = await fetch(PROXY(FEED(playlistId)));
+        if (!resp.ok) throw new Error(`Feed error: ${resp.status}`);
+        const xml = await resp.text();
+
+        const items = parseFeed(xml).slice(0, limit);
+
+        if (!items.length) {
+          status.textContent = "No videos found right now.";
+          row.innerHTML = "";
+          return;
+        }
+
+        row.innerHTML = items.map(cardHTML).join("");
+        status.textContent = "";
+      } catch (err) {
+        status.textContent = "Could not load videos right now.";
+        console.error(err);
+      }
+    }
+
+    // Modal player
+    const modal = document.getElementById("playerModal");
+    const playerWrap = document.getElementById("playerWrap");
+
+    function openPlayer(videoId) {
+      modal.setAttribute("aria-hidden", "false");
+      modal.classList.add("open");
+      playerWrap.innerHTML =
+        `<iframe
+          src="https://www.youtube.com/embed/${videoId}?autoplay=1"
+          title="YouTube video player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen></iframe>`;
+    }
+
+    function closePlayer() {
+      modal.setAttribute("aria-hidden", "true");
+      modal.classList.remove("open");
+      playerWrap.innerHTML = "";
+    }
+
+    // Scrolling helpers (x for horizontal rows, y for clips)
+    function scrollRow(el, dir, axis) {
+      if (!el) return;
+      if (axis === "y") {
+        // scroll exactly one snap "page" (one card)
+        const card = el.querySelector(".card");
+        const step = card ? (card.getBoundingClientRect().height + 10) : 220;
+        el.scrollBy({ top: dir * step, behavior: "smooth" });
+      } else {
+        const amt = Math.round(el.clientWidth * 0.9) * dir;
+        el.scrollBy({ left: amt, behavior: "smooth" });
+      }
+    }
+
+    document.addEventListener("click", (e) => {
+      const card = e.target.closest(".card");
+      if (card?.dataset.video) openPlayer(card.dataset.video);
+
+      if (e.target.matches("[data-close]")) closePlayer();
+
+      const scrollBtn = e.target.closest("[data-row][data-dir]");
+      if (scrollBtn) {
+        const axis = scrollBtn.dataset.axis || "x";
+        const el = document.getElementById(scrollBtn.dataset.row);
+        const dir = Number(scrollBtn.dataset.dir);
+        scrollRow(el, dir, axis);
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
+    });
+
+    // Load playlists
+    loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
+    loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
+    loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
+  </script>
+</body>
+</html>
