@@ -5,132 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Quality Values Podcast — Jacob Shields</title>
   <link rel="stylesheet" href="/assets/styles.css" />
-
-  <!-- Page-scoped layout overrides (keeps your global styles intact) -->
-  <style>
-    /* tighter page rhythm */
-    main.podcast-main{
-      max-width: 1200px;          /* gives room for 2 columns */
-      margin: 22px auto;
-      padding: 0 18px;
-    }
-    .podcast-layout{
-      display:grid;
-      grid-template-columns: 1fr 320px; /* left content + right clips column */
-      gap: 18px;
-      align-items:start;
-      margin-top: 6px;
-    }
-
-    /* header block */
-    .podcast-header h1{ margin: 0 0 8px; }
-    .podcast-header .lede{ margin: 6px 0 10px; }
-    .podcast-header .btn{ margin-top: 6px; }
-
-    /* compact spacing between sections */
-    .row-block{ margin: 14px 0 18px; }
-    hr{ margin: 14px 0; }
-
-    /* make horizontal cards smaller (desktop) */
-    .row .card{ flex: 0 0 260px; }
-
-    /* snap + inertia for horizontal rows */
-    .row{
-      -webkit-overflow-scrolling: touch;
-      scroll-snap-type: x mandatory;
-      scroll-padding-left: 6px;
-    }
-    .row > .card{ scroll-snap-align: start; }
-
-    /* RIGHT COLUMN: Clips vertical scroller */
-    .clips-panel{
-      position: relative;
-    }
-    .clips-head{
-      display:flex;
-      align-items:baseline;
-      justify-content:space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .clips-head h2{ margin: 0; }
-
-    /* The viewport is ONLY one card tall (no dead space) */
-    .clips-viewport{
-      /* keep width aligned with card width */
-      width: 210px;
-      /* height tuned to: portrait thumb + title block + borders */
-      height: 330px;
-      overflow: hidden; /* hides the rest; the inner row scrolls */
-    }
-
-    /* Vertical list inside viewport */
-    .row-vertical{
-      display:flex;
-      flex-direction:column;
-      gap: 12px;
-      height: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 2px 2px 2px;
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-      scroll-snap-type: y mandatory;
-      scrollbar-width: thin;
-    }
-    .row-vertical::-webkit-scrollbar{ width: 10px; }
-    .row-vertical::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 999px; }
-
-    /* Clips cards: 75% smaller than before (25% size feel) */
-    .row-vertical .card{
-      flex: 0 0 auto;
-      width: 210px;               /* controls the whole widget width */
-      border-radius: 14px;
-    }
-    .row-vertical .thumb{
-      aspect-ratio: 9 / 16;       /* portrait */
-    }
-    .row-vertical .card-title{
-      font-size: 13px;
-      line-height: 1.25;
-      padding: 10px 10px 12px;
-    }
-    .row-vertical > .card{
-      scroll-snap-align: start;
-    }
-
-    /* status text */
-    .status{
-      min-height: 16px;
-      margin: 6px 0 8px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    /* button sizing (tighter) */
-    .icon-btn{
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-    }
-
-    /* Mobile: stack everything, clips becomes full width but keeps 1-card viewport */
-    @media (max-width: 980px){
-      .podcast-layout{
-        grid-template-columns: 1fr;
-      }
-      .clips-panel{
-        order: 2;
-      }
-      .clips-viewport{
-        width: 210px;
-      }
-    }
-  </style>
 </head>
 
 <body>
-  <main class="podcast-main">
+  <main class="podcast-page">
     <p class="nav">
       <a href="/">← Back to home</a>
       <span class="dot">•</span>
@@ -139,23 +17,26 @@
       <a href="/pages/contact/">Contact</a>
     </p>
 
-    <div class="podcast-layout">
+    <!-- ===== TOP GRID (matches your mockup) ===== -->
+    <section class="podcast-topgrid">
       <!-- LEFT COLUMN -->
-      <div class="podcast-left">
-        <header class="podcast-header">
-          <h1>Quality Values Podcast</h1>
-          <p class="lede">Long-form conversations about values, craft, and systems — with people I’m learning from.</p>
-          <a class="btn"
-             href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
-             target="_blank" rel="noopener">
-            Open on YouTube
-          </a>
-        </header>
+      <div class="top-left">
+        <h1 class="podcast-title">Quality Values Podcast</h1>
 
-        <hr>
+        <p class="lede">
+          Long-form conversations about values, craft, and systems — with people I’m learning from.
+        </p>
 
-        <!-- Full Podcast -->
-        <section class="row-block">
+        <a class="btn"
+           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
+           target="_blank" rel="noopener">
+          Open on YouTube
+        </a>
+
+        <hr class="tight-hr">
+
+        <!-- Full Podcast (Latest) — constrained so it ends before Clips column -->
+        <section class="row-block row-block--tight">
           <div class="row-head">
             <h2 class="row-title">Full Podcast (Latest)</h2>
             <div class="row-controls">
@@ -165,44 +46,47 @@
           </div>
 
           <div class="status" id="status-full"></div>
-          <div class="row" id="row-full"></div>
-        </section>
-
-        <!-- Highlights -->
-        <section class="row-block">
-          <div class="row-head">
-            <h2 class="row-title">Highlight Episodes</h2>
-            <div class="row-controls">
-              <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-dir="-1">◀</button>
-              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
-            </div>
-          </div>
-
-          <div class="status" id="status-highlights"></div>
-          <div class="row" id="row-highlights"></div>
+          <div class="row row--small" id="row-full"></div>
         </section>
       </div>
 
-      <!-- RIGHT COLUMN: Clips -->
-      <aside class="clips-panel">
-        <div class="clips-head">
+      <!-- RIGHT COLUMN: CLIPS (vertical social scroll, 1 visible at a time) -->
+      <aside class="top-right">
+        <div class="row-head row-head--clips">
           <h2 class="row-title">Clips</h2>
           <div class="row-controls">
-            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-axis="y" data-dir="-1">▲</button>
-            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-axis="y" data-dir="1">▼</button>
+            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
+            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
           </div>
         </div>
 
         <div class="status" id="status-clips"></div>
 
+        <!-- The viewport is exactly 1 card tall -->
         <div class="clips-viewport">
-          <div class="row-vertical" id="row-clips"></div>
+          <div class="clips-rail" id="row-clips"></div>
         </div>
       </aside>
-    </div>
+    </section>
+
+    <hr class="tight-hr">
+
+    <!-- ===== BELOW GRID: HIGHLIGHTS (full width) ===== -->
+    <section class="row-block row-block--tight">
+      <div class="row-head">
+        <h2 class="row-title">Highlight Episodes</h2>
+        <div class="row-controls">
+          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-dir="-1">◀</button>
+          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
+        </div>
+      </div>
+
+      <div class="status" id="status-highlights"></div>
+      <div class="row row--small" id="row-highlights"></div>
+    </section>
   </main>
 
-  <!-- ONE modal player -->
+  <!-- ===== ONE modal player ===== -->
   <div class="modal" id="playerModal" aria-hidden="true">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-label="Video player">
@@ -213,20 +97,19 @@
 
   <script>
     // Playlist IDs
-    const PLAYLIST_FULL = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
+    const PLAYLIST_FULL       = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
     const PLAYLIST_HIGHLIGHTS = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
-    const PLAYLIST_CLIPS = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
+    const PLAYLIST_CLIPS      = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
 
-    // Limits
-    const COUNT_FULL = 14;
-    const COUNT_HIGHLIGHTS = 12;
-    const COUNT_CLIPS = 25;
+    // counts (keep reasonable so initial view stays tight)
+    const COUNT_FULL       = 10;
+    const COUNT_HIGHLIGHTS = 10;
+    const COUNT_CLIPS      = 25;
 
     // YouTube playlist feed (XML)
-    const FEED = (playlistId) =>
-      `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+    const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // Your Cloudflare Worker proxy
+    // Cloudflare Worker proxy (CORS-safe)
     const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
     const PROXY = (url) => WORKER_PROXY + encodeURIComponent(url);
 
@@ -237,124 +120,4 @@
     }
 
     function parseFeed(xmlText) {
-      const doc = new DOMParser().parseFromString(xmlText, "text/xml");
-      const entries = Array.from(doc.getElementsByTagName("entry"));
-
-      return entries.map((e) => {
-        const title = e.getElementsByTagName("title")[0]?.textContent?.trim() || "";
-        const videoId =
-          e.getElementsByTagName("yt:videoId")[0]?.textContent?.trim()
-          || e.getElementsByTagName("videoId")[0]?.textContent?.trim()
-          || "";
-
-        const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
-        const thumb = feedThumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-
-        return { title, videoId, thumb };
-      }).filter(x => x.videoId);
-    }
-
-    function cardHTML(item) {
-      return `
-        <button class="card" type="button" data-video="${item.videoId}" title="${escapeHtml(item.title)}">
-          <div class="thumb">
-            <img src="${item.thumb}" alt="${escapeHtml(item.title)}" loading="lazy" />
-            <div class="play">▶</div>
-          </div>
-          <div class="card-title">${escapeHtml(item.title)}</div>
-        </button>
-      `;
-    }
-
-    async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
-      const row = document.getElementById(rowId);
-      const status = document.getElementById(statusId);
-
-      if (!row || !status) return;
-
-      status.textContent = "Loading…";
-
-      try {
-        const resp = await fetch(PROXY(FEED(playlistId)));
-        if (!resp.ok) throw new Error(`Feed error: ${resp.status}`);
-        const xml = await resp.text();
-
-        const items = parseFeed(xml).slice(0, limit);
-
-        if (!items.length) {
-          status.textContent = "No videos found right now.";
-          row.innerHTML = "";
-          return;
-        }
-
-        row.innerHTML = items.map(cardHTML).join("");
-        status.textContent = "";
-      } catch (err) {
-        status.textContent = "Could not load videos right now.";
-        console.error(err);
-      }
-    }
-
-    // Modal player
-    const modal = document.getElementById("playerModal");
-    const playerWrap = document.getElementById("playerWrap");
-
-    function openPlayer(videoId) {
-      modal.setAttribute("aria-hidden", "false");
-      modal.classList.add("open");
-      playerWrap.innerHTML =
-        `<iframe
-          src="https://www.youtube.com/embed/${videoId}?autoplay=1"
-          title="YouTube video player"
-          frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen></iframe>`;
-    }
-
-    function closePlayer() {
-      modal.setAttribute("aria-hidden", "true");
-      modal.classList.remove("open");
-      playerWrap.innerHTML = "";
-    }
-
-    // Scroll controls + open modal (event delegation)
-    document.addEventListener("click", (e) => {
-      // open video
-      const card = e.target.closest(".card");
-      if (card?.dataset.video) openPlayer(card.dataset.video);
-
-      // close modal
-      if (e.target.matches("[data-close]")) closePlayer();
-
-      // scroll buttons
-      const scrollBtn = e.target.closest("[data-row][data-dir]");
-      if (scrollBtn) {
-        const row = document.getElementById(scrollBtn.dataset.row);
-        if (!row) return;
-
-        const dir = Number(scrollBtn.dataset.dir);
-        const axis = scrollBtn.dataset.axis || "x";
-
-        if (axis === "y") {
-          // scroll exactly one “viewport” at a time (1 card visible)
-          const viewport = row.parentElement; // .clips-viewport
-          const amt = (viewport?.clientHeight || 320) * dir;
-          row.scrollBy({ top: amt, behavior: "smooth" });
-        } else {
-          const amt = Math.round(row.clientWidth * 0.9) * dir;
-          row.scrollBy({ left: amt, behavior: "smooth" });
-        }
-      }
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
-    });
-
-    // Load rows
-    loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
-    loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
-    loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
-  </script>
-</body>
-</html>
+      const doc = new DOMParser().parseFromString(xmlText,
