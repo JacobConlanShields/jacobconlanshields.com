@@ -1,254 +1,182 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Podcast — Jacob Shields</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="/assets/styles.css" />
+<main class="wrap">
+  <p class="nav">
+    <a href="/">← Back to home</a> ·
+    <a href="/pages/projects/">Projects</a>
+  </p>
 
-  <style>
-    .nav { margin-bottom: 24px; }
-    .note { color: #cfcfcf; font-size: 0.95rem; }
+  <h1>Podcast</h1>
+  <p class="muted">Rows are playlists. They auto-update as you add videos on YouTube.</p>
 
-    .playerWrap { margin: 18px 0 34px; }
-    .player {
-      position: relative;
-      width: 100%;
-      padding-top: 56.25%;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #0f0f0f;
-    }
-    .player iframe {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      border: 0;
-    }
+  <section class="row" data-title="Full Podcast (Latest)" data-list="PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"></section>
+  <section class="row" data-title="Highlight Episodes" data-list="PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0"></section>
 
-    .rowHeader {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-      margin: 20px 0 10px;
-    }
-    .rowHeader h2 { margin: 0; }
-
-    .row {
-      display: flex;
-      gap: 12px;
-      overflow-x: auto;
-      padding: 10px 8px 14px;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      background: #101010;
-    }
-    .row::-webkit-scrollbar { height: 10px; }
-    .row::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 999px; }
-
-    .card {
-      flex: 0 0 auto;
-      width: 220px;
-      scroll-snap-align: start;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #0f0f0f;
-      cursor: pointer;
-      transition: transform 120ms ease;
-    }
-    .card:hover { transform: translateY(-2px); }
-    .thumb { width: 100%; display:block; background:#000; }
-    .meta { padding: 10px 10px 12px; }
-    .title { color:#fff; font-size: 0.95rem; line-height: 1.25; margin: 0 0 6px; }
-    .date { color:#cfcfcf; font-size: 0.82rem; margin: 0; }
-
-    .btn {
-      border: 1px solid #2a2a2a;
-      background: #0f0f0f;
-      color: #fff;
-      padding: 8px 10px;
-      border-radius: 10px;
-      cursor: pointer;
-      font: inherit;
-    }
-
-    .errorBox {
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      padding: 14px;
-      background: #0f0f0f;
-      margin-top: 10px;
-      color: #cfcfcf;
-    }
-    code { color: #fff; }
-  </style>
-</head>
-
-<body>
-  <main>
-    <p class="nav">
-      <a href="/">Home</a> |
-      <a href="/pages/projects/">Projects</a> |
-      <a href="/pages/writing/">Writing</a> |
-      <a href="/pages/podcast/">Podcast</a> |
-      <a href="/contact/">Contact</a>
-    </p>
-
-    <h1>Podcast</h1>
-    <p class="note">
-      These rows auto-update from your YouTube playlists. Add videos to a playlist and the site updates automatically.
-    </p>
-
-    <div class="playerWrap">
+  <div id="playerModal" class="modal" aria-hidden="true">
+    <div class="modal-inner">
+      <button id="closeModal" class="close">Close</button>
       <div class="player">
-        <iframe id="mainPlayer"
-          src="https://www.youtube.com/embed/?rel=0"
-          title="Podcast Player"
+        <iframe id="playerFrame" title="YouTube Player" frameborder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowfullscreen></iframe>
       </div>
-      <p id="nowPlaying" class="note" style="margin-top:10px;"></p>
     </div>
+  </div>
+</main>
 
-    <section class="playlist" data-title="Full Podcast (Latest)" data-playlist-id="PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg">
-      <div class="rowHeader">
-        <h2>Full Podcast (Latest)</h2>
+<style>
+  .wrap{max-width:980px;margin:50px auto;padding:0 20px}
+  .nav{margin:0 0 24px 0}
+  .muted{opacity:.75;margin:0 0 30px 0}
+  .row{margin:34px 0}
+  .row h2{margin:0 0 12px 0}
+  .strip{
+    display:flex; gap:12px; overflow-x:auto; padding:10px 6px;
+    scroll-snap-type:x mandatory;
+  }
+  .card{
+    flex:0 0 260px; scroll-snap-align:start;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:14px; overflow:hidden;
+    background:rgba(255,255,255,.03);
+    cursor:pointer;
+  }
+  .thumb{width:100%; height:146px; object-fit:cover; display:block}
+  .meta{padding:10px 12px}
+  .title{font-weight:600; font-size:14px; line-height:1.3}
+  .openAll{margin-left:10px; font-size:13px; opacity:.85}
+  .controls{display:flex; align-items:baseline; justify-content:space-between}
+  .btns{display:flex; gap:8px}
+  .btn{
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.04);
+    color:inherit;
+    border-radius:10px;
+    padding:6px 10px;
+    cursor:pointer;
+  }
+
+  /* Modal */
+  .modal{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.65);
+    display:none;
+    align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .modal[aria-hidden="false"]{display:flex}
+  .modal-inner{
+    width:min(980px, 100%);
+    background:#0f0f10;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:16px;
+    overflow:hidden;
+  }
+  .close{
+    width:100%;
+    text-align:right;
+    padding:12px 14px;
+    background:transparent;
+    border:0;
+    color:inherit;
+    cursor:pointer;
+    opacity:.85;
+  }
+  .player{position:relative; padding-top:56.25%;}
+  .player iframe{position:absolute; inset:0; width:100%; height:100%;}
+</style>
+
+<script>
+  // Pull the first N videos from the playlist embed page (no CORS issues in practice).
+  const MAX_ITEMS = 18;
+
+  function ytEmbedPlaylistUrl(listId){
+    return `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(listId)}`;
+  }
+
+  // This endpoint is public and returns the “videoseries” embed HTML which contains video ids.
+  // We parse video IDs from the returned HTML.
+  async function getPlaylistVideoIds(listId){
+    const url = ytEmbedPlaylistUrl(listId);
+    const res = await fetch(url);
+    const html = await res.text();
+
+    // video IDs show up as "videoId":"XXXXXXXXXXX"
+    const ids = [];
+    const re = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      const id = m[1];
+      if (!ids.includes(id)) ids.push(id);
+      if (ids.length >= MAX_ITEMS) break;
+    }
+    return ids;
+  }
+
+  function thumbUrl(id){
+    return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+  }
+
+  function openVideo(id, listId){
+    const iframe = document.getElementById("playerFrame");
+    // Keep playlist context so next/prev works inside the player
+    iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&list=${encodeURIComponent(listId)}`;
+    const modal = document.getElementById("playerModal");
+    modal.setAttribute("aria-hidden","false");
+  }
+
+  function closeModal(){
+    const iframe = document.getElementById("playerFrame");
+    iframe.src = "";
+    document.getElementById("playerModal").setAttribute("aria-hidden","true");
+  }
+
+  document.getElementById("closeModal").addEventListener("click", closeModal);
+  document.getElementById("playerModal").addEventListener("click", (e)=>{
+    if(e.target.id === "playerModal") closeModal();
+  });
+  window.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape") closeModal();
+  });
+
+  async function renderRow(section){
+    const title = section.dataset.title;
+    const listId = section.dataset.list;
+
+    section.innerHTML = `
+      <div class="controls">
         <div>
-          <button class="btn left">◀</button>
-          <button class="btn right">▶</button>
+          <h2>${title}</h2>
+        </div>
+        <div class="btns">
+          <a class="btn" href="https://www.youtube.com/playlist?list=${encodeURIComponent(listId)}" target="_blank" rel="noopener">Open on YouTube</a>
         </div>
       </div>
-      <div class="row"></div>
-      <div class="errorBox" hidden></div>
-    </section>
+      <div class="strip" role="list"></div>
+    `;
 
-    <section class="playlist" data-title="Highlight Episodes" data-playlist-id="PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0">
-      <div class="rowHeader">
-        <h2>Highlight Episodes</h2>
-        <div>
-          <button class="btn left">◀</button>
-          <button class="btn right">▶</button>
-        </div>
-      </div>
-      <div class="row"></div>
-      <div class="errorBox" hidden></div>
-    </section>
+    const strip = section.querySelector(".strip");
 
-    <hr />
-    <p class="note">
-      If the rows stay empty, it’s usually because the browser blocked reading YouTube’s playlist feed (CORS).
-      If that happens, tell me and we’ll add a tiny Cloudflare Worker proxy to make it 100% reliable.
-    </p>
-  </main>
-
-  <script>
-    // If direct RSS fetch is blocked by the browser, we’ll set this later:
-    // const FEED_PROXY = "/api/youtube-feed?playlistId=";
-    const FEED_PROXY = null;
-
-    const player = document.getElementById("mainPlayer");
-    const nowPlaying = document.getElementById("nowPlaying");
-
-    function setPlayer(videoId, title) {
-      player.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?rel=0`;
-      nowPlaying.textContent = title ? `Now playing: ${title}` : "";
-    }
-
-    function ytThumb(videoId) {
-      return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-    }
-
-    function parsePlaylistFeed(xmlText) {
-      const doc = new DOMParser().parseFromString(xmlText, "application/xml");
-      const entries = Array.from(doc.getElementsByTagName("entry"));
-      return entries.map(entry => {
-        const videoId = entry.getElementsByTagName("yt:videoId")[0]?.textContent?.trim();
-        const title = entry.getElementsByTagName("title")[0]?.textContent?.trim();
-        const published = entry.getElementsByTagName("published")[0]?.textContent?.trim();
-        return { videoId, title, published };
-      }).filter(x => x.videoId);
-    }
-
-    async function fetchPlaylistFeed(playlistId) {
-      const url = FEED_PROXY
-        ? `${FEED_PROXY}${encodeURIComponent(playlistId)}`
-        : `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}`;
-
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`Feed request failed: ${res.status}`);
-      return res.text();
-    }
-
-    function humanDate(iso) {
-      if (!iso) return "";
-      const d = new Date(iso);
-      if (isNaN(d)) return "";
-      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-    }
-
-    function scrollRow(rowEl, dir) {
-      const cardWidth = 232;
-      rowEl.scrollBy({ left: dir * cardWidth * 3, behavior: "smooth" });
-    }
-
-    async function renderSection(section) {
-      const playlistId = section.dataset.playlistId;
-      const title = section.dataset.title || "Playlist";
-      const row = section.querySelector(".row");
-      const err = section.querySelector(".errorBox");
-
-      section.querySelector(".left").addEventListener("click", () => scrollRow(row, -1));
-      section.querySelector(".right").addEventListener("click", () => scrollRow(row, 1));
-
-      try {
-        const xml = await fetchPlaylistFeed(playlistId);
-        const items = parsePlaylistFeed(xml);
-        items.sort((a, b) => new Date(b.published) - new Date(a.published));
-
-        const slice = items.slice(0, 24);
-        row.innerHTML = "";
-
-        slice.forEach((item, idx) => {
-          const card = document.createElement("div");
-          card.className = "card";
-          card.innerHTML = `
-            <img class="thumb" src="${ytThumb(item.videoId)}" alt="">
-            <div class="meta">
-              <p class="title">${escapeHtml(item.title || `${title} #${idx+1}`)}</p>
-              <p class="date">${humanDate(item.published)}</p>
-            </div>
-          `;
-          card.addEventListener("click", () => setPlayer(item.videoId, item.title));
-          row.appendChild(card);
-        });
-
-        if (slice[0] && (player.src.endsWith("/embed/?rel=0") || player.src.includes("/embed/?rel=0"))) {
-          setPlayer(slice[0].videoId, slice[0].title);
-        }
-
-        err.hidden = true;
-      } catch (e) {
-        err.hidden = false;
-        err.innerHTML = `
-          <strong>${escapeHtml(title)}:</strong> could not load playlist feed.<br><br>
-          Likely cause: browser blocked cross-site feed fetching (CORS).<br>
-          Fix: add a tiny Cloudflare Worker proxy and set <code>FEED_PROXY</code>.<br><br>
-          Error: ${escapeHtml(String(e.message || e))}
-        `;
+    try{
+      const ids = await getPlaylistVideoIds(listId);
+      if(!ids.length){
+        strip.innerHTML = `<div class="muted">No videos found for this playlist.</div>`;
+        return;
       }
-    }
 
-    function escapeHtml(s) {
-      return (s || "").replace(/[&<>"']/g, c => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-      }[c]));
+      for(const id of ids){
+        const card = document.createElement("div");
+        card.className = "card";
+        card.setAttribute("role","listitem");
+        card.innerHTML = `
+          <img class="thumb" src="${thumbUrl(id)}" alt="">
+          <div class="meta"><div class="title">Play</div></div>
+        `;
+        card.addEventListener("click", ()=> openVideo(id, listId));
+        strip.appendChild(card);
+      }
+    } catch(err){
+      strip.innerHTML = `<div class="muted">Could not load playlist right now.</div>`;
     }
+  }
 
-    document.querySelectorAll(".playlist").forEach(renderSection);
-  </script>
-</body>
-</html>
+  document.querySelectorAll(".row").forEach(renderRow);
+</script>
