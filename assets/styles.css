@@ -594,3 +594,4 @@ button:hover{ background: rgba(255,255,255,.06); }
 .clips-viewport--one{
   height: calc(240px * 16 / 9 + 52px); /* thumb height + title area */
 }
+.row--clips .card { flex: 0 0 180px; }
