@@ -294,20 +294,46 @@ button:hover{ background: rgba(255,255,255,.06); }
   scroll-snap-align: start;
 }
 
-/* Clips row: vertical scrolling widget (social feel) */
+/* total height of one clip card = thumb + title */
+:root{
+  --clip-card-w: 150px;
+  --clip-title-h: 64px;
+  --clip-gap: 12px;
+}
+
 .row--clips{
   display:flex;
   flex-direction: column;
+  gap: var(--clip-gap);
+
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: 520px;             /* adjust if you want taller/shorter */
-  padding: 2px;
-  gap: 12px;
 
-  /* snap vertical */
+  /* 1.15 cards tall (includes gap + 15% of next card) */
+  height: calc(
+    (var(--clip-card-w) * 16 / 9 + var(--clip-title-h)) * 1.15
+    + var(--clip-gap)
+  );
+
+  padding-bottom: 8px;
+  box-sizing: border-box;
+
   scroll-snap-type: y mandatory;
-  scroll-padding-top: 2px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+
+  width: var(--clip-card-w);
 }
+
+.row--clips .card{
+  flex: 0 0 var(--clip-card-w);
+  scroll-snap-align: start;
+}
+
+.row--clips .thumb{
+  aspect-ratio: 9 / 16;
+}
+
 
 /* nicer scrollbar for clips */
 .row--clips::-webkit-scrollbar{ width: 10px; }
