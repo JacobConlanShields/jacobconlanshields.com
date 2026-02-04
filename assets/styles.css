@@ -272,3 +272,33 @@ h1, h2{
   padding: 9px 12px;
   border-radius: 12px;
 }
+/* =========================
+   PODCAST HERO (intro + clips row)
+   ========================= */
+
+.podcast-hero{
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 18px;
+  align-items: start;
+  margin: 8px 0 18px;
+}
+
+.hero-left h1{
+  margin: 0 0 10px;
+}
+
+.hero-left .lede{
+  margin: 8px 0 14px;
+}
+
+.hero-right .row{
+  margin-top: 6px;
+}
+
+/* Mobile: stack */
+@media (max-width: 900px){
+  .podcast-hero{
+    grid-template-columns: 1fr;
+  }
+}
