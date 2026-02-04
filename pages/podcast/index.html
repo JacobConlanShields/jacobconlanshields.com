@@ -3,171 +3,85 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Podcast — Jacob Shields</title>
+  <title>Quality Values Podcast — Jacob Shields</title>
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
 
 <body>
   <main>
-  <p class="nav">
-    <a href="/">← Back to home</a>
-    <span class="dot">•</span>
-    <a href="/pages/projects/">Projects</a>
-    <span class="dot">•</span>
-    <a href="/pages/contact/">Contact</a>
-  </p>
+    <p class="nav">
+      <a href="/">← Back to home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/contact/">Contact</a>
+    </p>
 
-  <!-- HERO: left intro + right Clips carousel (desktop). Stacks on mobile. -->
-  <section class="podcast-hero">
-    <div class="hero-left">
-      <h1>Quality Values Podcast</h1>
+    <!-- HERO: left intro + right Clips carousel (desktop). Stacks on mobile. -->
+    <section class="podcast-hero">
+      <div class="hero-left">
+        <h1>Quality Values Podcast</h1>
 
-      <p class="lede">
-        Long-form conversations about values, craft, and systems — with people I’m learning from.
-      </p>
+        <p class="lede">
+          Long-form conversations about values, craft, and systems — with people I’m learning from.
+        </p>
 
-      <a class="btn" href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg" target="_blank" rel="noopener">
-        Open on YouTube
-      </a>
-    </div>
+        <a class="btn"
+           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
+           target="_blank" rel="noopener">
+          Open on YouTube
+        </a>
+      </div>
 
-    <div class="hero-right">
+      <div class="hero-right">
+        <div class="row-head">
+          <h2 class="row-title">Clips</h2>
+
+          <div class="row-controls">
+            <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-clips" data-dir="-1">◀</button>
+            <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-clips" data-dir="1">▶</button>
+          </div>
+        </div>
+
+        <div class="status" id="status-clips"></div>
+        <div class="row row--clips" id="row-clips"></div>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- Full Podcast -->
+    <section class="row-block">
       <div class="row-head">
-        <h2 class="row-title">Clips</h2>
+        <h2 class="row-title">Full Podcast (Latest)</h2>
 
         <div class="row-controls">
-          <button class="icon-btn" type="button" aria-label="Scroll left" onclick="scrollRow('row-clips', -1)">◀</button>
-          <button class="icon-btn" type="button" aria-label="Scroll right" onclick="scrollRow('row-clips', 1)">▶</button>
+          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-full" data-dir="-1">◀</button>
+          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1">▶</button>
         </div>
       </div>
 
-      <div class="row" id="row-clips">
-        <!-- Cards get injected by JS -->
-      </div>
-    </div>
-  </section>
+      <div class="status" id="status-full"></div>
+      <div class="row" id="row-full"></div>
+    </section>
 
-  <hr>
+    <!-- Highlights -->
+    <section class="row-block">
+      <div class="row-head">
+        <h2 class="row-title">Highlight Episodes</h2>
 
-  <!-- Full Podcast -->
-  <section class="row-block">
-    <div class="row-head">
-      <h2 class="row-title">Full Podcast (Latest)</h2>
-
-      <div class="row-controls">
-        <button class="icon-btn" type="button" aria-label="Scroll left" onclick="scrollRow('row-full', -1)">◀</button>
-        <button class="icon-btn" type="button" aria-label="Scroll right" onclick="scrollRow('row-full', 1)">▶</button>
-      </div>
-    </div>
-
-    <div class="row" id="row-full"></div>
-  </section>
-
-  <!-- Highlights -->
-  <section class="row-block">
-    <div class="row-head">
-      <h2 class="row-title">Highlight Episodes</h2>
-
-      <div class="row-controls">
-        <button class="icon-btn" type="button" aria-label="Scroll left" onclick="scrollRow('row-highlights', -1)">◀</button>
-        <button class="icon-btn" type="button" aria-label="Scroll right" onclick="scrollRow('row-highlights', 1)">▶</button>
-      </div>
-    </div>
-
-    <div class="row" id="row-highlights"></div>
-  </section>
-
-  <!-- Modal player -->
-  <div class="modal" id="modal" aria-hidden="true">
-    <div class="modal-backdrop" onclick="closeModal()"></div>
-    <div class="modal-card" role="dialog" aria-modal="true">
-      <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
-      <div class="player-wrap">
-        <iframe id="player" allowfullscreen></iframe>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // Playlist IDs
-    const PLAYLIST_FULL = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
-    const PLAYLIST_HIGHLIGHTS = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
-    const PLAYLIST_CLIPS = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
-
-    // How many cards to show per row
-    const COUNT_FULL = 12;
-    const COUNT_HIGHLIGHTS = 10;
-    const COUNT_CLIPS = 10;
-
-    function ytEmbedUrl(playlistId, index){
-      // index is 0-based, matches playlist order as shown on YouTube
-      return `https://www.youtube.com/embed/videoseries?list=${playlistId}&index=${index}`;
-    }
-
-    function ytThumbUrl(playlistId, index){
-      // Use the embed itself as the "thumb" by loading the iframe only in the modal.
-      // We'll show a simple placeholder frame (dark card) and rely on titles from YouTube inside the iframe modal.
-      // (Keeping this minimal + durable.)
-      return "";
-    }
-
-    function makeCard(playlistId, index, fallbackTitle){
-      const videoUrl = ytEmbedUrl(playlistId, index);
-
-      const card = document.createElement("button");
-      card.className = "card";
-      card.type = "button";
-      card.onclick = () => openModal(videoUrl);
-
-      // Simple “thumb” area (no cross-site fetching required)
-      card.innerHTML = `
-        <div class="thumb">
-          <div class="play">▶</div>
+        <div class="row-controls">
+          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-dir="-1">◀</button>
+          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
         </div>
-        <div class="card-title">${fallbackTitle}</div>
-      `;
+      </div>
 
-      return card;
-    }
+      <div class="status" id="status-highlights"></div>
+      <div class="row" id="row-highlights"></div>
+    </section>
+  </main>
 
-    function fillRow(rowId, playlistId, count, titlePrefix){
-      const row = document.getElementById(rowId);
-      row.innerHTML = "";
-      for(let i = 0; i < count; i++){
-        row.appendChild(makeCard(playlistId, i, `${titlePrefix} #${i+1}`));
-      }
-    }
-
-    function scrollRow(id, dir){
-      const el = document.getElementById(id);
-      const amt = Math.round(el.clientWidth * 0.9) * dir;
-      el.scrollBy({ left: amt, behavior: "smooth" });
-    }
-
-    function openModal(url){
-      const modal = document.getElementById("modal");
-      const player = document.getElementById("player");
-      player.src = url + "&autoplay=1";
-      modal.classList.add("open");
-      modal.setAttribute("aria-hidden", "false");
-    }
-
-    function closeModal(){
-      const modal = document.getElementById("modal");
-      const player = document.getElementById("player");
-      player.src = "";
-      modal.classList.remove("open");
-      modal.setAttribute("aria-hidden", "true");
-    }
-
-    // Build rows (order matches YouTube playlist order)
-    fillRow("row-clips", PLAYLIST_CLIPS, COUNT_CLIPS, "Clip");
-    fillRow("row-full", PLAYLIST_FULL, COUNT_FULL, "Episode");
-    fillRow("row-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS, "Highlight");
-  </script>
-</main>
-
-  <!-- Modal player -->
+  <!-- ONE modal player (only once) -->
   <div class="modal" id="playerModal" aria-hidden="true">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-label="Video player">
@@ -177,11 +91,31 @@
   </div>
 
   <script>
+    // Playlist IDs
+    const PLAYLIST_FULL = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
+    const PLAYLIST_HIGHLIGHTS = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
+    const PLAYLIST_CLIPS = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
+
+    // How many cards to show
+    const COUNT_FULL = 14;
+    const COUNT_HIGHLIGHTS = 12;
+    const COUNT_CLIPS = 18;
+
+    // YouTube playlist feed (XML)
     const FEED = (playlistId) =>
       `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // Same-origin proxy (Cloudflare Pages Function)
-    const PROXY = (url) => `/yt?url=${encodeURIComponent(url)}`;
+    // ✅ Use your Cloudflare Worker as the CORS-safe proxy
+    // Replace YOUR_WORKER_URL_HERE with your real Worker URL:
+    // "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url="
+    const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
+    const PROXY = (url) => WORKER_PROXY + encodeURIComponent(url);
+
+    function escapeHtml(s) {
+      return (s || "").replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[c]));
+    }
 
     function parseFeed(xmlText) {
       const doc = new DOMParser().parseFromString(xmlText, "text/xml");
@@ -189,19 +123,20 @@
 
       return entries.map((e) => {
         const title = e.getElementsByTagName("title")[0]?.textContent?.trim() || "";
-        const videoId = e.getElementsByTagName("yt:videoId")[0]?.textContent?.trim()
+        const videoId =
+          e.getElementsByTagName("yt:videoId")[0]?.textContent?.trim()
           || e.getElementsByTagName("videoId")[0]?.textContent?.trim()
           || "";
-        const thumb =
-          e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url")
-          || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+        // Prefer feed thumb if present; fallback to ytimg
+        const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
+        const thumb = feedThumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
         return { title, videoId, thumb };
       }).filter(x => x.videoId);
     }
 
     function cardHTML(item) {
-      // Thumbnail card: click opens modal with embedded player
       return `
         <button class="card" type="button" data-video="${item.videoId}" title="${escapeHtml(item.title)}">
           <div class="thumb">
@@ -213,16 +148,9 @@
       `;
     }
 
-    function escapeHtml(s) {
-      return (s || "").replace(/[&<>"']/g, (c) => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[c]));
-    }
-
-    async function loadRow(section) {
-      const playlistId = section.dataset.playlist;
-      const row = section.querySelector(".row");
-      const status = section.querySelector(".status");
+    async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
+      const row = document.getElementById(rowId);
+      const status = document.getElementById(statusId);
 
       status.textContent = "Loading…";
 
@@ -231,10 +159,11 @@
         if (!resp.ok) throw new Error(`Feed error: ${resp.status}`);
         const xml = await resp.text();
 
-        const items = parseFeed(xml);
+        const items = parseFeed(xml).slice(0, limit);
 
         if (!items.length) {
           status.textContent = "No videos found right now.";
+          row.innerHTML = "";
           return;
         }
 
@@ -245,17 +174,6 @@
         console.error(err);
       }
     }
-
-    // Scroll buttons
-    document.querySelectorAll(".row-block").forEach((section) => {
-      const row = section.querySelector(".row");
-      section.querySelectorAll("[data-dir]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const dir = Number(btn.dataset.dir);
-          row.scrollBy({ left: dir * 800, behavior: "smooth" });
-        });
-      });
-    });
 
     // Modal player
     const modal = document.getElementById("playerModal");
@@ -284,14 +202,23 @@
       if (btn?.dataset.video) openPlayer(btn.dataset.video);
 
       if (e.target.matches("[data-close]")) closePlayer();
+
+      const scrollBtn = e.target.closest("[data-row][data-dir]");
+      if (scrollBtn) {
+        const row = document.getElementById(scrollBtn.dataset.row);
+        const dir = Number(scrollBtn.dataset.dir);
+        row.scrollBy({ left: dir * Math.round(row.clientWidth * 0.9), behavior: "smooth" });
+      }
     });
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
 
-    // Load both rows
-    document.querySelectorAll(".row-block").forEach(loadRow);
+    // Load all three rows
+    loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
+    loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
+    loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
   </script>
 </body>
 </html>
