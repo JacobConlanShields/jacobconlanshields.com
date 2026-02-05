@@ -10,24 +10,30 @@
   --line: rgba(255,255,255,.14);
   --link: #c7b6ff;
 
-  /* LAYOUT */
+  /* Page */
   --page-max: 1120px;
   --gutter: 18px;
 
-  /* HORIZONTAL CARDS (Latest + Highlights) */
-  --card-w: 260px;          /* width of each horizontal card */
-  --card-radius: 14px;
+  /* Right column (Clips) — ~30% smaller than 260px */
+  --clips-col-w: 182px;
+
+  /* Left carousels (Latest + Highlights) */
+  --card-w: 240px;          /* horizontal card width (smaller so left stays narrow) */
   --row-gap: 12px;
+  --card-radius: 14px;
 
-  /* CLIPS (vertical rail) — already ~30% smaller vs your earlier 240px */
-  --clips-col-w: 170px;     /* container width */
-  --clips-card-w: 170px;    /* card width inside column */
+  /* Clips sizing */
+  --clips-card-w: 182px;    /* matches column */
+  --clip-gap: 10px;
+  --clip-title-h: 54px;     /* approx title block height */
+  --clips-visible: 2.35;    /* show ~2 cards + peek */
 
-  /* Clip viewport height: show ~2-3 items total */
-  /* Each clip card height = thumb(9:16) + title block */
-  --clip-title-h: 54px;     /* title block height */
-  --clip-gap: 10px;         /* vertical gap between clips */
-  --clips-visible: 2.35;    /* 2-ish cards + a peek */
+  /* Derived: portrait thumb height (9/16) */
+  --clip-thumb-h: calc(var(--clips-card-w) * 16 / 9);
+  --clips-viewport-h: calc(
+    (var(--clip-thumb-h) + var(--clip-title-h)) * var(--clips-visible)
+    + (var(--clip-gap) * 2)
+  );
 }
 
 /* reset / base */
@@ -44,8 +50,8 @@ html, body{
 
 main{
   max-width: var(--page-max);
-  margin: 28px auto;
-  padding: 0 20px;
+  margin: 22px auto;
+  padding: 0 18px;
 }
 
 /* links */
@@ -57,10 +63,10 @@ a{
 a:visited{ color: var(--link); }
 
 /* typography */
-p{ color: var(--muted); margin: 0 0 12px; }
+p{ color: var(--muted); margin: 0 0 10px; }
 
 h1, h2{
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   letter-spacing: -0.02em;
 }
 
@@ -72,7 +78,7 @@ h1, h2{
   display:flex;
   gap:10px;
   align-items:center;
-  margin: 0 0 18px;
+  margin: 0 0 14px;
 }
 .nav .dot{ opacity:.5; }
 
@@ -88,8 +94,8 @@ h1, h2{
 .btn:hover{ background: rgba(255,255,255,.06); }
 
 .icon-btn{
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: #0f0f0f;
@@ -102,55 +108,77 @@ h1, h2{
    HR spacing (tight)
    ========================= */
 
-hr{
+hr, .tight-hr{
   border: none;
   border-top: 1px solid var(--line);
-  margin: 12px 0;  /* tighter than default */
+  margin: 10px 0;
 }
 
 /* =========================
    Page intro spacing
    ========================= */
 
-.podcast-title{ margin: 0 0 8px; }
+.podcast-title{ margin: 0 0 6px; }
 
 .lede{
-  margin: 6px 0 12px;
+  margin: 4px 0 10px;
   color: var(--muted);
   max-width: 70ch;
 }
 
-/* If you want a forced line break in your lede, use <br> in HTML */
-.lede br{ display:block; }
+/* =========================
+   The ONE 2-column layout
+   Matches your HTML:
+   <section class="podcast-topgrid">
+     <div class="top-left">...</div>
+     <aside class="top-right">...</aside>
+   </section>
+   ========================= */
+
+.podcast-topgrid{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--clips-col-w);
+  gap: var(--gutter);
+  align-items: start;
+}
+
+.top-left{ min-width: 0; }          /* critical: keeps left from forcing width */
+.top-right{
+  width: var(--clips-col-w);
+  justify-self: end;
+}
 
 /* =========================
-   SECTION HEAD + ROW CONTROLS
+   Row head + status
    ========================= */
 
 .row-head{
   display:flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  margin: 0 0 8px;
+  gap: 10px;
+  margin: 0 0 6px;
 }
 
 .row-controls{
   display:flex;
   gap:10px;
-  justify-content:flex-end;
   margin: 0;
 }
 
 .status{
-  min-height: 18px;
-  margin: 2px 0 6px;
+  min-height: 16px;
+  margin: 0 0 6px;
   color: var(--muted);
   font-size: 13px;
 }
 
+/* Tight sections */
+.row-block{ margin: 10px 0 12px; }
+.row-block--tight{ margin: 8px 0 10px; }
+
 /* =========================
-   CARDS (shared)
+   Cards (shared)
    ========================= */
 
 .card{
@@ -162,9 +190,6 @@ hr{
   cursor: pointer;
   overflow: hidden;
 }
-
-/* default: horizontal carousel card width */
-.card{ width: var(--card-w); }
 
 .thumb{
   position: relative;
@@ -182,9 +207,9 @@ hr{
 
 .play{
   position:absolute;
-  inset:auto 10px 10px auto;
-  width:40px;
-  height:40px;
+  inset:auto 8px 8px auto;
+  width:38px;
+  height:38px;
   border-radius: 999px;
   display:grid;
   place-items:center;
@@ -193,7 +218,7 @@ hr{
 }
 
 .card-title{
-  padding: 10px 10px 12px;
+  padding: 9px 9px 10px;
   font-weight: 650;
   font-size: 13px;
   color: var(--text);
@@ -201,7 +226,7 @@ hr{
 }
 
 /* =========================
-   Horizontal carousel rows
+   Horizontal carousels (Latest + Highlights)
    ========================= */
 
 .row{
@@ -217,153 +242,78 @@ hr{
 
   scroll-snap-type: x mandatory;
   scroll-padding-left: 2px;
+
+  max-width: 100%;
 }
 
-.row::-webkit-scrollbar{ height: 10px; }
-.row::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 999px; }
-
+/* horizontal cards */
 .row > .card{
+  width: var(--card-w);
   flex: 0 0 auto;
   scroll-snap-align: start;
 }
 
-/* =========================
-   The 2-column “row + clips” grid
-   Use this wrapper around:
-   - Latest row + clips
-   - Highlights row + clips
-   ========================= */
-
-.podcast-grid{
-  display: grid;
-  grid-template-columns: 1fr var(--clips-col-w);
-  gap: var(--gutter);
-  align-items: start;
-}
-
-.podcast-left{ min-width: 0; } /* prevent overflow pushing layout */
-.podcast-right{
-  width: var(--clips-col-w);
-  justify-self: end;
-}
-
-/* stack on mobile */
-@media (max-width: 900px){
-  .podcast-grid{
-    grid-template-columns: 1fr;
-  }
-  .podcast-right{
-    width: 100%;
-    justify-self: stretch;
-  }
+.row::-webkit-scrollbar{ height: 10px; }
+.row::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.14);
+  border-radius: 999px;
 }
 
 /* =========================
-   CLIPS vertical rail
+   Clips (right column) — vertical scroller
+   Your HTML uses:
+   <div class="clips-viewport">
+     <div class="clips-rail" id="row-clips"></div>
+   </div>
    ========================= */
 
-/* portrait thumb height: w*(16/9) because aspect ratio is 9/16 (tall) */
-@media (min-width: 901px){
-  .clips-viewport{
-    /* show about 2.35 clips */
-    height: calc(
-      ( (var(--clips-card-w) * 16 / 9) + var(--clip-title-h) ) * var(--clips-visible)
-      + (var(--clip-gap) * 2)
-    );
-    overflow: hidden;
-    border-radius: var(--card-radius);
-  }
-
-  .row--clips{
-    width: var(--clips-col-w);
-    max-width: var(--clips-col-w);
-
-    display:flex;
-    flex-direction: column;
-    gap: var(--clip-gap);
-
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 2px;
-
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
-
-    scrollbar-width: thin;
-  }
-
-  .row--clips::-webkit-scrollbar{ width: 10px; }
-  .row--clips::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 999px; }
-
-  .row--clips .card{
-    width: var(--clips-card-w);
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-  }
-
-  .row--clips .thumb{
-    aspect-ratio: 9 / 16;
-  }
-
-  .row--clips .card-title{
-    padding: 9px 9px 10px;
-    font-size: 12px;
-    line-height: 1.2;
-
-    /* keeps clip titles from becoming huge */
-    max-height: var(--clip-title-h);
-    overflow: hidden;
-  }
+.clips-viewport{
+  height: var(--clips-viewport-h);
+  overflow: hidden;              /* rail scrolls; viewport stays fixed */
+  border-radius: var(--card-radius);
 }
 
-/* Mobile behavior: make clips a horizontal swipe row */
-@media (max-width: 900px){
-  .clips-viewport{
-    height: auto;
-    overflow: visible;
-  }
+.clips-rail{
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 
-  .row--clips{
-    width: 100%;
-    display:flex;
-    flex-direction: row;
-    gap: 12px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 6px 2px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--clip-gap);
+  padding: 2px;
 
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .row--clips .card{
-    width: 200px;
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-  }
-
-  .row--clips .thumb{ aspect-ratio: 9 / 16; }
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
-/* =========================
-   Section spacing (tight)
-   ========================= */
-
-.row-block{
-  margin: 14px 0 18px;
+.clips-rail::-webkit-scrollbar{ width: 10px; }
+.clips-rail::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.14);
+  border-radius: 999px;
 }
 
-.row-block--tight{
-  margin: 10px 0 14px;
+/* clip cards: fixed to column width */
+.clips-rail .card{
+  width: var(--clips-card-w);
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
-/* =========================
-   Safety: prevent any accidental “duplicate row--clips rules”
-   If old CSS had .clips-rail/.clips-viewport etc, this file ignores them.
-   ========================= */
+/* portrait thumbs for clips */
+.clips-rail .thumb{ aspect-ratio: 9 / 16; }
 
+/* tighten clip titles so cards don't get tall */
+.clips-rail .card-title{
+  font-size: 12px;
+  line-height: 1.2;
+  max-height: var(--clip-title-h);
+  overflow: hidden;
+}
 
 /* =========================
    Modal player
@@ -419,82 +369,48 @@ hr{
 }
 
 /* =========================
-   Utilities
+   Mobile: stack columns
+   Clips becomes horizontal swipe (better on phones)
    ========================= */
 
-.small{ font-size: 13px; }
-.nowrap{ white-space: nowrap; }
-/* =========================
-   FIXED LAYOUT: one right-column clips + left rows
-   ========================= */
-
-/* Make the right column smaller (~30% smaller than your old 260px) */
-.podcast-topgrid{
-  display: grid;
-  grid-template-columns: 1fr 182px; /* 260 * 0.70 ≈ 182 */
-  gap: 18px;
-  align-items: start;
-}
-
-.top-right{
-  width: 182px;
-}
-
-/* Clips: smaller cards + show ~2–3 visible */
-.clips-viewport{
-  /* viewport height shows ~2 cards + a peek */
-  height: 620px;          /* tweak: 560–680 depending on taste */
-  overflow: hidden;       /* hides overflow outside the viewport */
-}
-
-.clips-rail{
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-}
-
-/* 30% smaller clip cards */
-.clips-rail .card{
-  width: 182px;           /* match the column width */
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-}
-
-/* Portrait thumb */
-.clips-rail .thumb{
-  aspect-ratio: 9 / 16;
-}
-
-/* Tighten title so the card doesn’t get huge */
-.clips-rail .card-title{
-  font-size: 12px;
-  line-height: 1.2;
-  padding: 8px 8px 10px;
-}
-
-/* Mobile: stack layout */
 @media (max-width: 900px){
+  :root{
+    --card-w: 250px;
+    --clips-col-w: 100%;
+    --clips-card-w: 200px;
+  }
+
   .podcast-topgrid{
     grid-template-columns: 1fr;
   }
 
   .top-right{
-    width: auto;
+    width: 100%;
+    justify-self: stretch;
   }
 
   .clips-viewport{
-    height: 520px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .clips-rail{
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    padding: 6px 2px 10px;
   }
 
   .clips-rail .card{
-    width: min(260px, 92vw);
+    width: var(--clips-card-w);
+    scroll-snap-align: start;
   }
 }
+
+/* =========================
+   Utilities
+   ========================= */
+
+.small{ font-size: 13px; }
+.nowrap{ white-space: nowrap; }
