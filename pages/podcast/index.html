@@ -71,7 +71,10 @@
 
     <hr class="tight-hr">
 
-    <!-- ===== BELOW GRID: HIGHLIGHTS (full width) ===== -->
+<!-- ===== HIGHLIGHTS + CLIPS (same 2-column layout as Latest) ===== -->
+<section class="podcast-topgrid">
+  <!-- LEFT COLUMN: Highlights -->
+  <div class="top-left">
     <section class="row-block row-block--tight">
       <div class="row-head">
         <h2 class="row-title">Highlight Episodes</h2>
@@ -84,6 +87,26 @@
       <div class="status" id="status-highlights"></div>
       <div class="row row--small" id="row-highlights"></div>
     </section>
+  </div>
+
+  <!-- RIGHT COLUMN: Clips (reuse the same clips rail visually) -->
+  <aside class="top-right">
+    <div class="row-head row-head--clips">
+      <h2 class="row-title">Clips</h2>
+      <div class="row-controls">
+        <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
+        <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
+      </div>
+    </div>
+
+    <div class="status" id="status-clips"></div>
+
+    <div class="clips-viewport">
+      <div class="clips-rail" id="row-clips"></div>
+    </div>
+  </aside>
+</section>
+    
   </main>
 
   <!-- ===== ONE modal player ===== -->
