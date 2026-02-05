@@ -9,105 +9,83 @@
 
 <body>
   <main class="podcast-page">
-    <p class="nav">
-      <a href="/">← Back to home</a>
-      <span class="dot">•</span>
-      <a href="/pages/projects/">Projects</a>
-      <span class="dot">•</span>
-      <a href="/pages/contact/">Contact</a>
-    </p>
+  <p class="nav">
+    <a href="/">← Back to home</a>
+    <span class="dot">•</span>
+    <a href="/pages/projects/">Projects</a>
+    <span class="dot">•</span>
+    <a href="/pages/contact/">Contact</a>
+  </p>
 
-    <!-- ===== TOP GRID (matches your mockup) ===== -->
-    <section class="podcast-topgrid">
-      <!-- LEFT COLUMN -->
-      <div class="top-left">
-        <h1 class="podcast-title">Quality Values Podcast</h1>
+  <!-- ONE grid only -->
+  <section class="podcast-topgrid">
+    <!-- LEFT COLUMN -->
+    <div class="top-left">
+      <h1 class="podcast-title">Quality Values Podcast</h1>
 
-        <p class="lede">
-          Core Question: What are your values in the context of your story?<br>Long-form conversations about values, craft, and systems — with people I’m learning from.
-        </p>
+      <p class="lede">
+        Core Question: What are your values in the context of your story?<br>
+        Long-form conversations about values, craft, and systems — with people I’m learning from.
+      </p>
 
-        <a class="btn"
-           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
-           target="_blank" rel="noopener">
-          Open on YouTube
-        </a>
+      <a class="btn"
+         href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
+         target="_blank" rel="noopener">
+        Open on YouTube
+      </a>
 
-        <hr class="tight-hr">
+      <hr class="tight-hr">
 
-        <!-- Full Podcast (Latest) — constrained so it ends before Clips column -->
-        <section class="row-block row-block--tight">
-          <div class="row-head">
-            <h2 class="row-title">Full Podcast (Latest)</h2>
-            <div class="row-controls">
-              <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-full" data-dir="-1">◀</button>
-              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1">▶</button>
-            </div>
-          </div>
-
-          <div class="status" id="status-full"></div>
-          <div class="row row--small" id="row-full"></div>
-        </section>
-      </div>
-
-      <!-- RIGHT COLUMN: CLIPS (vertical social scroll, 1 visible at a time) -->
-      <aside class="top-right">
-        <div class="row-head row-head--clips">
-          <h2 class="row-title">Clips</h2>
+      <!-- Full Podcast (Latest) -->
+      <section class="row-block row-block--tight">
+        <div class="row-head">
+          <h2 class="row-title">Full Podcast (Latest)</h2>
           <div class="row-controls">
-            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
-            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
+            <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-full" data-dir="-1">◀</button>
+            <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1">▶</button>
           </div>
         </div>
 
-        <div class="status" id="status-clips"></div>
+        <div class="status" id="status-full"></div>
+        <div class="row row--small" id="row-full"></div>
+      </section>
 
-        <!-- The viewport is exactly 1 card tall -->
-        <div class="clips-viewport clips-viewport--one">
-          <div class="clips-rail" id="row-clips"></div>
+      <hr class="tight-hr">
+
+      <!-- Highlights -->
+      <section class="row-block row-block--tight">
+        <div class="row-head">
+          <h2 class="row-title">Highlight Episodes</h2>
+          <div class="row-controls">
+            <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-dir="-1">◀</button>
+            <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
+          </div>
         </div>
-      </aside>
-    </section>
 
-    <hr class="tight-hr">
+        <div class="status" id="status-highlights"></div>
+        <div class="row row--small" id="row-highlights"></div>
+      </section>
+    </div>
 
-<!-- ===== HIGHLIGHTS + CLIPS (same 2-column layout as Latest) ===== -->
-<section class="podcast-topgrid">
-  <!-- LEFT COLUMN: Highlights -->
-  <div class="top-left">
-    <section class="row-block row-block--tight">
-      <div class="row-head">
-        <h2 class="row-title">Highlight Episodes</h2>
+    <!-- RIGHT COLUMN: Clips (ONLY ONCE) -->
+    <aside class="top-right">
+      <div class="row-head row-head--clips">
+        <h2 class="row-title">Clips</h2>
         <div class="row-controls">
-          <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-dir="-1">◀</button>
-          <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
+          <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
+          <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
         </div>
       </div>
 
-      <div class="status" id="status-highlights"></div>
-      <div class="row row--small" id="row-highlights"></div>
-    </section>
-  </div>
+      <div class="status" id="status-clips"></div>
 
-  <!-- RIGHT COLUMN: Clips (reuse the same clips rail visually) -->
-  <aside class="top-right">
-    <div class="row-head row-head--clips">
-      <h2 class="row-title">Clips</h2>
-      <div class="row-controls">
-        <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
-        <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
+      <div class="clips-viewport">
+        <div class="clips-rail" id="row-clips"></div>
       </div>
-    </div>
+    </aside>
+  </section>
+</main>
 
-    <div class="status" id="status-clips"></div>
-
-    <div class="clips-viewport">
-      <div class="clips-rail" id="row-clips"></div>
-    </div>
-  </aside>
-</section>
-    
-  </main>
 
   <!-- ===== ONE modal player ===== -->
   <div class="modal" id="playerModal" aria-hidden="true">
