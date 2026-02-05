@@ -424,3 +424,77 @@ hr{
 
 .small{ font-size: 13px; }
 .nowrap{ white-space: nowrap; }
+/* =========================
+   FIXED LAYOUT: one right-column clips + left rows
+   ========================= */
+
+/* Make the right column smaller (~30% smaller than your old 260px) */
+.podcast-topgrid{
+  display: grid;
+  grid-template-columns: 1fr 182px; /* 260 * 0.70 ≈ 182 */
+  gap: 18px;
+  align-items: start;
+}
+
+.top-right{
+  width: 182px;
+}
+
+/* Clips: smaller cards + show ~2–3 visible */
+.clips-viewport{
+  /* viewport height shows ~2 cards + a peek */
+  height: 620px;          /* tweak: 560–680 depending on taste */
+  overflow: hidden;       /* hides overflow outside the viewport */
+}
+
+.clips-rail{
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+/* 30% smaller clip cards */
+.clips-rail .card{
+  width: 182px;           /* match the column width */
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+/* Portrait thumb */
+.clips-rail .thumb{
+  aspect-ratio: 9 / 16;
+}
+
+/* Tighten title so the card doesn’t get huge */
+.clips-rail .card-title{
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 8px 8px 10px;
+}
+
+/* Mobile: stack layout */
+@media (max-width: 900px){
+  .podcast-topgrid{
+    grid-template-columns: 1fr;
+  }
+
+  .top-right{
+    width: auto;
+  }
+
+  .clips-viewport{
+    height: 520px;
+  }
+
+  .clips-rail .card{
+    width: min(260px, 92vw);
+  }
+}
