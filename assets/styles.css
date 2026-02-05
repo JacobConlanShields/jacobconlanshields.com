@@ -414,3 +414,48 @@ hr, .tight-hr{
 
 .small{ font-size: 13px; }
 .nowrap{ white-space: nowrap; }
+/* =========================
+   Contact form — dark theme fields
+   ========================= */
+
+input[type="email"],
+input[type="text"],
+input[type="subject"],
+textarea {
+  width: 100%;
+  background: #1b1b1b;          /* dark gray field */
+  color: rgba(255,255,255,.92); /* readable text */
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 10px;
+  padding: 12px 12px;
+  font-size: 16px;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255,255,255,.45);
+}
+
+/* Focus state (when you click into a field) */
+input:focus,
+textarea:focus {
+  border-color: rgba(199,182,255,.65); /* matches your link color vibe */
+  box-shadow: 0 0 0 3px rgba(199,182,255,.18);
+}
+
+/* Optional: make the submit/open button match dark theme */
+button,
+input[type="submit"] {
+  background: #0f0f0f;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+button:hover,
+input[type="submit"]:hover {
+  background: rgba(255,255,255,.06);
+}
