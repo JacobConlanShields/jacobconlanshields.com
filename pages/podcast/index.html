@@ -100,12 +100,19 @@
     // Playlist IDs
     const PLAYLIST_FULL       = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
     const PLAYLIST_HIGHLIGHTS = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
+    const PLAYLIST_MOVEMENT = "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY";
+    const PLAYLIST_SCIENCE = "PLcDYjJATsN-PtE4LDtPYqaJ7d3lx3Ov4r";
+    const PLAYLIST_ENTREPRENEURSHIP = "PLcDYjJATsN-Msn3AQKaegXhSZdkiLVsgC";
     const PLAYLIST_CLIPS      = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
 
     // counts (keep reasonable so initial view stays tight)
-    const COUNT_FULL       = 10;
+    const COUNT_LATEST = 10;
     const COUNT_HIGHLIGHTS = 10;
-    const COUNT_CLIPS      = 25;
+    const COUNT_MOVEMENT = 10;
+    const COUNT_SCIENCE = 10;
+    const COUNT_ENTREPRENEURSHIP = 10;
+
+    const COUNT_CLIPS = 25;
 
     // YouTube playlist feed (XML)
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
@@ -237,8 +244,60 @@
 
     // Load playlists
     loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
-    loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
+    
+    loadPlaylistInto("row-latest", "status-latest", PLAYLIST_LATEST, COUNT_LATEST);
     loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
+    loadPlaylistInto("row-movement", "status-movement", PLAYLIST_MOVEMENT, COUNT_MOVEMENT);
+    loadPlaylistInto("row-science", "status-science", PLAYLIST_SCIENCE, COUNT_SCIENCE);
+    loadPlaylistInto("row-entrepreneurship", "status-entrepreneurship", PLAYLIST_ENTREPRENEURSHIP, COUNT_ENTREPRENEURSHIP);
+
   </script>
 </body>
 </html>
+<hr class="tight-hr">
+
+<!-- Movement Episodes -->
+<section class="row-block row-block--tight">
+  <div class="row-head">
+    <h2 class="row-title">Movement Episodes</h2>
+    <div class="row-controls">
+      <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-movement" data-dir="-1">◀</button>
+      <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-movement" data-dir="1">▶</button>
+    </div>
+  </div>
+
+  <div class="status" id="status-movement"></div>
+  <div class="row row--small" id="row-movement"></div>
+</section>
+
+<hr class="tight-hr">
+
+<!-- Science & Sustainability -->
+<section class="row-block row-block--tight">
+  <div class="row-head">
+    <h2 class="row-title">Science &amp; Sustainability</h2>
+    <div class="row-controls">
+      <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-science" data-dir="-1">◀</button>
+      <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-science" data-dir="1">▶</button>
+    </div>
+  </div>
+
+  <div class="status" id="status-science"></div>
+  <div class="row row--small" id="row-science"></div>
+</section>
+
+<hr class="tight-hr">
+
+<!-- Entrepreneurship Episodes -->
+<section class="row-block row-block--tight">
+  <div class="row-head">
+    <h2 class="row-title">Entrepreneurship Episodes</h2>
+    <div class="row-controls">
+      <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-entre" data-dir="-1">◀</button>
+      <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-entre" data-dir="1">▶</button>
+    </div>
+  </div>
+
+  <div class="status" id="status-entre"></div>
+  <div class="row row--small" id="row-entre"></div>
+</section>
