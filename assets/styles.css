@@ -469,3 +469,5 @@ a{
 }
 a:visited{ color: var(--text); }
 
+/* FORCE theme variables (debug) */
+html, body { background: var(--bg) !important; color: var(--text) !important; }
