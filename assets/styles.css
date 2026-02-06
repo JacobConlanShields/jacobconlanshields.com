@@ -169,7 +169,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--clips-col-w);
   gap: var(--gutter);
-  align-items: stretch; /* key change */
+  align-items: start; /* key change 2x */
 }
 
 /* critical: stops left side from blowing up the grid */
@@ -179,11 +179,14 @@ button:hover{ background: rgba(255,255,255,.06); }
   width: var(--clips-col-w);
   justify-self: end;
 
+  position: sticky;
+  top: 18px;               /* space from top while scrolling */
+  max-height: calc(100vh - 36px);
   display: flex;
   flex-direction: column;
-  height: 100%;     /* key */
-  min-height: 0;    /* key: allows children to shrink/scroll correctly */
+  min-height: 0;
 }
+
 
 .row-head{
   display:flex;
@@ -245,8 +248,8 @@ button:hover{ background: rgba(255,255,255,.06); }
 
 /* compute viewport height so you see ~2 cards + peek */
 .clips-viewport{
-  flex: 1;          /* key: fill remaining height in the right column */
-  min-height: 0;    /* key: enables scrolling inside */
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   border-radius: var(--card-radius);
 }
