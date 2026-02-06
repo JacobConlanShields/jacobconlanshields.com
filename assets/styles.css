@@ -3,12 +3,15 @@
    ========================= */
 
 :root{
-  --bg: #121212;
-  --card: #1a1a1a;
-  --text: #ffffff;
-  --muted: rgba(255,255,255,.72);
-  --line: rgba(255,255,255,.14);
-  --link: #c7b6ff;
+  /* Paper theme (Kindle / reMarkable-ish) */
+  --bg: #eeeeea;          /* soft paper gray */
+  --card: #f6f6f1;        /* slightly lighter paper for boxes */
+  --text: #1b1b1b;        /* near-black ink */
+  --muted: #4a4a4a;       /* secondary text */
+  --line: rgba(0,0,0,.14);/* subtle dividers */
+  --link: #1b1b1b;        /* link looks like ink */
+}
+
 
   /* Page */
   --page-max: 1120px;
@@ -195,7 +198,7 @@ hr, .tight-hr{
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
+  background: ##d9d9d4;
 }
 
 .thumb img{
@@ -438,24 +441,31 @@ textarea::placeholder {
 }
 
 /* Focus state (when you click into a field) */
-input:focus,
-textarea:focus {
-  border-color: rgba(199,182,255,.65); /* matches your link color vibe */
-  box-shadow: 0 0 0 3px rgba(199,182,255,.18);
+input, textarea{
+  width: 100%;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 10px;
+  margin-top: 6px;
+  font: inherit;
+  border-radius: 10px;
 }
 
-/* Optional: make the submit/open button match dark theme */
-button,
-input[type="submit"] {
-  background: #0f0f0f;
-  color: #fff;
-  border: 1px solid rgba(255,255,255,.16);
+button, .btn{
+  display:inline-block;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 10px 14px;
-  cursor: pointer;
 }
+button:hover, .btn:hover{
+  background: rgba(0,0,0,.03);
+}
+a{
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+a:visited{ color: var(--text); }
 
-button:hover,
-input[type="submit"]:hover {
-  background: rgba(255,255,255,.06);
-}
