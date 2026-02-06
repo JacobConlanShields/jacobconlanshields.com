@@ -418,3 +418,135 @@ textarea:focus{
     scroll-snap-align: start;
   }
 }
+/* =========================
+   Relative Momentum ebook viewer
+   ========================= */
+
+.ebook-page{
+  max-width: var(--page-max);
+  margin: 22px auto;
+  padding: 0 18px;
+}
+
+.ebook-head{
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 0 12px;
+}
+
+.ebook-title{
+  margin: 0 0 6px;
+}
+
+.ebook-sub{
+  margin: 0;
+  color: var(--muted);
+}
+
+.ebook-controls{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ebook-meta{
+  min-width: 140px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.spread{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.page{
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.page img{
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+}
+
+/* Make it feel like paper on dark background */
+.page{
+  background: rgba(255,255,255,.02);
+}
+
+.ebook-hint{
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+/* Mobile: single page */
+@media (max-width: 900px){
+  .ebook-head{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .spread{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Lightbox */
+.lightbox{
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 80;
+}
+
+.lightbox.open{
+  display: block;
+}
+
+.lightbox-bg{
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+}
+
+.lightbox-card{
+  position: relative;
+  width: min(1100px, 95vw);
+  margin: 5vh auto 0;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.lightbox-close{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.lightbox-card img{
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  margin-top: 46px;
+}
