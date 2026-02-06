@@ -3,15 +3,14 @@
    ========================= */
 
 :root{
-  /* Paper theme (Kindle / reMarkable-ish) */
-  --bg: #eeeeea;          /* soft paper gray */
-  --card: #f6f6f1;        /* slightly lighter paper for boxes */
-  --text: #1b1b1b;        /* near-black ink */
-  --muted: #4a4a4a;       /* secondary text */
-  --line: rgba(0,0,0,.14);/* subtle dividers */
-  --link: #1b1b1b;        /* link looks like ink */
+  /* Inverse paper grayscale (dark paper, light ink) */
+  --bg: #1b1b1b;          /* dark paper */
+  --card: #242424;        /* slightly lighter for boxes */
+  --text: #f2f2f2;        /* light ink */
+  --muted: rgba(242,242,242,.72);
+  --line: rgba(242,242,242,.14);
+  --link: #f2f2f2;
 }
-
 
   /* Page */
   --page-max: 1120px;
@@ -92,7 +91,7 @@ h1, h2{
   border-radius: 12px;
   text-decoration:none;
   color: var(--text);
-  background: #0f0f0f;
+  background: var(--card);
 }
 .btn:hover{ background: rgba(255,255,255,.06); }
 
@@ -101,7 +100,7 @@ h1, h2{
   height: 38px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: #0f0f0f;
+  background: var(--card);
   color: var(--text);
   cursor: pointer;
 }
@@ -198,7 +197,7 @@ hr, .tight-hr{
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: ##d9d9d4;
+  background: var(--card);
 }
 
 .thumb img{
@@ -340,7 +339,7 @@ hr, .tight-hr{
   position:relative;
   width: min(1000px, 92vw);
   margin: 6vh auto 0;
-  background: #0b0b0b;
+ background: var(--card);
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 16px;
@@ -354,7 +353,7 @@ hr, .tight-hr{
   height:44px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background:#0f0f0f;
+  background: var(--card);
   color: var(--text);
   cursor:pointer;
 }
@@ -426,7 +425,7 @@ input[type="text"],
 input[type="subject"],
 textarea {
   width: 100%;
-  background: #1b1b1b;          /* dark gray field */
+  background: var(--card);          /* dark gray field */
   color: rgba(255,255,255,.92); /* readable text */
   border: 1px solid rgba(255,255,255,.16);
   border-radius: 10px;
@@ -451,6 +450,7 @@ input, textarea{
   font: inherit;
   border-radius: 10px;
 }
+
 
 button, .btn{
   display:inline-block;
