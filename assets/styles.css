@@ -181,6 +181,7 @@ button:hover{ background: rgba(255,255,255,.06); }
 
   position: sticky;
   top: 18px;               /* space from top while scrolling */
+  align-self: start;              /* ✅ important for sticky inside grid */ 
   max-height: calc(100vh - 36px);
   display: flex;
   flex-direction: column;
@@ -247,16 +248,18 @@ button:hover{ background: rgba(255,255,255,.06); }
    ========================= */
 
 /* compute viewport height so you see ~2 cards + peek */
+/* Clips "window" */
 .clips-viewport{
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  flex: 1 1 auto;     /* take remaining space in the sticky column */
+  min-height: 0;      /* ✅ allows the inner scroller to shrink */
+  overflow: hidden;   /* hides overflow outside the window */
   border-radius: var(--card-radius);
 }
 
+/* Clips "scroller" */
 .clips-rail{
   height: 100%;
-  overflow-y: auto;
+  overflow-y: auto;   /* ✅ scrolling happens here */
   overflow-x: hidden;
 
   display: flex;
@@ -265,10 +268,9 @@ button:hover{ background: rgba(255,255,255,.06); }
   padding: 2px;
 
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
   scrollbar-width: thin;
 }
+
 
 .clips-rail::-webkit-scrollbar{ width: 10px; }
 .clips-rail::-webkit-scrollbar-thumb{
