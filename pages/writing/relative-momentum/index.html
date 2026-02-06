@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relative Momentum — Ebook</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+
+<body>
+  <main class="ebook-page">
+    <p class="nav">
+      <a href="/">← Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/writing/">Writings</a>
+      <span class="dot">•</span>
+      <a href="/pages/contact/">Contact</a>
+    </p>
+
+    <header class="ebook-head">
+      <div>
+        <h1 class="ebook-title">Relative Momentum</h1>
+        <p class="ebook-sub">Free ebook (two-page spread). Click a page for HQ.</p>
+      </div>
+
+      <div class="ebook-controls">
+        <button class="icon-btn" id="prevBtn" type="button" aria-label="Previous spread">◀</button>
+        <div class="ebook-meta" id="pageLabel">Pages —</div>
+        <button class="icon-btn" id="nextBtn" type="button" aria-label="Next spread">▶</button>
+      </div>
+    </header>
+
+    <section class="spread" aria-label="Two-page spread">
+      <button class="page" id="pageLeftBtn" type="button" aria-label="Left page">
+        <img id="pageLeft" alt="Left page" loading="eager" />
+      </button>
+
+      <button class="page" id="pageRightBtn" type="button" aria-label="Right page">
+        <img id="pageRight" alt="Right page" loading="eager" />
+      </button>
+    </section>
+
+    <p class="ebook-hint small">
+      Tips: Arrow keys flip. Trackpad scroll flips. Click a page to view HQ.
+    </p>
+  </main>
+
+  <!-- Lightbox for HQ -->
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <div class="lightbox-bg" id="lightboxBg"></div>
+    <div class="lightbox-card" role="dialog" aria-modal="true" aria-label="High quality page">
+      <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close">✕</button>
+      <img id="lightboxImg" alt="High quality page" />
+    </div>
+  </div>
+
+  <script>
+    // ===== SETTINGS =====
+    const TOTAL_PAGES = 112; // <-- change if your count ever changes
+    const SM_DIR = "/assets/relative-momentum/pages-sm/";
+    const HQ_DIR = "/assets/relative-momentum/pages-hq/";
+    const EXT = ".jpg";
+
+    // ===== STATE =====
+    // currentLeft is ALWAYS odd (1, 3, 5, ...)
+    let currentLeft = 1;
+
+    // ===== HELPERS =====
+    const pad3 = (n) => String(n).padStart(3, "0");
+    const smSrc = (n) => `${SM_DIR}page-${pad3(n)}${EXT}`;
+    const hqSrc = (n) => `${HQ_DIR}page-${pad3(n)}${EXT}`;
+
+    function clampLeft(n){
+      // force odd
+      if (n % 2 === 0) n -= 1;
+      if (n < 1) n = 1;
+      if (n > TOTAL_PAGES) n = (TOTAL_PAGES % 2 === 0) ? TOTAL_PAGES - 1 : TOTAL_PAGES;
+      return n;
+    }
+
+    // Preload a couple images so Next feels instant
+    function preload(src){
+      const im = new Image();
+      im.src = src;
+    }
+
+    // ===== RENDER =====
+    const imgL = document.getElementById("pageLeft");
+    const imgR = document.getElementById("pageRight");
+    const label = document.getElementById("pageLabel");
+
+    const leftBtn = document.getElementById("pageLeftBtn");
+    const rightBtn = document.getElementById("pageRightBtn");
+
+    function render(){
+      const left = currentLeft;
+      const right = left + 1;
+
+      imgL.src = smSrc(left);
+      imgL.dataset.hq = hqSrc(left);
+      imgL.alt = `Page ${left}`;
+
+      if (right <= TOTAL_PAGES){
+        imgR.src = smSrc(right);
+        imgR.dataset.hq = hqSrc(right);
+        imgR.alt = `Page ${right}`;
+        rightBtn.disabled = false;
+        rightBtn.style.opacity = "1";
+      } else {
+        // If odd total pages, hide the right page on the last spread
+        imgR.src = "";
+        imgR.removeAttribute("data-hq");
+        imgR.alt = "";
+        rightBtn.disabled = true;
+        rightBtn.style.opacity = "0.35";
+      }
+
+      label.textContent = (right <= TOTAL_PAGES)
+        ? `Pages ${left}–${right}`
+        : `Page ${left}`;
+
+      // preload next/prev spread small images
+      const nextLeft = clampLeft(left + 2);
+      const prevLeft = clampLeft(left - 2);
+      preload(smSrc(nextLeft));
+      preload(smSrc(prevLeft));
+
+      // optional: preload HQ for the current spread (comment out if you want less bandwidth)
+      // preload(hqSrc(left));
+      // if (right <= TOTAL_PAGES) preload(hqSrc(right));
+    }
+
+    // ===== NAVIGATION =====
+    function next(){
+      currentLeft = clampLeft(currentLeft + 2);
+      render();
+    }
+    function prev(){
+      currentLeft = clampLeft(currentLeft - 2);
+      render();
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+
+    // Arrow keys
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") next();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "Escape") closeLightbox();
+    });
+
+    // Trackpad / wheel flip (prevents accidental tiny scroll flips)
+    let wheelLock = false;
+    document.addEventListener("wheel", (e) => {
+      // if lightbox open, ignore
+      if (document.getElementById("lightbox").classList.contains("open")) return;
+
+      if (wheelLock) return;
+      const big = Math.abs(e.deltaY) > 25;
+      if (!big) return;
+
+      wheelLock = true;
+      if (e.deltaY > 0) next();
+      else prev();
+
+      setTimeout(() => wheelLock = false, 280);
+    }, { passive: true });
+
+    // ===== LIGHTBOX (HQ) =====
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImg = document.getElementById("lightboxImg");
+
+    function openLightbox(src){
+      lightboxImg.src = src;
+      lightbox.classList.add("open");
+      lightbox.setAttribute("aria-hidden", "false");
+    }
+
+    function closeLightbox(){
+      lightbox.classList.remove("open");
+      lightbox.setAttribute("aria-hidden", "true");
+      lightboxImg.src = "";
+    }
+
+    document.getElementById("lightboxBg").addEventListener("click", closeLightbox);
+    document.getElementById("lightboxClose").addEventListener("click", closeLightbox);
+
+    leftBtn.addEventListener("click", () => openLightbox(imgL.dataset.hq));
+    rightBtn.addEventListener("click", () => {
+      if (imgR.dataset.hq) openLightbox(imgR.dataset.hq);
+    });
+
+    // Initial
+    render();
+  </script>
+</body>
+</html>
