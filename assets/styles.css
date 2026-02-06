@@ -182,13 +182,18 @@ button:hover{ background: rgba(255,255,255,.06); }
   position: sticky;
   top: 18px;
   align-self: start;                 /* ✅ sticky works reliably in grid */
-  max-height: calc(100vh - 36px);
+  height: calc(100vh - 36px);
 
   display: flex;
   flex-direction: column;
   min-height: 0;                     /* ✅ lets child scroller shrink */
 }
 
+/* Step B: keep the clips header + status from stretching */
+.top-right .row-head,
+.top-right .status{
+  flex: 0 0 auto;
+}
 
 
 .row-head{
@@ -252,17 +257,16 @@ button:hover{ background: rgba(255,255,255,.06); }
 /* compute viewport height so you see ~2 cards + peek */
 /* Clips "window" */
 .clips-viewport{
-  flex: 1 1 auto;       /* ✅ consume remaining height in the sticky column */
-  min-height: 0;        /* ✅ critical: allows inner scroll */
-  overflow: hidden;
+  flex: 1 1 0;          /* ✅ takes remaining height */
+  min-height: 0;        /* ✅ allows overflow scrolling */
+  overflow: hidden;     /* window hides overflow */
   border-radius: var(--card-radius);
 }
 
-/* Clips "scroller" */
 .clips-rail{
   height: 100%;
-  min-height: 0;        /* ✅ helps prevent scroll area collapsing */
-  overflow-y: auto;
+  min-height: 0;
+  overflow-y: auto;     /* ✅ actual scroll container */
   overflow-x: hidden;
 
   display: flex;
@@ -275,8 +279,6 @@ button:hover{ background: rgba(255,255,255,.06); }
   scroll-snap-type: y mandatory;
   scrollbar-width: thin;
 }
-
-
 
 .clips-rail::-webkit-scrollbar{ width: 10px; }
 .clips-rail::-webkit-scrollbar-thumb{
