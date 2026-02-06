@@ -9,83 +9,127 @@
 
 <body>
   <main class="podcast-page">
-  <p class="nav">
-    <a href="/">← Back to home</a>
-    <span class="dot">•</span>
-    <a href="/pages/projects/">Projects</a>
-    <span class="dot">•</span>
-    <a href="/pages/contact/">Contact</a>
-  </p>
+    <p class="nav">
+      <a href="/">← Back to home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/contact/">Contact</a>
+    </p>
 
-  <!-- ONE grid only -->
-  <section class="podcast-topgrid">
-    <!-- LEFT COLUMN -->
-    <div class="top-left">
-      <h1 class="podcast-title">Quality Values Podcast</h1>
+    <!-- ONE grid only -->
+    <section class="podcast-topgrid">
 
-      <p class="lede">
-        Core Question: What are your values in the context of your story?<br>
-        Long-form conversations about values, craft, and systems — with people I’m learning from.
-      </p>
+      <!-- LEFT COLUMN -->
+      <div class="top-left">
+        <h1 class="podcast-title">Quality Values Podcast</h1>
 
-      <a class="btn"
-         href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
-         target="_blank" rel="noopener">
-        Open on YouTube
-      </a>
+        <p class="lede">
+          Core Question: What are your values in the context of your story?<br>
+          Long-form conversations about values, craft, and systems — with people I’m learning from.
+        </p>
 
-      <hr class="tight-hr">
+        <a class="btn"
+           href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
+           target="_blank" rel="noopener">
+          Open on YouTube
+        </a>
 
-      <!-- Full Podcast (Latest) -->
-      <section class="row-block row-block--tight">
-        <div class="row-head">
-          <h2 class="row-title">Full Podcast (Latest)</h2>
+        <hr class="tight-hr">
+
+        <!-- 1) Full Podcast (Latest) -->
+        <section class="row-block row-block--tight">
+          <div class="row-head">
+            <h2 class="row-title">Full Podcast (Latest)</h2>
+            <div class="row-controls">
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-full" data-dir="-1">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1">▶</button>
+            </div>
+          </div>
+          <div class="status" id="status-full"></div>
+          <div class="row row--small" id="row-full"></div>
+        </section>
+
+        <hr class="tight-hr">
+
+        <!-- 2) Highlight Episodes -->
+        <section class="row-block row-block--tight">
+          <div class="row-head">
+            <h2 class="row-title">Highlight Episodes</h2>
+            <div class="row-controls">
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-highlights" data-dir="-1">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
+            </div>
+          </div>
+          <div class="status" id="status-highlights"></div>
+          <div class="row row--small" id="row-highlights"></div>
+        </section>
+
+        <hr class="tight-hr">
+
+        <!-- 3) Movement Episodes -->
+        <section class="row-block row-block--tight">
+          <div class="row-head">
+            <h2 class="row-title">Movement Episodes</h2>
+            <div class="row-controls">
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-movement" data-dir="-1">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-movement" data-dir="1">▶</button>
+            </div>
+          </div>
+          <div class="status" id="status-movement"></div>
+          <div class="row row--small" id="row-movement"></div>
+        </section>
+
+        <hr class="tight-hr">
+
+        <!-- 4) Science & Sustainability -->
+        <section class="row-block row-block--tight">
+          <div class="row-head">
+            <h2 class="row-title">Science &amp; Sustainability</h2>
+            <div class="row-controls">
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-science" data-dir="-1">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-science" data-dir="1">▶</button>
+            </div>
+          </div>
+          <div class="status" id="status-science"></div>
+          <div class="row row--small" id="row-science"></div>
+        </section>
+
+        <hr class="tight-hr">
+
+        <!-- 5) Entrepreneurship Episodes -->
+        <section class="row-block row-block--tight">
+          <div class="row-head">
+            <h2 class="row-title">Entrepreneurship Episodes</h2>
+            <div class="row-controls">
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-entrepreneurship" data-dir="-1">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-entrepreneurship" data-dir="1">▶</button>
+            </div>
+          </div>
+          <div class="status" id="status-entrepreneurship"></div>
+          <div class="row row--small" id="row-entrepreneurship"></div>
+        </section>
+      </div>
+
+      <!-- RIGHT COLUMN: Clips (ONLY ONCE) -->
+      <aside class="top-right">
+        <div class="row-head row-head--clips">
+          <h2 class="row-title">Clips</h2>
           <div class="row-controls">
-            <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-full" data-dir="-1">◀</button>
-            <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1">▶</button>
+            <button class="icon-btn" type="button" aria-label="Scroll up"   data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
+            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1"  data-axis="y">▼</button>
           </div>
         </div>
 
-        <div class="status" id="status-full"></div>
-        <div class="row row--small" id="row-full"></div>
-      </section>
+        <div class="status" id="status-clips"></div>
 
-      <hr class="tight-hr">
-
-      <!-- Highlights -->
-      <section class="row-block row-block--tight">
-        <div class="row-head">
-          <h2 class="row-title">Highlight Episodes</h2>
-          <div class="row-controls">
-            <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-highlights" data-dir="-1">◀</button>
-            <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
-          </div>
+        <div class="clips-viewport">
+          <div class="clips-rail" id="row-clips"></div>
         </div>
+      </aside>
 
-        <div class="status" id="status-highlights"></div>
-        <div class="row row--small" id="row-highlights"></div>
-      </section>
-    </div>
-
-    <!-- RIGHT COLUMN: Clips (ONLY ONCE) -->
-    <aside class="top-right">
-      <div class="row-head row-head--clips">
-        <h2 class="row-title">Clips</h2>
-        <div class="row-controls">
-          <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
-          <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
-        </div>
-      </div>
-
-      <div class="status" id="status-clips"></div>
-
-      <div class="clips-viewport">
-        <div class="clips-rail" id="row-clips"></div>
-      </div>
-    </aside>
-  </section>
-</main>
-
+    </section>
+  </main>
 
   <!-- ===== ONE modal player ===== -->
   <div class="modal" id="playerModal" aria-hidden="true">
@@ -97,22 +141,21 @@
   </div>
 
   <script>
-    // Playlist IDs
-    const PLAYLIST_FULL       = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
-    const PLAYLIST_HIGHLIGHTS = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
-    const PLAYLIST_MOVEMENT = "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY";
-    const PLAYLIST_SCIENCE = "PLcDYjJATsN-PtE4LDtPYqaJ7d3lx3Ov4r";
-    const PLAYLIST_ENTREPRENEURSHIP = "PLcDYjJATsN-Msn3AQKaegXhSZdkiLVsgC";
-    const PLAYLIST_CLIPS      = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
+    // Playlist IDs (Quality Values)
+    const PLAYLIST_FULL            = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
+    const PLAYLIST_HIGHLIGHTS      = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
+    const PLAYLIST_MOVEMENT        = "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY";
+    const PLAYLIST_SCIENCE         = "PLcDYjJATsN-PtE4LDtPYqaJ7d3lx3Ov4r";
+    const PLAYLIST_ENTREPRENEURSHIP= "PLcDYjJATsN-Msn3AQKaegXhSZdkiLVsgC";
+    const PLAYLIST_CLIPS           = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
 
-    // counts (keep reasonable so initial view stays tight)
-    const COUNT_LATEST = 10;
-    const COUNT_HIGHLIGHTS = 10;
-    const COUNT_MOVEMENT = 10;
-    const COUNT_SCIENCE = 10;
-    const COUNT_ENTREPRENEURSHIP = 10;
-
-    const COUNT_CLIPS = 25;
+    // "Counts" = how many videos to show in each carousel/column
+    const COUNT_FULL            = 10;
+    const COUNT_HIGHLIGHTS      = 10;
+    const COUNT_MOVEMENT        = 10;
+    const COUNT_SCIENCE         = 10;
+    const COUNT_ENTREPRENEURSHIP= 10;
+    const COUNT_CLIPS           = 25;
 
     // YouTube playlist feed (XML)
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
@@ -161,7 +204,7 @@
       const row = document.getElementById(rowId);
       const status = document.getElementById(statusId);
 
-      // guard against null (prevents your error)
+      // guard against null
       if (!row || !status) return;
 
       status.textContent = "Loading…";
@@ -212,8 +255,8 @@
     // Scrolling helpers (x for horizontal rows, y for clips)
     function scrollRow(el, dir, axis) {
       if (!el) return;
+
       if (axis === "y") {
-        // scroll exactly one snap "page" (one card)
         const card = el.querySelector(".card");
         const step = card ? (card.getBoundingClientRect().height + 10) : 220;
         el.scrollBy({ top: dir * step, behavior: "smooth" });
@@ -242,62 +285,13 @@
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
 
-    // Load playlists
-    loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
-    
-    loadPlaylistInto("row-latest", "status-latest", PLAYLIST_LATEST, COUNT_LATEST);
+    // Load playlists (order matters, matches page order)
+    loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
     loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
     loadPlaylistInto("row-movement", "status-movement", PLAYLIST_MOVEMENT, COUNT_MOVEMENT);
     loadPlaylistInto("row-science", "status-science", PLAYLIST_SCIENCE, COUNT_SCIENCE);
     loadPlaylistInto("row-entrepreneurship", "status-entrepreneurship", PLAYLIST_ENTREPRENEURSHIP, COUNT_ENTREPRENEURSHIP);
-
+    loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
   </script>
 </body>
 </html>
-<hr class="tight-hr">
-
-<!-- Movement Episodes -->
-<section class="row-block row-block--tight">
-  <div class="row-head">
-    <h2 class="row-title">Movement Episodes</h2>
-    <div class="row-controls">
-      <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-movement" data-dir="-1">◀</button>
-      <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-movement" data-dir="1">▶</button>
-    </div>
-  </div>
-
-  <div class="status" id="status-movement"></div>
-  <div class="row row--small" id="row-movement"></div>
-</section>
-
-<hr class="tight-hr">
-
-<!-- Science & Sustainability -->
-<section class="row-block row-block--tight">
-  <div class="row-head">
-    <h2 class="row-title">Science &amp; Sustainability</h2>
-    <div class="row-controls">
-      <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-science" data-dir="-1">◀</button>
-      <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-science" data-dir="1">▶</button>
-    </div>
-  </div>
-
-  <div class="status" id="status-science"></div>
-  <div class="row row--small" id="row-science"></div>
-</section>
-
-<hr class="tight-hr">
-
-<!-- Entrepreneurship Episodes -->
-<section class="row-block row-block--tight">
-  <div class="row-head">
-    <h2 class="row-title">Entrepreneurship Episodes</h2>
-    <div class="row-controls">
-      <button class="icon-btn" type="button" aria-label="Scroll left" data-row="row-entre" data-dir="-1">◀</button>
-      <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-entre" data-dir="1">▶</button>
-    </div>
-  </div>
-
-  <div class="status" id="status-entre"></div>
-  <div class="row row--small" id="row-entre"></div>
-</section>
