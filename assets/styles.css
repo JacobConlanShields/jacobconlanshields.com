@@ -1,44 +1,35 @@
 /* =========================
-   Global theme (dark)
+   THEME (inverse grayscale)
+   dark paper + light ink
    ========================= */
 
 :root{
-  /* Inverse paper grayscale (dark paper, light ink) */
-  --bg: #1b1b1b;          /* dark paper */
-  --card: #242424;        /* slightly lighter for boxes */
-  --text: #f2f2f2;        /* light ink */
+  --bg: #1b1b1b;
+  --panel: #242424;               /* boxes / inputs / buttons */
+  --text: #f2f2f2;
   --muted: rgba(242,242,242,.72);
-  --line: rgba(242,242,242,.14);
-  --link: #f2f2f2;
-}
+  --line: rgba(242,242,242,.16);
 
-  /* Page */
+  /* layout */
   --page-max: 1120px;
   --gutter: 18px;
 
-  /* Right column (Clips) — ~30% smaller than 260px */
-  --clips-col-w: 182px;
-
-  /* Left carousels (Latest + Highlights) */
-  --card-w: 240px;          /* horizontal card width (smaller so left stays narrow) */
-  --row-gap: 12px;
+  /* horizontal cards (podcast rows) */
+  --card-w: 240px;
   --card-radius: 14px;
+  --row-gap: 12px;
 
-  /* Clips sizing */
-  --clips-card-w: 182px;    /* matches column */
-  --clip-gap: 10px;
-  --clip-title-h: 54px;     /* approx title block height */
-  --clips-visible: 2.35;    /* show ~2 cards + peek */
-
-  /* Derived: portrait thumb height (9/16) */
-  --clip-thumb-h: calc(var(--clips-card-w) * 16 / 9);
-  --clips-viewport-h: calc(
-    (var(--clip-thumb-h) + var(--clip-title-h)) * var(--clips-visible)
-    + (var(--clip-gap) * 2)
-  );
+  /* clips column */
+  --clips-col-w: 182px;           /* right column width */
+  --clips-gap: 10px;
+  --clips-title-h: 54px;          /* title clamp area */
+  --clips-visible: 2.35;          /* show ~2 cards + peek */
 }
 
-/* reset / base */
+/* =========================
+   Base / reset
+   ========================= */
+
 *{ box-sizing: border-box; }
 
 html, body{
@@ -56,15 +47,6 @@ main{
   padding: 0 18px;
 }
 
-/* links */
-a{
-  color: var(--link);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-a:visited{ color: var(--link); }
-
-/* typography */
 p{ color: var(--muted); margin: 0 0 10px; }
 
 h1, h2{
@@ -72,43 +54,12 @@ h1, h2{
   letter-spacing: -0.02em;
 }
 
-/* =========================
-   Navigation + buttons
-   ========================= */
-
-.nav{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  margin: 0 0 14px;
-}
-.nav .dot{ opacity:.5; }
-
-.btn{
-  display:inline-block;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  text-decoration:none;
+a{
   color: var(--text);
-  background: var(--card);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
-.btn:hover{ background: rgba(255,255,255,.06); }
-
-.icon-btn{
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--text);
-  cursor: pointer;
-}
-.icon-btn:hover{ background: rgba(255,255,255,.06); }
-
-/* =========================
-   HR spacing (tight)
-   ========================= */
+a:visited{ color: var(--text); }
 
 hr, .tight-hr{
   border: none;
@@ -117,7 +68,92 @@ hr, .tight-hr{
 }
 
 /* =========================
-   Page intro spacing
+   Nav + buttons
+   ========================= */
+
+.nav{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin: 0 0 14px;
+}
+.nav .dot{ opacity: .5; }
+
+.btn,
+button{
+  display: inline-block;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.btn{ text-decoration: none; }
+
+.btn:hover,
+button:hover{ background: rgba(255,255,255,.06); }
+
+.icon-btn{
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  padding: 0;
+}
+
+/* =========================
+   Shared cards (podcast + clips)
+   ========================= */
+
+.card{
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  background: var(--panel);
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.thumb{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #111;
+}
+
+.thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.play{
+  position: absolute;
+  inset: auto 8px 8px auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.25);
+}
+
+.card-title{
+  padding: 9px 9px 10px;
+  font-weight: 650;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+/* =========================
+   Podcast page layout
+   Left: rows, Right: clips
    ========================= */
 
 .podcast-title{ margin: 0 0 6px; }
@@ -128,15 +164,7 @@ hr, .tight-hr{
   max-width: 70ch;
 }
 
-/* =========================
-   The ONE 2-column layout
-   Matches your HTML:
-   <section class="podcast-topgrid">
-     <div class="top-left">...</div>
-     <aside class="top-right">...</aside>
-   </section>
-   ========================= */
-
+/* ONE grid only */
 .podcast-topgrid{
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--clips-col-w);
@@ -144,19 +172,17 @@ hr, .tight-hr{
   align-items: start;
 }
 
-.top-left{ min-width: 0; }          /* critical: keeps left from forcing width */
+/* critical: stops left side from blowing up the grid */
+.top-left{ min-width: 0; }
+
 .top-right{
   width: var(--clips-col-w);
   justify-self: end;
 }
 
-/* =========================
-   Row head + status
-   ========================= */
-
 .row-head{
   display:flex;
-  align-items: center;
+  align-items:center;
   justify-content: space-between;
   gap: 10px;
   margin: 0 0 6px;
@@ -175,62 +201,10 @@ hr, .tight-hr{
   font-size: 13px;
 }
 
-/* Tight sections */
 .row-block{ margin: 10px 0 12px; }
 .row-block--tight{ margin: 8px 0 10px; }
 
-/* =========================
-   Cards (shared)
-   ========================= */
-
-.card{
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  background: var(--card);
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.thumb{
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: var(--card);
-}
-
-.thumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-
-.play{
-  position:absolute;
-  inset:auto 8px 8px auto;
-  width:38px;
-  height:38px;
-  border-radius: 999px;
-  display:grid;
-  place-items:center;
-  background: rgba(0,0,0,.6);
-  border: 1px solid rgba(255,255,255,.25);
-}
-
-.card-title{
-  padding: 9px 9px 10px;
-  font-weight: 650;
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.25;
-}
-
-/* =========================
-   Horizontal carousels (Latest + Highlights)
-   ========================= */
-
+/* Horizontal rows */
 .row{
   display:flex;
   flex-wrap: nowrap;
@@ -238,17 +212,16 @@ hr, .tight-hr{
   overflow-y: hidden;
   gap: var(--row-gap);
   padding: 6px 2px 10px;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
 
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   scroll-padding-left: 2px;
 
   max-width: 100%;
+  scrollbar-width: thin;
 }
 
-/* horizontal cards */
 .row > .card{
   width: var(--card-w);
   flex: 0 0 auto;
@@ -262,33 +235,34 @@ hr, .tight-hr{
 }
 
 /* =========================
-   Clips (right column) — vertical scroller
-   Your HTML uses:
-   <div class="clips-viewport">
-     <div class="clips-rail" id="row-clips"></div>
-   </div>
+   Clips column (vertical)
    ========================= */
 
+/* compute viewport height so you see ~2 cards + peek */
 .clips-viewport{
-  height: var(--clips-viewport-h);
-  overflow: hidden;              /* rail scrolls; viewport stays fixed */
+  height: calc(
+    (
+      (var(--clips-col-w) * 16 / 9) + var(--clips-title-h)
+    ) * var(--clips-visible)
+    + (var(--clips-gap) * 2)
+  );
+  overflow: hidden;
   border-radius: var(--card-radius);
 }
 
 .clips-rail{
   height: 100%;
-  width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
 
   display: flex;
   flex-direction: column;
-  gap: var(--clip-gap);
+  gap: var(--clips-gap);
   padding: 2px;
 
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
   scrollbar-width: thin;
 }
 
@@ -298,23 +272,47 @@ hr, .tight-hr{
   border-radius: 999px;
 }
 
-/* clip cards: fixed to column width */
 .clips-rail .card{
-  width: var(--clips-card-w);
+  width: 100%;
   flex: 0 0 auto;
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
 
-/* portrait thumbs for clips */
 .clips-rail .thumb{ aspect-ratio: 9 / 16; }
 
-/* tighten clip titles so cards don't get tall */
 .clips-rail .card-title{
   font-size: 12px;
   line-height: 1.2;
-  max-height: var(--clip-title-h);
+  max-height: var(--clips-title-h);
   overflow: hidden;
+}
+
+/* =========================
+   Contact form (dark fields)
+   ========================= */
+
+input[type="email"],
+input[type="text"],
+textarea{
+  width: 100%;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 12px;
+  font: inherit;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder{
+  color: rgba(242,242,242,.45);
+}
+
+input:focus,
+textarea:focus{
+  border-color: rgba(242,242,242,.32);
 }
 
 /* =========================
@@ -322,40 +320,39 @@ hr, .tight-hr{
    ========================= */
 
 .modal{
-  position:fixed;
-  inset:0;
-  display:none;
+  position: fixed;
+  inset: 0;
+  display: none;
   z-index: 50;
 }
-.modal.open{ display:block; }
+.modal.open{ display: block; }
 
 .modal-backdrop{
-  position:absolute;
-  inset:0;
+  position: absolute;
+  inset: 0;
   background: rgba(0,0,0,.65);
 }
 
 .modal-card{
-  position:relative;
+  position: relative;
   width: min(1000px, 92vw);
   margin: 6vh auto 0;
- background: var(--card);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 16px;
 }
 
 .modal-close{
-  position:absolute;
+  position: absolute;
   top: 10px;
   right: 10px;
-  width:44px;
-  height:44px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: var(--card);
+  background: var(--panel);
   color: var(--text);
-  cursor:pointer;
 }
 .modal-close:hover{ background: rgba(255,255,255,.06); }
 
@@ -363,23 +360,21 @@ hr, .tight-hr{
   margin-top: 36px;
   aspect-ratio: 16 / 9;
 }
-
 .player-wrap iframe{
-  width:100%;
-  height:100%;
-  border:0;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 /* =========================
-   Mobile: stack columns
-   Clips becomes horizontal swipe (better on phones)
+   Mobile
+   Stack columns; clips become horizontal swipe
    ========================= */
 
 @media (max-width: 900px){
   :root{
-    --card-w: 250px;
     --clips-col-w: 100%;
-    --clips-card-w: 200px;
+    --card-w: 250px;
   }
 
   .podcast-topgrid{
@@ -405,69 +400,7 @@ hr, .tight-hr{
   }
 
   .clips-rail .card{
-    width: var(--clips-card-w);
+    width: 200px;
     scroll-snap-align: start;
   }
 }
-
-/* =========================
-   Utilities
-   ========================= */
-
-.small{ font-size: 13px; }
-.nowrap{ white-space: nowrap; }
-/* =========================
-   Contact form — dark theme fields
-   ========================= */
-
-input[type="email"],
-input[type="text"],
-input[type="subject"],
-textarea {
-  width: 100%;
-  background: var(--card);          /* dark gray field */
-  color: rgba(255,255,255,.92); /* readable text */
-  border: 1px solid rgba(255,255,255,.16);
-  border-radius: 10px;
-  padding: 12px 12px;
-  font-size: 16px;
-  outline: none;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: rgba(255,255,255,.45);
-}
-
-/* Focus state (when you click into a field) */
-input, textarea{
-  width: 100%;
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--line);
-  padding: 10px;
-  margin-top: 6px;
-  font: inherit;
-  border-radius: 10px;
-}
-
-
-button, .btn{
-  display:inline-block;
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-button:hover, .btn:hover{
-  background: rgba(0,0,0,.03);
-}
-a{
-  color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-a:visited{ color: var(--text); }
-
-/* FORCE theme variables (debug) */
-html, body { background: var(--bg) !important; color: var(--text) !important; }
