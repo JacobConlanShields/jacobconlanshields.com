@@ -4,11 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Relative Momentum — Ebook</title>
+  <!-- Shared stylesheet gives the ebook viewer its layout and lightbox styles. -->
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
 
 <body>
   <main class="ebook-page">
+    <!-- Reuse the global nav pattern for consistency. -->
     <p class="nav">
       <a href="/">← Home</a>
       <span class="dot">•</span>
@@ -18,6 +20,7 @@
     </p>
 
     <header class="ebook-head">
+      <!-- Left: title + subtitle. Right: navigation controls. -->
       <div>
         <h1 class="ebook-title">Relative Momentum</h1>
         <p class="ebook-sub">Free ebook (two-page spread). Click a page for HQ.</p>
@@ -31,6 +34,7 @@
     </header>
 
     <section class="spread" aria-label="Two-page spread">
+      <!-- Each "page" is a button so it can open the HQ lightbox. -->
       <button class="page" id="pageLeftBtn" type="button" aria-label="Left page">
         <img id="pageLeft" alt="Left page" loading="eager" />
       </button>
@@ -46,6 +50,7 @@
   </main>
 
   <!-- Lightbox for HQ -->
+  <!-- Opens a larger image when a page is clicked. -->
   <div class="lightbox" id="lightbox" aria-hidden="true">
     <div class="lightbox-bg" id="lightboxBg"></div>
     <div class="lightbox-card" role="dialog" aria-modal="true" aria-label="High quality page">
@@ -56,6 +61,7 @@
 
   <script>
     // ===== SETTINGS =====
+    // Change these values if you add/remove pages or move assets.
     const TOTAL_PAGES = 112; // <-- change if your count ever changes
     const SM_DIR = "/assets/relative-momentum/pages-sm/";
     const HQ_DIR = "/assets/relative-momentum/pages-hq/";
@@ -66,11 +72,13 @@
     let currentLeft = 1;
 
     // ===== HELPERS =====
+    // pad3 keeps file names consistent: 1 -> 001, 12 -> 012, etc.
     const pad3 = (n) => String(n).padStart(3, "0");
     const smSrc = (n) => `${SM_DIR}page-${pad3(n)}${EXT}`;
     const hqSrc = (n) => `${HQ_DIR}page-${pad3(n)}${EXT}`;
 
     function clampLeft(n){
+      // Make sure the left page stays in bounds and is always odd.
       // force odd
       if (n % 2 === 0) n -= 1;
       if (n < 1) n = 1;
@@ -80,6 +88,7 @@
 
     // Preload a couple images so Next feels instant
     function preload(src){
+      // Quick preload to reduce perceived loading time when flipping pages.
       const im = new Image();
       im.src = src;
     }
@@ -93,6 +102,7 @@
     const rightBtn = document.getElementById("pageRightBtn");
 
     function render(){
+      // Update image sources + the page label for the current spread.
       const left = currentLeft;
       const right = left + 1;
 
@@ -140,6 +150,7 @@
       render();
     }
 
+    // Button controls for the on-page arrows.
     document.getElementById("nextBtn").addEventListener("click", next);
     document.getElementById("prevBtn").addEventListener("click", prev);
 
@@ -172,12 +183,14 @@
     const lightboxImg = document.getElementById("lightboxImg");
 
     function openLightbox(src){
+      // Open a modal with a high-resolution image.
       lightboxImg.src = src;
       lightbox.classList.add("open");
       lightbox.setAttribute("aria-hidden", "false");
     }
 
     function closeLightbox(){
+      // Close and clear the HQ image to save memory.
       lightbox.classList.remove("open");
       lightbox.setAttribute("aria-hidden", "true");
       lightboxImg.src = "";
@@ -192,6 +205,7 @@
     });
 
     // Initial
+    // Start the viewer on the first spread.
     render();
   </script>
 </body>

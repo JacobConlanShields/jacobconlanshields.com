@@ -5,6 +5,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Contact — Jacob Conlon Shields</title>
+  <!--
+    Page-specific CSS. This page is intentionally standalone so it can be
+    read/edited by beginners without navigating a build system.
+  -->
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 720px; margin: 48px auto; padding: 0 16px; line-height: 1.5; }
     a { color: inherit; }
@@ -18,6 +22,7 @@
 </head>
 <body>
 
+  <!-- Simple "top links" pattern so visitors can escape the page quickly. -->
   <div class="toplinks">
     <a href="/">← Back to home</a> · <a href="/pages/projects/">Projects</a>
   </div>
@@ -34,6 +39,7 @@
     Later we can upgrade to a true “send from the page” form without exposing your email.
   </p>
 
+  <!-- Mailto-based form: no backend required. -->
   <form id="contactForm">
     <label for="replyTo">Your email (required)</label>
     <input type="email" id="replyTo" name="replyTo" required placeholder="you@example.com" />
@@ -49,6 +55,8 @@
   </form>
 
   <script>
+    // This script converts form input into a "mailto:" URL and opens it.
+    // It keeps this page serverless and low-maintenance.
     const toEmail = "jacobconlanshields@gmail.com";
 
     document.getElementById("contactForm").addEventListener("submit", function (e) {
