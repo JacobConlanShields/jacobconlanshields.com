@@ -305,6 +305,7 @@ button:hover{ background: rgba(255,255,255,.06); }
 /* =========================
    Contact form (dark fields)
    ========================= */
+/* Used by the mailto-based form on /contact/. */
 
 input[type="email"],
 input[type="text"],
@@ -332,6 +333,7 @@ textarea:focus{
 /* =========================
    Modal player
    ========================= */
+/* Shared by the podcast page to overlay YouTube videos without navigation. */
 
 .modal{
   position: fixed;
@@ -384,6 +386,7 @@ textarea:focus{
    Mobile
    Stack columns; clips become horizontal swipe
    ========================= */
+/* Keeps the podcast layout readable on smaller screens. */
 
 @media (max-width: 900px){
   :root{
@@ -421,6 +424,7 @@ textarea:focus{
 /* =========================
    Relative Momentum ebook viewer
    ========================= */
+/* Styles for the two-page spread + controls on /pages/writing/relative-momentum/. */
 
 .ebook-page{
   max-width: var(--page-max);
@@ -503,6 +507,7 @@ textarea:focus{
 }
 
 /* Lightbox */
+/* High-resolution page preview overlay for the ebook viewer. */
 .lightbox{
   position: fixed;
   inset: 0;

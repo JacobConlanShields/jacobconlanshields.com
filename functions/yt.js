@@ -1,4 +1,6 @@
 export async function onRequest({ request }) {
+  // Cloudflare Pages Function entry point.
+  // This proxy exists so the browser can fetch YouTube's XML feeds without CORS errors.
   const u = new URL(request.url);
   const target = u.searchParams.get("url");
   if (!target) return new Response("Missing ?url=", { status: 400 });
@@ -16,6 +18,7 @@ export async function onRequest({ request }) {
     return new Response("Blocked", { status: 403 });
   }
 
+  // Forward the request to YouTube and keep a lightweight caching policy.
   const resp = await fetch(target, {
     headers: {
       // Helps avoid occasional upstream weirdness

@@ -4,11 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Quality Values Podcast — Jacob Shields</title>
+  <!-- Shared stylesheet handles the grid, cards, buttons, and modal. -->
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
 
 <body>
   <main class="podcast-page">
+    <!-- Lightweight nav for consistency across the site. -->
     <p class="nav">
       <a href="/">← Back to home</a>
       <span class="dot">•</span>
@@ -22,6 +24,7 @@
 
       <!-- LEFT COLUMN -->
       <div class="top-left">
+        <!-- Page intro describes the overall theme of the show. -->
         <h1 class="podcast-title">Quality Values Podcast</h1>
 
         <p class="lede">
@@ -38,6 +41,7 @@
         <hr class="tight-hr">
 
         <!-- 1) Full Podcast (Latest) -->
+        <!-- Each row-block is a horizontal carousel populated by JS below. -->
         <section class="row-block row-block--tight">
           <div class="row-head">
             <h2 class="row-title">Full Podcast (Latest)</h2>
@@ -112,6 +116,7 @@
       </div>
 
       <!-- RIGHT COLUMN: Clips (ONLY ONCE) -->
+      <!-- This column is sticky so clips stay visible while you scroll. -->
       <aside class="top-right">
         <div class="row-head row-head--clips">
           <h2 class="row-title">Clips</h2>
@@ -133,6 +138,7 @@
   </main>
 
   <!-- ===== ONE modal player ===== -->
+  <!-- Cards open the modal so we can play videos without leaving the page. -->
   <div class="modal" id="playerModal" aria-hidden="true">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-label="Video player">
@@ -142,7 +148,8 @@
   </div>
 
   <script>
-    // Playlist IDs (Quality Values)
+    // Playlist IDs (Quality Values).
+    // Each playlist maps to a visual section above.
     const PLAYLIST_FULL            = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
     const PLAYLIST_HIGHLIGHTS      = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
     const PLAYLIST_MOVEMENT        = "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY";
@@ -161,17 +168,20 @@
     // YouTube playlist feed (XML)
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // Cloudflare Worker proxy (CORS-safe)
+    // Cloudflare Worker proxy (CORS-safe).
+    // This avoids browser CORS errors when fetching YouTube XML feeds.
     const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
     const PROXY = (url) => WORKER_PROXY + encodeURIComponent(url);
 
     function escapeHtml(s) {
+      // Basic HTML escaping for titles injected into the page.
       return (s || "").replace(/[&<>"']/g, (c) => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
       }[c]));
     }
 
     function parseFeed(xmlText) {
+      // Turn YouTube's XML feed into a simple array of {title, videoId, thumb}.
       const doc = new DOMParser().parseFromString(xmlText, "text/xml");
       const entries = Array.from(doc.getElementsByTagName("entry"));
 
@@ -190,6 +200,7 @@
     }
 
     function cardHTML(item) {
+      // Returns the HTML for one video card.
       return `
         <button class="card" type="button" data-video="${item.videoId}" title="${escapeHtml(item.title)}">
           <div class="thumb">
@@ -202,6 +213,7 @@
     }
 
     async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
+      // Fetches playlist XML via proxy, then injects cards into a row.
       const row = document.getElementById(rowId);
       const status = document.getElementById(statusId);
 
@@ -236,6 +248,7 @@
     const playerWrap = document.getElementById("playerWrap");
 
     function openPlayer(videoId) {
+      // When a card is clicked, swap in an iframe with autoplay.
       modal.setAttribute("aria-hidden", "false");
       modal.classList.add("open");
       playerWrap.innerHTML =
@@ -248,6 +261,7 @@
     }
 
     function closePlayer() {
+      // Remove the iframe to stop playback and free memory.
       modal.setAttribute("aria-hidden", "true");
       modal.classList.remove("open");
       playerWrap.innerHTML = "";
@@ -268,6 +282,7 @@
     }
 
     document.addEventListener("click", (e) => {
+      // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
       if (card?.dataset.video) openPlayer(card.dataset.video);
 
@@ -283,6 +298,7 @@
     });
 
     document.addEventListener("keydown", (e) => {
+      // Allow "Esc" to close the modal video.
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
 
