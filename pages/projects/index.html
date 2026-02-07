@@ -2,19 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Simple static page. No external CSS is required here. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Projects — Jacob Conlon Shields</title>
+  <!-- Shared styling for nav, buttons, and layout. -->
+  <link rel="stylesheet" href="/assets/styles.css" />
 </head>
 <body>
-  <!-- Basic navigation for visitors who land on this page directly. -->
-  <p>
-  <a href="/">Home</a> |
-  <a href="/pages/projects/">Projects</a> |
-  <a href="/pages/writing/">Writing</a> |
-  <a href="/contact/">Contact</a>
-</p>
-<hr>
+  <main>
+    <!-- Reusable nav pattern used across non-home pages. -->
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/writing/">Writing</a>
+      <span class="dot">•</span>
+      <a href="/contact/">Contact</a>
+    </p>
+    <hr>
   <!-- Project list: each section is a quick "what is it" summary. -->
   <h1>Projects</h1>
   <p>Overlapping projects, one home base.</p>
@@ -28,9 +33,8 @@
   <h2>Quality Values Podcast</h2>
   <p>Long-form conversations about values, craft, and systems.</p>
 
-  <h2>Relative Momentum</h2>
-  <p>Writing projects and creative exploration.</p>
-
-  <p><a href="/">Back to home</a></p>
+    <h2>Relative Momentum</h2>
+    <p>Writing projects and creative exploration.</p>
+  </main>
 </body>
 </html>
