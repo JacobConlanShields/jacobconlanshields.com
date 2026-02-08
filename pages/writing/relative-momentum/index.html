@@ -7,10 +7,10 @@
   <link rel="stylesheet" href="/assets/styles.css" />
   <style>
     .viewer {
-      margin-top: 24px;
+      margin-top: 16px;
       display: grid;
       gap: 16px;
-      --page-max-height: calc(100vh - 360px);
+      --page-max-height: clamp(260px, 42vh, 520px);
     }
 
     .viewer-controls {
@@ -51,7 +51,7 @@
       padding: 8px;
       border-radius: 10px;
       min-height: 220px;
-      max-height: min(var(--page-max-height), 560px);
+      max-height: var(--page-max-height);
       display: flex;
       align-items: center;
       justify-content: center;
