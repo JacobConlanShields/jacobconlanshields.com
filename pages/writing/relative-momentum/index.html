@@ -24,11 +24,6 @@
       text-align: center;
     }
 
-    .page-indicator {
-      font-size: 0.95rem;
-      opacity: 0.75;
-    }
-
     .loading-indicator {
       font-size: 0.95rem;
       opacity: 0.8;
@@ -39,7 +34,7 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 18px;
-      align-items: start;
+      align-items: center;
       transition: opacity 220ms ease, transform 220ms ease;
     }
 
@@ -54,6 +49,7 @@
       padding: 8px;
       border-radius: 10px;
       min-height: 220px;
+      max-height: min(70vh, 680px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -62,6 +58,8 @@
     .page-frame img {
       width: 100%;
       height: auto;
+      max-height: 100%;
+      object-fit: contain;
       display: block;
       border-radius: 6px;
     }
@@ -109,9 +107,8 @@
 
     <section class="viewer" aria-label="Relative Momentum ebook viewer">
       <div class="viewer-controls">
-        <button class="btn" type="button" id="prev-button">Previous</button>
-        <button class="btn" type="button" id="next-button">Next</button>
-        <span class="page-indicator" id="page-indicator">1–2 / 112</span>
+        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages">◀</button>
+        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages">▶</button>
       </div>
 
       <div class="loading-indicator" id="loading-indicator" aria-live="polite"></div>
@@ -125,7 +122,6 @@
     const IMAGE_BASE = "https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/";
 
     const spread = document.getElementById("spread");
-    const pageIndicator = document.getElementById("page-indicator");
     const loadingIndicator = document.getElementById("loading-indicator");
     const prevButton = document.getElementById("prev-button");
     const nextButton = document.getElementById("next-button");
@@ -235,20 +231,10 @@
       preloadNext(page);
     };
 
-    const updateIndicator = (page) => {
-      if (isMobile()) {
-        pageIndicator.textContent = `${page} / ${TOTAL_PAGES}`;
-        return;
-      }
-      const rightPage = Math.min(page + 1, TOTAL_PAGES);
-      pageIndicator.textContent = `${page}–${rightPage} / ${TOTAL_PAGES}`;
-    };
-
     const goToPage = (page) => {
       const target = snapToSpreadStart(page);
       currentPage = target;
       updateHash(target);
-      updateIndicator(target);
       renderPages(target);
     };
 
@@ -307,7 +293,6 @@
 
     const initialPage = snapToSpreadStart(parseHash());
     currentPage = initialPage;
-    updateIndicator(initialPage);
     renderPages(initialPage);
   </script>
 </body>
