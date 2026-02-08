@@ -10,7 +10,7 @@
       margin-top: 16px;
       display: grid;
       gap: 16px;
-      --page-max-height: clamp(260px, 42vh, 520px);
+      --page-max-height: clamp(240px, calc(100vh - 360px), 520px);
     }
 
     .viewer-controls {
@@ -77,6 +77,10 @@
     @media (max-width: 899px) {
       .spread {
         grid-template-columns: 1fr;
+      }
+
+      .viewer {
+        --page-max-height: clamp(220px, calc(100vh - 420px), 480px);
       }
     }
   </style>
