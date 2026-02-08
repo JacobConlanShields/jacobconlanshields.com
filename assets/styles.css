@@ -569,3 +569,47 @@ textarea:focus{
   border-radius: 12px;
   margin-top: 46px;
 }
+/* ===== Relative Momentum viewer: FIX stacking + size ===== */
+
+/* 1) Keep controls ABOVE the pages (fix "buttons behind pages") */
+.viewer-controls,
+.ebook-head,
+.loading-indicator {
+  position: relative;
+  z-index: 10;
+}
+
+/* 2) Ensure the spread sits below controls and doesn't overlap */
+.spread {
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
+}
+
+/* 3) Hard cap page height so full pages fit on first load */
+:root{
+  --page-max-height: min(70vh, 680px);
+}
+
+/* If your page containers are .page-frame (your earlier version) */
+.page-frame{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* If your page containers are .page (your newer CSS section) */
+.page{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Apply the max-height to images in either structure */
+.page-frame img,
+.page img{
+  max-height: var(--page-max-height);
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
