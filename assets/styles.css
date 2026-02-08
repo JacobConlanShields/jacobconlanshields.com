@@ -432,12 +432,16 @@ textarea:focus{
   padding: 0 18px;
 }
 
+.ebook-page .nav{
+  margin-bottom: 18px;
+}
+
 .ebook-head{
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin: 10px 0 12px;
+  margin: 16px 0 20px;
 }
 
 .ebook-title{
@@ -467,6 +471,7 @@ textarea:focus{
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   align-items: start;
+  margin-top: 10px;
 }
 
 .page{
@@ -475,11 +480,16 @@ textarea:focus{
   border-radius: var(--card-radius);
   padding: 10px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .page img{
   width: 100%;
   height: auto;
+  max-height: calc(100vh - 320px);
+  object-fit: contain;
   display: block;
   border-radius: 10px;
 }
@@ -503,6 +513,10 @@ textarea:focus{
 
   .spread{
     grid-template-columns: 1fr;
+  }
+
+  .page img{
+    max-height: calc(100vh - 360px);
   }
 }
 
