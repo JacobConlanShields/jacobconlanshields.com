@@ -7,9 +7,10 @@
   <link rel="stylesheet" href="/assets/styles.css" />
   <style>
     .viewer {
-      margin-top: 24px;
+      margin-top: 16px;
       display: grid;
       gap: 16px;
+      --page-max-height: clamp(260px, 42vh, 520px);
     }
 
     .viewer-controls {
@@ -17,6 +18,7 @@
       flex-wrap: wrap;
       align-items: center;
       gap: 12px;
+      margin-bottom: 4px;
     }
 
     .viewer-controls .btn {
@@ -49,6 +51,7 @@
       padding: 8px;
       border-radius: 10px;
       min-height: 220px;
+      max-height: var(--page-max-height);
       max-height: min(70vh, 680px);
       display: flex;
       align-items: center;
