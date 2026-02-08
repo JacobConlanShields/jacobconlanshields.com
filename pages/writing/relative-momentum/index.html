@@ -10,7 +10,7 @@
       margin-top: 16px;
       display: grid;
       gap: 16px;
-      --page-max-height: clamp(260px, 42vh, 520px);
+      --page-max-height: clamp(220px, calc(100vh - 420px), 520px);
     }
 
     .viewer-controls {
@@ -26,6 +26,11 @@
       text-align: center;
     }
 
+    .buy-row {
+      position: relative;
+      z-index: 5;
+    }
+
     .loading-indicator {
       font-size: 0.95rem;
       opacity: 0.8;
@@ -38,6 +43,8 @@
       gap: 18px;
       align-items: center;
       transition: opacity 220ms ease, transform 220ms ease;
+      position: relative;
+      z-index: 1;
     }
 
     .spread.turning {
@@ -78,6 +85,10 @@
       .spread {
         grid-template-columns: 1fr;
       }
+
+      .viewer {
+        --page-max-height: clamp(200px, calc(100vh - 460px), 460px);
+      }
     }
   </style>
 </head>
@@ -100,7 +111,7 @@
       scroll gesture to move through the pages.
     </p>
 
-    <p style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+    <p class="buy-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
       <a class="btn"
          href="https://a.co/d/fbTRmg4"
          target="_blank" rel="noopener noreferrer">
