@@ -34,6 +34,10 @@
       text-align: center;
     }
 
+    .viewer-controls .icon-btn {
+      min-width: auto;
+    }
+
     .buy-row {
       position: relative;
       z-index: 5;
@@ -84,6 +88,59 @@
 
     }
 
+    .page-sheet {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(10, 10, 10, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    .spread.turning[data-direction="forward"] .page-sheet {
+      animation: pageTurnForward 420ms ease;
+    }
+
+    .spread.turning[data-direction="backward"] .page-sheet {
+      animation: pageTurnBackward 420ms ease;
+    }
+
+    @keyframes pageTurnForward {
+      0% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
+      45% {
+        transform: rotateY(-12deg);
+        box-shadow: inset -40px 0 45px rgba(0, 0, 0, 0.45);
+      }
+      100% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
+    }
+
+    @keyframes pageTurnBackward {
+      0% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
+      45% {
+        transform: rotateY(12deg);
+        box-shadow: inset 40px 0 45px rgba(0, 0, 0, 0.45);
+      }
+      100% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
+    }
+
     .page-frame img {
       width: 100%;
       height: auto;
@@ -98,6 +155,76 @@
       text-align: center;
       opacity: 0.7;
       padding: 12px;
+    }
+
+    .progress-wrap {
+      margin-top: 10px;
+    }
+
+    .progress-slider {
+      width: 100%;
+      appearance: none;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0.85) 0%,
+        rgba(255, 255, 255, 0.85) var(--progress, 0%),
+        rgba(255, 255, 255, 0.15) var(--progress, 0%),
+        rgba(255, 255, 255, 0.15) 100%
+      );
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .progress-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .progress-slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .fullscreen-modal .modal-card {
+      width: min(1200px, 96vw);
+      margin: 4vh auto 0;
+      padding: 18px;
+    }
+
+    .fullscreen-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .fullscreen-header h2 {
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    .fullscreen-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .fullscreen-viewer .spread {
+      margin-top: 8px;
     }
 
     @media (max-width: 899px) {
@@ -143,6 +270,7 @@
       <div class="viewer-controls" role="group" aria-label="Page navigation">
         <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages">◀</button>
         <button class="icon-btn" type="button" id="next-button" aria-label="Next pages">▶</button>
+        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer">⛶</button>
       </div>
     </div>
 
@@ -151,7 +279,32 @@
       <div class="loading-indicator" id="loading-indicator" aria-live="polite"></div>
 
       <div class="spread" id="spread"></div>
+
+      <div class="progress-wrap" aria-label="Reading progress">
+        <input class="progress-slider" id="progress-slider" type="range" min="1" max="112" value="1" aria-label="Reading progress slider" />
+      </div>
     </section>
+
+    <div class="modal fullscreen-modal" id="fullscreen-modal" aria-hidden="true">
+      <div class="modal-backdrop" data-close="fullscreen"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-label="Full screen reader">
+        <div class="fullscreen-header">
+          <h2>Relative Momentum — Full Screen</h2>
+          <button class="modal-close" type="button" data-close="fullscreen" aria-label="Close full screen">✕</button>
+        </div>
+        <div class="fullscreen-controls" role="group" aria-label="Full screen page navigation">
+          <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages">◀</button>
+          <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages">▶</button>
+        </div>
+        <section class="viewer fullscreen-viewer" aria-label="Full screen Relative Momentum ebook viewer">
+          <div class="loading-indicator" id="fullscreen-loading" aria-live="polite"></div>
+          <div class="spread" id="fullscreen-spread"></div>
+          <div class="progress-wrap" aria-label="Reading progress">
+            <input class="progress-slider" id="fullscreen-progress" type="range" min="1" max="112" value="1" aria-label="Reading progress slider" />
+          </div>
+        </section>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -159,14 +312,24 @@
     const IMAGE_BASE = "https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/";
 
     const spread = document.getElementById("spread");
+    const fullscreenSpread = document.getElementById("fullscreen-spread");
     const loadingIndicator = document.getElementById("loading-indicator");
+    const fullscreenLoading = document.getElementById("fullscreen-loading");
     const prevButton = document.getElementById("prev-button");
     const nextButton = document.getElementById("next-button");
+    const fullscreenButton = document.getElementById("fullscreen-button");
+    const fullscreenModal = document.getElementById("fullscreen-modal");
+    const fullscreenPrev = document.getElementById("fullscreen-prev");
+    const fullscreenNext = document.getElementById("fullscreen-next");
+    const progressSlider = document.getElementById("progress-slider");
+    const fullscreenProgress = document.getElementById("fullscreen-progress");
 
     const mobileQuery = window.matchMedia("(max-width: 899px)");
     const viewer = document.querySelector(".viewer");
+    const fullscreenViewer = document.querySelector(".fullscreen-viewer");
     let currentPage = 1;
     let lastWheelTime = 0;
+    let lastDirection = "forward";
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
@@ -195,19 +358,20 @@
 
     const formatPageNumber = (page) => page.toString().padStart(3, "0");
 
-    const setLoading = (isLoading, message = "Loading pages…") => {
-      loadingIndicator.textContent = isLoading ? message : "";
+    const setLoadingFor = (targetIndicator, isLoading, message = "Loading pages…") => {
+      if (!targetIndicator) return;
+      targetIndicator.textContent = isLoading ? message : "";
     };
 
-    const updatePageMaxHeight = () => {
-      if (!viewer) return;
-      const spreadTop = spread.getBoundingClientRect().top;
+    const updatePageMaxHeight = (targetViewer, targetSpread) => {
+      if (!targetViewer || !targetSpread) return;
+      const spreadTop = targetSpread.getBoundingClientRect().top;
       const viewportPadding = 24;
       const available = window.innerHeight - spreadTop - viewportPadding;
       const minHeight = isMobile() ? 220 : 260;
       const maxHeight = isMobile() ? 460 : 560;
       const nextHeight = Math.max(minHeight, Math.min(available, maxHeight));
-      viewer.style.setProperty("--page-max-height", `${nextHeight}px`);
+      targetViewer.style.setProperty("--page-max-height", `${nextHeight}px`);
     };
 
     const preloadNext = (page) => {
@@ -224,8 +388,11 @@
     const createPageFrame = (page) => {
       const frame = document.createElement("div");
       frame.className = "page-frame";
+      const sheet = document.createElement("div");
+      sheet.className = "page-sheet";
 
       if (page > TOTAL_PAGES || page < 1) {
+        frame.appendChild(sheet);
         return frame;
       }
 
@@ -235,37 +402,39 @@
       img.src = `${IMAGE_BASE}page-${formatPageNumber(page)}.jpg`;
 
       img.addEventListener("error", () => {
-        frame.innerHTML = "";
+        sheet.innerHTML = "";
         const missing = document.createElement("div");
         missing.className = "missing-page";
         missing.textContent = `Page ${page} is unavailable.`;
-        frame.appendChild(missing);
+        sheet.appendChild(missing);
       });
 
-      frame.appendChild(img);
+      sheet.appendChild(img);
+      frame.appendChild(sheet);
       return frame;
     };
 
-    const renderPages = (page) => {
-      spread.classList.add("turning");
-      setLoading(true);
-      updatePageMaxHeight();
-      spread.innerHTML = "";
+    const renderPages = (page, targetSpread, targetViewer, targetIndicator) => {
+      targetSpread.classList.add("turning");
+      targetSpread.dataset.direction = lastDirection;
+      setLoadingFor(targetIndicator, true);
+      updatePageMaxHeight(targetViewer, targetSpread);
+      targetSpread.innerHTML = "";
 
       const pages = isMobile() ? [page] : [page, page + 1];
       const frames = pages.map(createPageFrame);
-      frames.forEach((frame) => spread.appendChild(frame));
+      frames.forEach((frame) => targetSpread.appendChild(frame));
 
-      const images = Array.from(spread.querySelectorAll("img"));
+      const images = Array.from(targetSpread.querySelectorAll("img"));
       const onImageDone = () => {
         const allDone = images.every((img) => img.complete);
         if (allDone) {
-          setLoading(false);
+          setLoadingFor(targetIndicator, false);
         }
       };
 
       if (images.length === 0) {
-        setLoading(false, "No pages to display.");
+        setLoadingFor(targetIndicator, false, "No pages to display.");
       } else {
         images.forEach((img) => {
           if (img.complete) {
@@ -277,29 +446,46 @@
         });
       }
 
-      window.setTimeout(() => spread.classList.remove("turning"), 250);
+      window.setTimeout(() => targetSpread.classList.remove("turning"), 420);
       preloadNext(page);
+    };
+
+    const updateProgress = () => {
+      const progress = ((currentPage - 1) / (TOTAL_PAGES - 1)) * 100;
+      [progressSlider, fullscreenProgress].forEach((slider) => {
+        if (!slider) return;
+        slider.value = currentPage;
+        slider.style.setProperty("--progress", `${progress}%`);
+      });
     };
 
     const goToPage = (page) => {
       const target = snapToSpreadStart(page);
       currentPage = target;
       updateHash(target);
-      renderPages(target);
+      renderPages(target, spread, viewer, loadingIndicator);
+      if (fullscreenModal.classList.contains("open")) {
+        renderPages(target, fullscreenSpread, fullscreenViewer, fullscreenLoading);
+      }
+      updateProgress();
     };
 
     const goNext = () => {
       const step = isMobile() ? 1 : 2;
+      lastDirection = "forward";
       goToPage(clampPage(currentPage + step));
     };
 
     const goPrev = () => {
       const step = isMobile() ? 1 : 2;
+      lastDirection = "backward";
       goToPage(clampPage(currentPage - step));
     };
 
     prevButton.addEventListener("click", goPrev);
     nextButton.addEventListener("click", goNext);
+    fullscreenPrev.addEventListener("click", goPrev);
+    fullscreenNext.addEventListener("click", goNext);
 
     window.addEventListener("keydown", (event) => {
       if (event.key === "ArrowRight") {
@@ -307,6 +493,10 @@
       }
       if (event.key === "ArrowLeft") {
         goPrev();
+      }
+      if (event.key === "Escape" && fullscreenModal.classList.contains("open")) {
+        fullscreenModal.classList.remove("open");
+        fullscreenModal.setAttribute("aria-hidden", "true");
       }
     });
 
@@ -341,11 +531,39 @@
       goToPage(currentPage);
     });
 
-    window.addEventListener("resize", updatePageMaxHeight);
+    window.addEventListener("resize", () => {
+      updatePageMaxHeight(viewer, spread);
+      if (fullscreenModal.classList.contains("open")) {
+        updatePageMaxHeight(fullscreenViewer, fullscreenSpread);
+      }
+    });
+
+    [progressSlider, fullscreenProgress].forEach((slider) => {
+      slider.addEventListener("input", (event) => {
+        const nextPage = parseInt(event.target.value, 10);
+        lastDirection = nextPage >= currentPage ? "forward" : "backward";
+        goToPage(nextPage);
+      });
+    });
+
+    fullscreenButton.addEventListener("click", () => {
+      fullscreenModal.classList.add("open");
+      fullscreenModal.setAttribute("aria-hidden", "false");
+      renderPages(currentPage, fullscreenSpread, fullscreenViewer, fullscreenLoading);
+      updateProgress();
+    });
+
+    fullscreenModal.addEventListener("click", (event) => {
+      if (event.target?.dataset?.close === "fullscreen") {
+        fullscreenModal.classList.remove("open");
+        fullscreenModal.setAttribute("aria-hidden", "true");
+      }
+    });
 
     const initialPage = snapToSpreadStart(parseHash());
     currentPage = initialPage;
-    renderPages(initialPage);
+    renderPages(initialPage, spread, viewer, loadingIndicator);
+    updateProgress();
   </script>
 </body>
 </html>
