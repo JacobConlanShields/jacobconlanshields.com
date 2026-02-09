@@ -460,6 +460,33 @@ textarea:focus{
   color: var(--muted);
 }
 
+.substack-preview{
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.substack-entry{
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  text-decoration: none;
+}
+
+.substack-entry__title{
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.substack-entry__meta{
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 /* =========================
    Mobile
    Stack columns; clips become horizontal swipe
