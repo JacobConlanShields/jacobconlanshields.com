@@ -11,11 +11,16 @@
     }
 
     h1 {
+      margin-bottom: 4px;
+    }
+
+    .viewer-intro {
+      margin-top: 4px;
       margin-bottom: 6px;
     }
 
     .viewer {
-      margin-top: 8px;
+      margin-top: 6px;
       display: grid;
       gap: 6px;
       --page-max-height: 460px;
@@ -45,8 +50,8 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      margin-top: 6px;
-      margin-bottom: 4px;
+      margin-top: 4px;
+      margin-bottom: 2px;
     }
 
     .buy-row .btn {
@@ -67,7 +72,7 @@
       transition: opacity 220ms ease, transform 220ms ease;
       position: relative;
       z-index: 1;
-      margin-top: 4px;
+      margin-top: 2px;
       perspective: 1200px;
     }
 
@@ -91,9 +96,21 @@
 
     }
 
+    .viewer.zoomed .page-frame {
+      border-radius: 14px;
+    }
+
     .viewer.zoomed .page-frame,
     .fullscreen-viewer.zoomed .page-frame {
       cursor: zoom-out;
+    }
+
+    .fullscreen-viewer.zoomed .page-frame {
+      padding: 4px;
+    }
+
+    .fullscreen-viewer.zoomed .spread {
+      gap: 10px;
     }
 
     .page-sheet {
@@ -207,9 +224,9 @@
 
     .fullscreen-modal .modal-card {
       width: min(1200px, 96vw);
-      margin: 3vh auto 0;
-      padding: 18px;
-      max-height: 92vh;
+      margin: 2.5vh auto 0;
+      padding: 16px;
+      max-height: 94vh;
       display: flex;
       flex-direction: column;
     }
@@ -219,7 +236,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
     .fullscreen-header h2 {
@@ -232,7 +249,7 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .fullscreen-viewer .spread {
@@ -244,7 +261,7 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
     }
 
     .fullscreen-viewer .spread {
@@ -252,13 +269,13 @@
     }
 
     .fullscreen-viewer .progress-wrap {
-      margin-top: 6px;
-      padding-bottom: 8px;
+      margin-top: 4px;
+      padding-bottom: 6px;
     }
 
     @media (max-width: 899px) {
       body {
-        font-size: 14px;
+        font-size: 13px;
       }
 
       .spread {
@@ -285,7 +302,7 @@
     <hr class="tight-hr">
 
     <h1>Relative Momentum</h1>
-    <p>
+    <p class="viewer-intro">
       A two-page spread view of the ebook. Use the buttons, arrow keys, or a
       scroll gesture to move through the pages.
     </p>
@@ -297,9 +314,9 @@
         Buy on Amazon
       </a>
       <div class="viewer-controls" role="group" aria-label="Page navigation">
-        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages">◀</button>
-        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages">▶</button>
-        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer">⛶</button>
+        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages" title="Previous pages">◀</button>
+        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages" title="Next pages">▶</button>
+        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer" title="Full screen">⛶</button>
       </div>
     </div>
 
@@ -322,8 +339,8 @@
           <button class="modal-close" type="button" data-close="fullscreen" aria-label="Close full screen">✕</button>
         </div>
         <div class="fullscreen-controls" role="group" aria-label="Full screen page navigation">
-          <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages">◀</button>
-          <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages">▶</button>
+          <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages" title="Previous pages">◀</button>
+          <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages" title="Next pages">▶</button>
         </div>
         <section class="viewer fullscreen-viewer" aria-label="Full screen Relative Momentum ebook viewer">
           <div class="loading-indicator" id="fullscreen-loading" aria-live="polite"></div>
@@ -359,14 +376,15 @@
     let currentPage = 1;
     let lastWheelTime = 0;
     let lastDirection = "forward";
-    let isZoomed = false;
+    let isZoomedMain = false;
+    let isZoomedFullscreen = false;
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
     const isMobile = () => mobileQuery.matches;
 
     const snapToSpreadStart = (page) => {
-      if (isZoomed) {
+      if (isZoomedMain && !fullscreenModal.classList.contains("open")) {
         return clampPage(page);
       }
       if (isMobile()) {
@@ -396,13 +414,13 @@
       targetIndicator.textContent = isLoading ? message : "";
     };
 
-    const updatePageMaxHeight = (targetViewer, targetSpread) => {
+    const updatePageMaxHeight = (targetViewer, targetSpread, isZoomed) => {
       if (!targetViewer || !targetSpread) return;
       const spreadTop = targetSpread.getBoundingClientRect().top;
       const viewportPadding = 24;
       const available = window.innerHeight - spreadTop - viewportPadding;
       const minHeight = isMobile() ? 220 : 260;
-      const maxHeight = isMobile() ? 460 : 560;
+      const maxHeight = isMobile() ? 460 : isZoomed ? available : 560;
       const nextHeight = Math.max(minHeight, Math.min(available, maxHeight));
       targetViewer.style.setProperty("--page-max-height", `${nextHeight}px`);
     };
@@ -449,14 +467,15 @@
       return frame;
     };
 
-    const renderPages = (page, targetSpread, targetViewer, targetIndicator) => {
+    const renderPages = (page, targetSpread, targetViewer, targetIndicator, zoomMode) => {
       targetSpread.classList.add("turning");
       targetSpread.dataset.direction = lastDirection;
       setLoadingFor(targetIndicator, true);
-      updatePageMaxHeight(targetViewer, targetSpread);
+      updatePageMaxHeight(targetViewer, targetSpread, zoomMode);
       targetSpread.innerHTML = "";
 
-      const pages = isZoomed || isMobile() ? [page] : [page, page + 1];
+      const shouldSingle = zoomMode && targetViewer === viewer;
+      const pages = (shouldSingle || isMobile()) ? [page] : [page, page + 1];
       const frames = pages.map(createPageFrame);
       frames.forEach((frame) => targetSpread.appendChild(frame));
 
@@ -495,31 +514,39 @@
     };
 
     const updateZoomState = () => {
-      [viewer, fullscreenViewer].forEach((target) => {
-        if (!target) return;
-        target.classList.toggle("zoomed", isZoomed);
-      });
+      if (viewer) {
+        viewer.classList.toggle("zoomed", isZoomedMain);
+      }
+      if (fullscreenViewer) {
+        fullscreenViewer.classList.toggle("zoomed", isZoomedFullscreen);
+      }
+    };
+
+    const currentStep = () => {
+      if (isMobile()) return 1;
+      if (fullscreenModal.classList.contains("open")) return 2;
+      return isZoomedMain ? 1 : 2;
     };
 
     const goToPage = (page) => {
       const target = snapToSpreadStart(page);
       currentPage = target;
       updateHash(target);
-      renderPages(target, spread, viewer, loadingIndicator);
+      renderPages(target, spread, viewer, loadingIndicator, isZoomedMain);
       if (fullscreenModal.classList.contains("open")) {
-        renderPages(target, fullscreenSpread, fullscreenViewer, fullscreenLoading);
+        renderPages(target, fullscreenSpread, fullscreenViewer, fullscreenLoading, isZoomedFullscreen);
       }
       updateProgress();
     };
 
     const goNext = () => {
-      const step = isZoomed || isMobile() ? 1 : 2;
+      const step = currentStep();
       lastDirection = "forward";
       goToPage(clampPage(currentPage + step));
     };
 
     const goPrev = () => {
-      const step = isZoomed || isMobile() ? 1 : 2;
+      const step = currentStep();
       lastDirection = "backward";
       goToPage(clampPage(currentPage - step));
     };
@@ -551,13 +578,13 @@
       const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
         ? event.deltaX
         : event.deltaY;
-      if (Math.abs(delta) < 6) {
+      if (Math.abs(delta) < 10) {
         return;
       }
       event.preventDefault();
       const velocity = Math.abs(delta) / timeDelta;
-      const multiplier = velocity > 2 ? 3 : velocity > 1 ? 2 : 1;
-      const step = (isZoomed || isMobile()) ? 1 : 2;
+      const multiplier = velocity > 3.5 ? 2 : 1;
+      const step = currentStep();
       const jump = step * multiplier;
       lastWheelTime = now;
       if (delta > 0) {
@@ -581,9 +608,9 @@
     });
 
     window.addEventListener("resize", () => {
-      updatePageMaxHeight(viewer, spread);
+      updatePageMaxHeight(viewer, spread, isZoomedMain);
       if (fullscreenModal.classList.contains("open")) {
-        updatePageMaxHeight(fullscreenViewer, fullscreenSpread);
+        updatePageMaxHeight(fullscreenViewer, fullscreenSpread, isZoomedFullscreen);
       }
     });
 
@@ -595,13 +622,22 @@
       });
     });
 
-    const toggleZoom = (page) => {
+    const toggleZoom = (page, targetSpread) => {
       if (!page) return;
-      if (!isZoomed) {
-        isZoomed = true;
-        currentPage = clampPage(page);
+      if (targetSpread === spread) {
+        if (!isZoomedMain) {
+          isZoomedMain = true;
+          currentPage = clampPage(page);
+        } else {
+          isZoomedMain = false;
+        }
       } else {
-        isZoomed = false;
+        if (!isZoomedFullscreen) {
+          isZoomedFullscreen = true;
+          currentPage = clampPage(page);
+        } else {
+          isZoomedFullscreen = false;
+        }
       }
       updateZoomState();
       goToPage(currentPage);
@@ -612,7 +648,7 @@
         const frame = event.target.closest(".page-frame");
         const page = parseInt(frame?.dataset?.page || "", 10);
         if (!Number.isNaN(page)) {
-          toggleZoom(page);
+          toggleZoom(page, targetSpread);
         }
       });
     });
@@ -620,7 +656,7 @@
     fullscreenButton.addEventListener("click", () => {
       fullscreenModal.classList.add("open");
       fullscreenModal.setAttribute("aria-hidden", "false");
-      renderPages(currentPage, fullscreenSpread, fullscreenViewer, fullscreenLoading);
+      renderPages(currentPage, fullscreenSpread, fullscreenViewer, fullscreenLoading, isZoomedFullscreen);
       updateProgress();
     });
 
@@ -634,7 +670,7 @@
     const initialPage = snapToSpreadStart(parseHash());
     currentPage = initialPage;
     updateZoomState();
-    renderPages(initialPage, spread, viewer, loadingIndicator);
+    renderPages(initialPage, spread, viewer, loadingIndicator, isZoomedMain);
     updateProgress();
   </script>
 </body>
