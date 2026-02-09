@@ -24,6 +24,9 @@
       display: grid;
       gap: 6px;
       --page-max-height: 460px;
+      width: min(1200px, 100%);
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .viewer-controls {
@@ -32,6 +35,7 @@
       align-items: center;
       gap: 8px;
       margin-bottom: 0;
+      margin-left: auto;
     }
 
     .viewer-controls .btn {
@@ -52,6 +56,9 @@
       flex-wrap: wrap;
       margin-top: 4px;
       margin-bottom: 2px;
+      width: min(1200px, 100%);
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .buy-row .btn {
@@ -94,23 +101,6 @@
       justify-content: center;
       cursor: zoom-in;
 
-    }
-
-    .viewer.zoomed .page-frame {
-      border-radius: 14px;
-    }
-
-    .viewer.zoomed .page-frame,
-    .fullscreen-viewer.zoomed .page-frame {
-      cursor: zoom-out;
-    }
-
-    .fullscreen-viewer.zoomed .page-frame {
-      padding: 4px;
-    }
-
-    .fullscreen-viewer.zoomed .spread {
-      gap: 10px;
     }
 
     .page-sheet {
@@ -250,6 +240,7 @@
       gap: 8px;
       flex-wrap: wrap;
       margin-bottom: 4px;
+      align-self: flex-end;
     }
 
     .fullscreen-viewer .spread {
@@ -262,6 +253,8 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+      width: min(1200px, 100%);
+      margin: 0 auto;
     }
 
     .fullscreen-viewer .spread {
@@ -271,6 +264,52 @@
     .fullscreen-viewer .progress-wrap {
       margin-top: 4px;
       padding-bottom: 6px;
+    }
+
+    .icon-btn[data-tooltip] {
+      position: relative;
+    }
+
+    .icon-btn[data-tooltip]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(4px);
+      pointer-events: none;
+      transition: opacity 120ms ease, transform 120ms ease;
+      transition-delay: 90ms;
+      z-index: 20;
+    }
+
+    .icon-btn[data-tooltip]:hover::after,
+    .icon-btn[data-tooltip]:focus-visible::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .zoom-modal .modal-card {
+      width: min(900px, 96vw);
+      margin: 4vh auto 0;
+      padding: 14px;
+      max-height: 92vh;
+    }
+
+    .zoom-modal .zoom-image {
+      width: 100%;
+      height: auto;
+      max-height: 82vh;
+      object-fit: contain;
+      display: block;
+      border-radius: 12px;
     }
 
     @media (max-width: 899px) {
@@ -314,9 +353,9 @@
         Buy on Amazon
       </a>
       <div class="viewer-controls" role="group" aria-label="Page navigation">
-        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages" title="Previous pages">◀</button>
-        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages" title="Next pages">▶</button>
-        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer" title="Full screen">⛶</button>
+        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages" data-tooltip="Previous">◀</button>
+        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages" data-tooltip="Next">▶</button>
+        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer" data-tooltip="Full screen">⛶</button>
       </div>
     </div>
 
@@ -339,8 +378,8 @@
           <button class="modal-close" type="button" data-close="fullscreen" aria-label="Close full screen">✕</button>
         </div>
         <div class="fullscreen-controls" role="group" aria-label="Full screen page navigation">
-          <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages" title="Previous pages">◀</button>
-          <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages" title="Next pages">▶</button>
+          <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages" data-tooltip="Previous">◀</button>
+          <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages" data-tooltip="Next">▶</button>
         </div>
         <section class="viewer fullscreen-viewer" aria-label="Full screen Relative Momentum ebook viewer">
           <div class="loading-indicator" id="fullscreen-loading" aria-live="polite"></div>
@@ -349,6 +388,14 @@
             <input class="progress-slider" id="fullscreen-progress" type="range" min="1" max="112" value="1" aria-label="Reading progress slider" />
           </div>
         </section>
+      </div>
+    </div>
+
+    <div class="modal zoom-modal" id="zoom-modal" aria-hidden="true">
+      <div class="modal-backdrop" data-close="zoom"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-label="Zoomed page">
+        <button class="modal-close" type="button" data-close="zoom" aria-label="Close zoom">✕</button>
+        <img class="zoom-image" id="zoom-image" alt="Zoomed page" />
       </div>
     </div>
   </main>
@@ -369,6 +416,8 @@
     const fullscreenNext = document.getElementById("fullscreen-next");
     const progressSlider = document.getElementById("progress-slider");
     const fullscreenProgress = document.getElementById("fullscreen-progress");
+    const zoomModal = document.getElementById("zoom-modal");
+    const zoomImage = document.getElementById("zoom-image");
 
     const mobileQuery = window.matchMedia("(max-width: 899px)");
     const viewer = document.querySelector(".viewer");
@@ -376,17 +425,12 @@
     let currentPage = 1;
     let lastWheelTime = 0;
     let lastDirection = "forward";
-    let isZoomedMain = false;
-    let isZoomedFullscreen = false;
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
     const isMobile = () => mobileQuery.matches;
 
     const snapToSpreadStart = (page) => {
-      if (isZoomedMain && !fullscreenModal.classList.contains("open")) {
-        return clampPage(page);
-      }
       if (isMobile()) {
         return clampPage(page);
       }
@@ -414,13 +458,13 @@
       targetIndicator.textContent = isLoading ? message : "";
     };
 
-    const updatePageMaxHeight = (targetViewer, targetSpread, isZoomed) => {
+    const updatePageMaxHeight = (targetViewer, targetSpread) => {
       if (!targetViewer || !targetSpread) return;
       const spreadTop = targetSpread.getBoundingClientRect().top;
       const viewportPadding = 24;
       const available = window.innerHeight - spreadTop - viewportPadding;
       const minHeight = isMobile() ? 220 : 260;
-      const maxHeight = isMobile() ? 460 : isZoomed ? available : 560;
+      const maxHeight = isMobile() ? 460 : 560;
       const nextHeight = Math.max(minHeight, Math.min(available, maxHeight));
       targetViewer.style.setProperty("--page-max-height", `${nextHeight}px`);
     };
@@ -467,15 +511,14 @@
       return frame;
     };
 
-    const renderPages = (page, targetSpread, targetViewer, targetIndicator, zoomMode) => {
+    const renderPages = (page, targetSpread, targetViewer, targetIndicator) => {
       targetSpread.classList.add("turning");
       targetSpread.dataset.direction = lastDirection;
       setLoadingFor(targetIndicator, true);
-      updatePageMaxHeight(targetViewer, targetSpread, zoomMode);
+      updatePageMaxHeight(targetViewer, targetSpread);
       targetSpread.innerHTML = "";
 
-      const shouldSingle = zoomMode && targetViewer === viewer;
-      const pages = (shouldSingle || isMobile()) ? [page] : [page, page + 1];
+      const pages = isMobile() ? [page] : [page, page + 1];
       const frames = pages.map(createPageFrame);
       frames.forEach((frame) => targetSpread.appendChild(frame));
 
@@ -513,28 +556,18 @@
       });
     };
 
-    const updateZoomState = () => {
-      if (viewer) {
-        viewer.classList.toggle("zoomed", isZoomedMain);
-      }
-      if (fullscreenViewer) {
-        fullscreenViewer.classList.toggle("zoomed", isZoomedFullscreen);
-      }
-    };
-
     const currentStep = () => {
       if (isMobile()) return 1;
-      if (fullscreenModal.classList.contains("open")) return 2;
-      return isZoomedMain ? 1 : 2;
+      return 2;
     };
 
     const goToPage = (page) => {
       const target = snapToSpreadStart(page);
       currentPage = target;
       updateHash(target);
-      renderPages(target, spread, viewer, loadingIndicator, isZoomedMain);
+      renderPages(target, spread, viewer, loadingIndicator);
       if (fullscreenModal.classList.contains("open")) {
-        renderPages(target, fullscreenSpread, fullscreenViewer, fullscreenLoading, isZoomedFullscreen);
+        renderPages(target, fullscreenSpread, fullscreenViewer, fullscreenLoading);
       }
       updateProgress();
     };
@@ -566,6 +599,9 @@
       if (event.key === "Escape" && fullscreenModal.classList.contains("open")) {
         fullscreenModal.classList.remove("open");
         fullscreenModal.setAttribute("aria-hidden", "true");
+      }
+      if (event.key === "Escape" && zoomModal.classList.contains("open")) {
+        closeZoom();
       }
     });
 
@@ -608,9 +644,9 @@
     });
 
     window.addEventListener("resize", () => {
-      updatePageMaxHeight(viewer, spread, isZoomedMain);
+      updatePageMaxHeight(viewer, spread);
       if (fullscreenModal.classList.contains("open")) {
-        updatePageMaxHeight(fullscreenViewer, fullscreenSpread, isZoomedFullscreen);
+        updatePageMaxHeight(fullscreenViewer, fullscreenSpread);
       }
     });
 
@@ -622,25 +658,18 @@
       });
     });
 
-    const toggleZoom = (page, targetSpread) => {
+    const openZoom = (page) => {
       if (!page) return;
-      if (targetSpread === spread) {
-        if (!isZoomedMain) {
-          isZoomedMain = true;
-          currentPage = clampPage(page);
-        } else {
-          isZoomedMain = false;
-        }
-      } else {
-        if (!isZoomedFullscreen) {
-          isZoomedFullscreen = true;
-          currentPage = clampPage(page);
-        } else {
-          isZoomedFullscreen = false;
-        }
-      }
-      updateZoomState();
-      goToPage(currentPage);
+      zoomImage.src = `${IMAGE_BASE}page-${formatPageNumber(page)}.jpg`;
+      zoomImage.alt = `Relative Momentum page ${page}`;
+      zoomModal.classList.add("open");
+      zoomModal.setAttribute("aria-hidden", "false");
+    };
+
+    const closeZoom = () => {
+      zoomModal.classList.remove("open");
+      zoomModal.setAttribute("aria-hidden", "true");
+      zoomImage.removeAttribute("src");
     };
 
     [spread, fullscreenSpread].forEach((targetSpread) => {
@@ -648,7 +677,7 @@
         const frame = event.target.closest(".page-frame");
         const page = parseInt(frame?.dataset?.page || "", 10);
         if (!Number.isNaN(page)) {
-          toggleZoom(page, targetSpread);
+          openZoom(page);
         }
       });
     });
@@ -656,7 +685,7 @@
     fullscreenButton.addEventListener("click", () => {
       fullscreenModal.classList.add("open");
       fullscreenModal.setAttribute("aria-hidden", "false");
-      renderPages(currentPage, fullscreenSpread, fullscreenViewer, fullscreenLoading, isZoomedFullscreen);
+      renderPages(currentPage, fullscreenSpread, fullscreenViewer, fullscreenLoading);
       updateProgress();
     });
 
@@ -667,10 +696,15 @@
       }
     });
 
+    zoomModal.addEventListener("click", (event) => {
+      if (event.target?.dataset?.close === "zoom") {
+        closeZoom();
+      }
+    });
+
     const initialPage = snapToSpreadStart(parseHash());
     currentPage = initialPage;
-    updateZoomState();
-    renderPages(initialPage, spread, viewer, loadingIndicator, isZoomedMain);
+    renderPages(initialPage, spread, viewer, loadingIndicator);
     updateProgress();
   </script>
 </body>
