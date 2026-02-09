@@ -426,21 +426,16 @@ textarea:focus{
   text-decoration: none;
 }
 
-.preview-strip{
-  display: flex;
+.preview-grid{
+  display: grid;
   gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .preview-card{
-  flex: 0 0 140px;
   display: grid;
   gap: 6px;
   text-decoration: none;
-  scroll-snap-align: start;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 8px;
@@ -460,10 +455,52 @@ textarea:focus{
   color: var(--muted);
 }
 
-.substack-preview{
+.preview-card--cta{
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  min-height: 220px;
+}
+
+.preview-arrow{
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.substack-carousel{
   display: grid;
   gap: 10px;
   margin: 10px 0 14px;
+}
+
+.substack-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.substack-title{
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.substack-controls{
+  display: flex;
+  gap: 8px;
+}
+
+.substack-track{
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
 }
 
 .substack-entry{
@@ -474,6 +511,7 @@ textarea:focus{
   border-radius: 12px;
   background: rgba(255,255,255,0.02);
   text-decoration: none;
+  scroll-snap-align: start;
 }
 
 .substack-entry__title{
