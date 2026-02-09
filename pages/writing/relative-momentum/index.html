@@ -6,10 +6,18 @@
   <title>Relative Momentum — Jacob Conlon Shields</title>
   <link rel="stylesheet" href="/assets/styles.css" />
   <style>
+    body {
+      font-size: 15px;
+    }
+
+    h1 {
+      margin-bottom: 6px;
+    }
+
     .viewer {
-      margin-top: 16px;
+      margin-top: 8px;
       display: grid;
-      gap: 16px;
+      gap: 8px;
       --page-max-height: 460px;
     }
 
@@ -17,8 +25,8 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 4px;
+      gap: 8px;
+      margin-bottom: 0;
     }
 
     .viewer-controls .btn {
@@ -29,6 +37,16 @@
     .buy-row {
       position: relative;
       z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      margin-bottom: 4px;
+    }
+
+    .buy-row .btn {
+      margin: 0;
     }
 
     .loading-indicator {
@@ -40,7 +58,7 @@
     .spread {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px;
+      gap: 12px;
       align-items: center;
       transition: opacity 220ms ease, transform 220ms ease;
       position: relative;
@@ -55,7 +73,7 @@
     .page-frame {
       border: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(0, 0, 0, 0.2);
-      padding: 8px;
+      padding: 6px;
       border-radius: 10px;
       min-height: 220px;
       max-height: var(--page-max-height, min(70vh, 680px));
@@ -83,6 +101,10 @@
     }
 
     @media (max-width: 899px) {
+      body {
+        font-size: 14px;
+      }
+
       .spread {
         grid-template-columns: 1fr;
       }
@@ -112,19 +134,19 @@
       scroll gesture to move through the pages.
     </p>
 
-    <p class="buy-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+    <div class="buy-row">
       <a class="btn"
          href="https://a.co/d/fbTRmg4"
          target="_blank" rel="noopener noreferrer">
         Buy on Amazon
       </a>
-    </p>
-
-    <section class="viewer" aria-label="Relative Momentum ebook viewer">
-      <div class="viewer-controls">
+      <div class="viewer-controls" role="group" aria-label="Page navigation">
         <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages">◀</button>
         <button class="icon-btn" type="button" id="next-button" aria-label="Next pages">▶</button>
       </div>
+    </div>
+
+    <section class="viewer" aria-label="Relative Momentum ebook viewer">
 
       <div class="loading-indicator" id="loading-indicator" aria-live="polite"></div>
 
