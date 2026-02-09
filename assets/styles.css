@@ -382,6 +382,84 @@ textarea:focus{
   border: 0;
 }
 
+.reader-wrap{
+  margin-top: 36px;
+  height: 70vh;
+}
+
+.reader-wrap iframe{
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: #111;
+}
+
+/* =========================
+   Writing page preview strip
+   ========================= */
+
+.preview-wrap{
+  margin: 12px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.02);
+}
+
+.preview-head{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.preview-title{
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.preview-link{
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.preview-strip{
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.preview-card{
+  flex: 0 0 140px;
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  scroll-snap-align: start;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+  background: var(--panel);
+}
+
+.preview-card img{
+  width: 100%;
+  border-radius: 8px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-page{
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 /* =========================
    Mobile
    Stack columns; clips become horizontal swipe

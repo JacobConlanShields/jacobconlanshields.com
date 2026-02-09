@@ -36,6 +36,47 @@
       or grab the book on Amazon.
     </p>
 
+    <div class="preview-wrap" aria-label="Relative Momentum preview">
+      <div class="preview-head">
+        <p class="preview-title">Preview the ebook (scroll →)</p>
+        <a class="preview-link" href="/pages/writing/relative-momentum/">Open the full reader</a>
+      </div>
+      <div class="preview-strip" role="list">
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-001.jpg" alt="Relative Momentum preview page 1" loading="lazy" />
+          <span class="preview-page">Page 1</span>
+        </a>
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-002.jpg" alt="Relative Momentum preview page 2" loading="lazy" />
+          <span class="preview-page">Page 2</span>
+        </a>
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-003.jpg" alt="Relative Momentum preview page 3" loading="lazy" />
+          <span class="preview-page">Page 3</span>
+        </a>
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-004.jpg" alt="Relative Momentum preview page 4" loading="lazy" />
+          <span class="preview-page">Page 4</span>
+        </a>
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-005.jpg" alt="Relative Momentum preview page 5" loading="lazy" />
+          <span class="preview-page">Page 5</span>
+        </a>
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-006.jpg" alt="Relative Momentum preview page 6" loading="lazy" />
+          <span class="preview-page">Page 6</span>
+        </a>
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-007.jpg" alt="Relative Momentum preview page 7" loading="lazy" />
+          <span class="preview-page">Page 7</span>
+        </a>
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+          <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-008.jpg" alt="Relative Momentum preview page 8" loading="lazy" />
+          <span class="preview-page">Page 8</span>
+        </a>
+      </div>
+    </div>
+
     <p style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
       <a class="btn" href="/pages/writing/relative-momentum/">Open the free ebook</a>
 
@@ -51,9 +92,13 @@
     <!-- External writing hub on Substack. -->
     <h2>Substack</h2>
     <p>
+      Jump into the latest essays right here, or open Substack in a new tab.
+    </p>
+    <p style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn" type="button" id="openSubstack">Open Substack reader</button>
       <a class="btn"
-         href="https://substack.com/@jacobconlanshields"
-         target="_blank" rel="noopener noreferrer">
+        href="https://substack.com/@jacobconlanshields"
+        target="_blank" rel="noopener noreferrer">
         Read on Substack
       </a>
     </p>
@@ -62,5 +107,49 @@
 
     <p><a href="/">← Back to home</a></p>
   </main>
+
+  <div class="modal" id="substackModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Substack reader">
+      <button class="modal-close" data-close aria-label="Close">✕</button>
+      <div class="reader-wrap">
+        <iframe
+          title="Jacob Conlon Shields Substack"
+          src="https://substack.com/@jacobconlanshields"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+        ></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const substackModal = document.getElementById("substackModal");
+    const openSubstack = document.getElementById("openSubstack");
+
+    const closeModal = () => {
+      substackModal.classList.remove("open");
+      substackModal.setAttribute("aria-hidden", "true");
+    };
+
+    const openModal = () => {
+      substackModal.classList.add("open");
+      substackModal.setAttribute("aria-hidden", "false");
+    };
+
+    openSubstack?.addEventListener("click", openModal);
+
+    substackModal?.addEventListener("click", (event) => {
+      if (event.target.closest("[data-close]")) {
+        closeModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && substackModal.classList.contains("open")) {
+        closeModal();
+      }
+    });
+  </script>
 </body>
 </html>
