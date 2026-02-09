@@ -11,14 +11,22 @@
     }
 
     h1 {
-      margin-bottom: 6px;
+      margin-bottom: 2px;
+    }
+
+    .viewer-intro {
+      margin-top: 2px;
+      margin-bottom: 4px;
     }
 
     .viewer {
-      margin-top: 8px;
+      margin-top: 6px;
       display: grid;
-      gap: 8px;
+      gap: 6px;
       --page-max-height: 460px;
+      width: min(1200px, 100%);
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .viewer-controls {
@@ -27,11 +35,16 @@
       align-items: center;
       gap: 8px;
       margin-bottom: 0;
+      margin-left: auto;
     }
 
     .viewer-controls .btn {
       min-width: 120px;
       text-align: center;
+    }
+
+    .viewer-controls .icon-btn {
+      min-width: auto;
     }
 
     .buy-row {
@@ -41,8 +54,11 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      margin-top: 6px;
-      margin-bottom: 4px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+      width: min(1200px, 100%);
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .buy-row .btn {
@@ -63,6 +79,8 @@
       transition: opacity 220ms ease, transform 220ms ease;
       position: relative;
       z-index: 1;
+      margin-top: 0;
+      perspective: 1200px;
     }
 
     .spread.turning {
@@ -81,7 +99,61 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: zoom-in;
 
+    }
+
+    .page-sheet {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(10, 10, 10, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    .spread.turning[data-direction="forward"] .page-sheet {
+      animation: pageTurnForward 420ms ease;
+    }
+
+    .spread.turning[data-direction="backward"] .page-sheet {
+      animation: pageTurnBackward 420ms ease;
+    }
+
+    @keyframes pageTurnForward {
+      0% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
+      45% {
+        transform: rotateY(-12deg);
+        box-shadow: inset -40px 0 45px rgba(0, 0, 0, 0.45);
+      }
+      100% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
+    }
+
+    @keyframes pageTurnBackward {
+      0% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
+      45% {
+        transform: rotateY(12deg);
+        box-shadow: inset 40px 0 45px rgba(0, 0, 0, 0.45);
+      }
+      100% {
+        transform: rotateY(0deg);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 0 rgba(0, 0, 0, 0);
+      }
     }
 
     .page-frame img {
@@ -100,9 +172,157 @@
       padding: 12px;
     }
 
+    .progress-wrap {
+      margin-top: 10px;
+    }
+
+    .progress-slider {
+      width: 100%;
+      appearance: none;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0.85) 0%,
+        rgba(255, 255, 255, 0.85) var(--progress, 0%),
+        rgba(255, 255, 255, 0.15) var(--progress, 0%),
+        rgba(255, 255, 255, 0.15) 100%
+      );
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .progress-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .progress-slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .fullscreen-modal .modal-card {
+      width: min(1280px, 98vw);
+      margin: 2.5vh auto 0;
+      padding: 16px;
+      max-height: 94vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .fullscreen-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .fullscreen-header h2 {
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    .fullscreen-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    .fullscreen-actions .modal-close {
+      position: static;
+    }
+
+    .fullscreen-viewer .spread {
+      margin-top: 2px;
+    }
+
+    .fullscreen-viewer {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: min(1200px, 100%);
+      margin: 0 auto;
+    }
+
+    .fullscreen-viewer .spread {
+      flex: 1;
+    }
+
+    .fullscreen-viewer .progress-wrap {
+      margin-top: 4px;
+      padding-bottom: 6px;
+    }
+
+    .icon-btn[data-tooltip] {
+      position: relative;
+    }
+
+    .icon-btn[data-tooltip]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(4px);
+      pointer-events: none;
+      transition: opacity 120ms ease, transform 120ms ease;
+      transition-delay: 90ms;
+      z-index: 20;
+    }
+
+    .icon-btn[data-tooltip]:hover::after,
+    .icon-btn[data-tooltip]:focus-visible::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .zoom-modal .modal-card {
+      width: min(980px, 96vw);
+      margin: 0 auto;
+      padding: 18px;
+      height: 100vh;
+      max-height: 100vh;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .zoom-modal .zoom-image {
+      width: 100%;
+      height: auto;
+      max-height: calc(100vh - 64px);
+      object-fit: contain;
+      display: block;
+      border-radius: 12px;
+    }
+
     @media (max-width: 899px) {
       body {
-        font-size: 14px;
+        font-size: 13px;
       }
 
       .spread {
@@ -129,9 +349,10 @@
     <hr class="tight-hr">
 
     <h1>Relative Momentum</h1>
-    <p>
-      A two-page spread view of the ebook. Use the buttons, arrow keys, or a
-      scroll gesture to move through the pages.
+    <p class="viewer-intro">
+      A collection of poems, lyrics, designs, and photographs as a royalty-free,
+      project. All content is free to remix, adapt, and share—by whomever, for
+      whatever.
     </p>
 
     <div class="buy-row">
@@ -141,8 +362,9 @@
         Buy on Amazon
       </a>
       <div class="viewer-controls" role="group" aria-label="Page navigation">
-        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages">◀</button>
-        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages">▶</button>
+        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages" data-tooltip="Previous">◀</button>
+        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages" data-tooltip="Next">▶</button>
+        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer" data-tooltip="Full screen">⛶</button>
       </div>
     </div>
 
@@ -151,7 +373,40 @@
       <div class="loading-indicator" id="loading-indicator" aria-live="polite"></div>
 
       <div class="spread" id="spread"></div>
+
+      <div class="progress-wrap" aria-label="Reading progress">
+        <input class="progress-slider" id="progress-slider" type="range" min="1" max="112" value="1" aria-label="Reading progress slider" />
+      </div>
     </section>
+
+    <div class="modal fullscreen-modal" id="fullscreen-modal" aria-hidden="true">
+      <div class="modal-backdrop" data-close="fullscreen"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-label="Full screen reader">
+        <div class="fullscreen-header">
+          <h2>Relative Momentum — Full Screen</h2>
+          <div class="fullscreen-actions" role="group" aria-label="Full screen page navigation">
+            <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages" data-tooltip="Previous">◀</button>
+            <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages" data-tooltip="Next">▶</button>
+            <button class="modal-close" type="button" data-close="fullscreen" aria-label="Close full screen">✕</button>
+          </div>
+        </div>
+        <section class="viewer fullscreen-viewer" aria-label="Full screen Relative Momentum ebook viewer">
+          <div class="loading-indicator" id="fullscreen-loading" aria-live="polite"></div>
+          <div class="spread" id="fullscreen-spread"></div>
+          <div class="progress-wrap" aria-label="Reading progress">
+            <input class="progress-slider" id="fullscreen-progress" type="range" min="1" max="112" value="1" aria-label="Reading progress slider" />
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="modal zoom-modal" id="zoom-modal" aria-hidden="true">
+      <div class="modal-backdrop" data-close="zoom"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-label="Zoomed page">
+        <button class="modal-close" type="button" data-close="zoom" aria-label="Close zoom">✕</button>
+        <img class="zoom-image" id="zoom-image" alt="Zoomed page" />
+      </div>
+    </div>
   </main>
 
   <script>
@@ -159,14 +414,26 @@
     const IMAGE_BASE = "https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/";
 
     const spread = document.getElementById("spread");
+    const fullscreenSpread = document.getElementById("fullscreen-spread");
     const loadingIndicator = document.getElementById("loading-indicator");
+    const fullscreenLoading = document.getElementById("fullscreen-loading");
     const prevButton = document.getElementById("prev-button");
     const nextButton = document.getElementById("next-button");
+    const fullscreenButton = document.getElementById("fullscreen-button");
+    const fullscreenModal = document.getElementById("fullscreen-modal");
+    const fullscreenPrev = document.getElementById("fullscreen-prev");
+    const fullscreenNext = document.getElementById("fullscreen-next");
+    const progressSlider = document.getElementById("progress-slider");
+    const fullscreenProgress = document.getElementById("fullscreen-progress");
+    const zoomModal = document.getElementById("zoom-modal");
+    const zoomImage = document.getElementById("zoom-image");
 
     const mobileQuery = window.matchMedia("(max-width: 899px)");
     const viewer = document.querySelector(".viewer");
+    const fullscreenViewer = document.querySelector(".fullscreen-viewer");
     let currentPage = 1;
     let lastWheelTime = 0;
+    let lastDirection = "forward";
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
@@ -195,19 +462,20 @@
 
     const formatPageNumber = (page) => page.toString().padStart(3, "0");
 
-    const setLoading = (isLoading, message = "Loading pages…") => {
-      loadingIndicator.textContent = isLoading ? message : "";
+    const setLoadingFor = (targetIndicator, isLoading, message = "Loading pages…") => {
+      if (!targetIndicator) return;
+      targetIndicator.textContent = isLoading ? message : "";
     };
 
-    const updatePageMaxHeight = () => {
-      if (!viewer) return;
-      const spreadTop = spread.getBoundingClientRect().top;
+    const updatePageMaxHeight = (targetViewer, targetSpread) => {
+      if (!targetViewer || !targetSpread) return;
+      const spreadTop = targetSpread.getBoundingClientRect().top;
       const viewportPadding = 24;
       const available = window.innerHeight - spreadTop - viewportPadding;
       const minHeight = isMobile() ? 220 : 260;
       const maxHeight = isMobile() ? 460 : 560;
       const nextHeight = Math.max(minHeight, Math.min(available, maxHeight));
-      viewer.style.setProperty("--page-max-height", `${nextHeight}px`);
+      targetViewer.style.setProperty("--page-max-height", `${nextHeight}px`);
     };
 
     const preloadNext = (page) => {
@@ -224,8 +492,13 @@
     const createPageFrame = (page) => {
       const frame = document.createElement("div");
       frame.className = "page-frame";
+      frame.dataset.page = page;
+      const sheet = document.createElement("div");
+      sheet.className = "page-sheet";
 
       if (page > TOTAL_PAGES || page < 1) {
+        frame.dataset.page = "";
+        frame.appendChild(sheet);
         return frame;
       }
 
@@ -235,37 +508,39 @@
       img.src = `${IMAGE_BASE}page-${formatPageNumber(page)}.jpg`;
 
       img.addEventListener("error", () => {
-        frame.innerHTML = "";
+        sheet.innerHTML = "";
         const missing = document.createElement("div");
         missing.className = "missing-page";
         missing.textContent = `Page ${page} is unavailable.`;
-        frame.appendChild(missing);
+        sheet.appendChild(missing);
       });
 
-      frame.appendChild(img);
+      sheet.appendChild(img);
+      frame.appendChild(sheet);
       return frame;
     };
 
-    const renderPages = (page) => {
-      spread.classList.add("turning");
-      setLoading(true);
-      updatePageMaxHeight();
-      spread.innerHTML = "";
+    const renderPages = (page, targetSpread, targetViewer, targetIndicator) => {
+      targetSpread.classList.add("turning");
+      targetSpread.dataset.direction = lastDirection;
+      setLoadingFor(targetIndicator, true);
+      updatePageMaxHeight(targetViewer, targetSpread);
+      targetSpread.innerHTML = "";
 
       const pages = isMobile() ? [page] : [page, page + 1];
       const frames = pages.map(createPageFrame);
-      frames.forEach((frame) => spread.appendChild(frame));
+      frames.forEach((frame) => targetSpread.appendChild(frame));
 
-      const images = Array.from(spread.querySelectorAll("img"));
+      const images = Array.from(targetSpread.querySelectorAll("img"));
       const onImageDone = () => {
         const allDone = images.every((img) => img.complete);
         if (allDone) {
-          setLoading(false);
+          setLoadingFor(targetIndicator, false);
         }
       };
 
       if (images.length === 0) {
-        setLoading(false, "No pages to display.");
+        setLoadingFor(targetIndicator, false, "No pages to display.");
       } else {
         images.forEach((img) => {
           if (img.complete) {
@@ -277,29 +552,51 @@
         });
       }
 
-      window.setTimeout(() => spread.classList.remove("turning"), 250);
+      window.setTimeout(() => targetSpread.classList.remove("turning"), 420);
       preloadNext(page);
+    };
+
+    const updateProgress = () => {
+      const progress = ((currentPage - 1) / (TOTAL_PAGES - 1)) * 100;
+      [progressSlider, fullscreenProgress].forEach((slider) => {
+        if (!slider) return;
+        slider.value = currentPage;
+        slider.style.setProperty("--progress", `${progress}%`);
+      });
+    };
+
+    const currentStep = () => {
+      if (isMobile()) return 1;
+      return 2;
     };
 
     const goToPage = (page) => {
       const target = snapToSpreadStart(page);
       currentPage = target;
       updateHash(target);
-      renderPages(target);
+      renderPages(target, spread, viewer, loadingIndicator);
+      if (fullscreenModal.classList.contains("open")) {
+        renderPages(target, fullscreenSpread, fullscreenViewer, fullscreenLoading);
+      }
+      updateProgress();
     };
 
     const goNext = () => {
-      const step = isMobile() ? 1 : 2;
+      const step = currentStep();
+      lastDirection = "forward";
       goToPage(clampPage(currentPage + step));
     };
 
     const goPrev = () => {
-      const step = isMobile() ? 1 : 2;
+      const step = currentStep();
+      lastDirection = "backward";
       goToPage(clampPage(currentPage - step));
     };
 
     prevButton.addEventListener("click", goPrev);
     nextButton.addEventListener("click", goNext);
+    fullscreenPrev.addEventListener("click", goPrev);
+    fullscreenNext.addEventListener("click", goNext);
 
     window.addEventListener("keydown", (event) => {
       if (event.key === "ArrowRight") {
@@ -308,30 +605,44 @@
       if (event.key === "ArrowLeft") {
         goPrev();
       }
+      if (event.key === "Escape" && fullscreenModal.classList.contains("open")) {
+        fullscreenModal.classList.remove("open");
+        fullscreenModal.setAttribute("aria-hidden", "true");
+      }
+      if (event.key === "Escape" && zoomModal.classList.contains("open")) {
+        closeZoom();
+      }
     });
 
-    spread.addEventListener("wheel", (event) => {
+    const handleWheel = (event) => {
       if (isMobile()) {
         return;
       }
       const now = Date.now();
-      if (now - lastWheelTime < 400) {
-        return;
-      }
+      const timeDelta = Math.max(16, now - lastWheelTime);
       const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
         ? event.deltaX
         : event.deltaY;
-      if (Math.abs(delta) < 12) {
+      if (Math.abs(delta) < 10) {
         return;
       }
       event.preventDefault();
+      const velocity = Math.abs(delta) / timeDelta;
+      const multiplier = velocity > 3.5 ? 2 : 1;
+      const step = currentStep();
+      const jump = step * multiplier;
       lastWheelTime = now;
       if (delta > 0) {
-        goNext();
+        lastDirection = "forward";
+        goToPage(clampPage(currentPage + jump));
       } else {
-        goPrev();
+        lastDirection = "backward";
+        goToPage(clampPage(currentPage - jump));
       }
-    }, { passive: false });
+    };
+
+    spread.addEventListener("wheel", handleWheel, { passive: false });
+    fullscreenSpread.addEventListener("wheel", handleWheel, { passive: false });
 
     window.addEventListener("hashchange", () => {
       goToPage(parseHash());
@@ -341,11 +652,69 @@
       goToPage(currentPage);
     });
 
-    window.addEventListener("resize", updatePageMaxHeight);
+    window.addEventListener("resize", () => {
+      updatePageMaxHeight(viewer, spread);
+      if (fullscreenModal.classList.contains("open")) {
+        updatePageMaxHeight(fullscreenViewer, fullscreenSpread);
+      }
+    });
+
+    [progressSlider, fullscreenProgress].forEach((slider) => {
+      slider.addEventListener("input", (event) => {
+        const nextPage = parseInt(event.target.value, 10);
+        lastDirection = nextPage >= currentPage ? "forward" : "backward";
+        goToPage(nextPage);
+      });
+    });
+
+    const openZoom = (page) => {
+      if (!page) return;
+      zoomImage.src = `${IMAGE_BASE}page-${formatPageNumber(page)}.jpg`;
+      zoomImage.alt = `Relative Momentum page ${page}`;
+      zoomModal.classList.add("open");
+      zoomModal.setAttribute("aria-hidden", "false");
+    };
+
+    const closeZoom = () => {
+      zoomModal.classList.remove("open");
+      zoomModal.setAttribute("aria-hidden", "true");
+      zoomImage.removeAttribute("src");
+    };
+
+    [spread, fullscreenSpread].forEach((targetSpread) => {
+      targetSpread.addEventListener("click", (event) => {
+        const frame = event.target.closest(".page-frame");
+        const page = parseInt(frame?.dataset?.page || "", 10);
+        if (!Number.isNaN(page)) {
+          openZoom(page);
+        }
+      });
+    });
+
+    fullscreenButton.addEventListener("click", () => {
+      fullscreenModal.classList.add("open");
+      fullscreenModal.setAttribute("aria-hidden", "false");
+      renderPages(currentPage, fullscreenSpread, fullscreenViewer, fullscreenLoading);
+      updateProgress();
+    });
+
+    fullscreenModal.addEventListener("click", (event) => {
+      if (event.target?.dataset?.close === "fullscreen") {
+        fullscreenModal.classList.remove("open");
+        fullscreenModal.setAttribute("aria-hidden", "true");
+      }
+    });
+
+    zoomModal.addEventListener("click", (event) => {
+      if (event.target?.dataset?.close === "zoom") {
+        closeZoom();
+      }
+    });
 
     const initialPage = snapToSpreadStart(parseHash());
     currentPage = initialPage;
-    renderPages(initialPage);
+    renderPages(initialPage, spread, viewer, loadingIndicator);
+    updateProgress();
   </script>
 </body>
 </html>
