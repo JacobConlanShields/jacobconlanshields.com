@@ -17,7 +17,7 @@
     .viewer {
       margin-top: 8px;
       display: grid;
-      gap: 8px;
+      gap: 6px;
       --page-max-height: 460px;
     }
 
@@ -67,6 +67,8 @@
       transition: opacity 220ms ease, transform 220ms ease;
       position: relative;
       z-index: 1;
+      margin-top: 4px;
+      perspective: 1200px;
     }
 
     .spread.turning {
@@ -85,7 +87,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: zoom-in;
 
+    }
+
+    .viewer.zoomed .page-frame,
+    .fullscreen-viewer.zoomed .page-frame {
+      cursor: zoom-out;
     }
 
     .page-sheet {
@@ -199,8 +207,11 @@
 
     .fullscreen-modal .modal-card {
       width: min(1200px, 96vw);
-      margin: 4vh auto 0;
+      margin: 3vh auto 0;
       padding: 18px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
     }
 
     .fullscreen-header {
@@ -221,10 +232,28 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+      margin-bottom: 6px;
     }
 
     .fullscreen-viewer .spread {
-      margin-top: 8px;
+      margin-top: 2px;
+    }
+
+    .fullscreen-viewer {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .fullscreen-viewer .spread {
+      flex: 1;
+    }
+
+    .fullscreen-viewer .progress-wrap {
+      margin-top: 6px;
+      padding-bottom: 8px;
     }
 
     @media (max-width: 899px) {
@@ -330,12 +359,16 @@
     let currentPage = 1;
     let lastWheelTime = 0;
     let lastDirection = "forward";
+    let isZoomed = false;
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
     const isMobile = () => mobileQuery.matches;
 
     const snapToSpreadStart = (page) => {
+      if (isZoomed) {
+        return clampPage(page);
+      }
       if (isMobile()) {
         return clampPage(page);
       }
@@ -388,10 +421,12 @@
     const createPageFrame = (page) => {
       const frame = document.createElement("div");
       frame.className = "page-frame";
+      frame.dataset.page = page;
       const sheet = document.createElement("div");
       sheet.className = "page-sheet";
 
       if (page > TOTAL_PAGES || page < 1) {
+        frame.dataset.page = "";
         frame.appendChild(sheet);
         return frame;
       }
@@ -421,7 +456,7 @@
       updatePageMaxHeight(targetViewer, targetSpread);
       targetSpread.innerHTML = "";
 
-      const pages = isMobile() ? [page] : [page, page + 1];
+      const pages = isZoomed || isMobile() ? [page] : [page, page + 1];
       const frames = pages.map(createPageFrame);
       frames.forEach((frame) => targetSpread.appendChild(frame));
 
@@ -459,6 +494,13 @@
       });
     };
 
+    const updateZoomState = () => {
+      [viewer, fullscreenViewer].forEach((target) => {
+        if (!target) return;
+        target.classList.toggle("zoomed", isZoomed);
+      });
+    };
+
     const goToPage = (page) => {
       const target = snapToSpreadStart(page);
       currentPage = target;
@@ -471,13 +513,13 @@
     };
 
     const goNext = () => {
-      const step = isMobile() ? 1 : 2;
+      const step = isZoomed || isMobile() ? 1 : 2;
       lastDirection = "forward";
       goToPage(clampPage(currentPage + step));
     };
 
     const goPrev = () => {
-      const step = isMobile() ? 1 : 2;
+      const step = isZoomed || isMobile() ? 1 : 2;
       lastDirection = "backward";
       goToPage(clampPage(currentPage - step));
     };
@@ -500,28 +542,35 @@
       }
     });
 
-    spread.addEventListener("wheel", (event) => {
+    const handleWheel = (event) => {
       if (isMobile()) {
         return;
       }
       const now = Date.now();
-      if (now - lastWheelTime < 400) {
-        return;
-      }
+      const timeDelta = Math.max(16, now - lastWheelTime);
       const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
         ? event.deltaX
         : event.deltaY;
-      if (Math.abs(delta) < 12) {
+      if (Math.abs(delta) < 6) {
         return;
       }
       event.preventDefault();
+      const velocity = Math.abs(delta) / timeDelta;
+      const multiplier = velocity > 2 ? 3 : velocity > 1 ? 2 : 1;
+      const step = (isZoomed || isMobile()) ? 1 : 2;
+      const jump = step * multiplier;
       lastWheelTime = now;
       if (delta > 0) {
-        goNext();
+        lastDirection = "forward";
+        goToPage(clampPage(currentPage + jump));
       } else {
-        goPrev();
+        lastDirection = "backward";
+        goToPage(clampPage(currentPage - jump));
       }
-    }, { passive: false });
+    };
+
+    spread.addEventListener("wheel", handleWheel, { passive: false });
+    fullscreenSpread.addEventListener("wheel", handleWheel, { passive: false });
 
     window.addEventListener("hashchange", () => {
       goToPage(parseHash());
@@ -546,6 +595,28 @@
       });
     });
 
+    const toggleZoom = (page) => {
+      if (!page) return;
+      if (!isZoomed) {
+        isZoomed = true;
+        currentPage = clampPage(page);
+      } else {
+        isZoomed = false;
+      }
+      updateZoomState();
+      goToPage(currentPage);
+    };
+
+    [spread, fullscreenSpread].forEach((targetSpread) => {
+      targetSpread.addEventListener("click", (event) => {
+        const frame = event.target.closest(".page-frame");
+        const page = parseInt(frame?.dataset?.page || "", 10);
+        if (!Number.isNaN(page)) {
+          toggleZoom(page);
+        }
+      });
+    });
+
     fullscreenButton.addEventListener("click", () => {
       fullscreenModal.classList.add("open");
       fullscreenModal.setAttribute("aria-hidden", "false");
@@ -562,6 +633,7 @@
 
     const initialPage = snapToSpreadStart(parseHash());
     currentPage = initialPage;
+    updateZoomState();
     renderPages(initialPage, spread, viewer, loadingIndicator);
     updateProgress();
   </script>
