@@ -10,7 +10,7 @@
       margin-top: 16px;
       display: grid;
       gap: 16px;
-      --page-max-height: clamp(220px, calc(100vh - 420px), 520px);
+      --page-max-height: 460px;
     }
 
     .viewer-controls {
@@ -59,6 +59,7 @@
       border-radius: 10px;
       min-height: 220px;
       max-height: var(--page-max-height, min(70vh, 680px));
+      height: var(--page-max-height, min(70vh, 680px));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -87,7 +88,7 @@
       }
 
       .viewer {
-        --page-max-height: clamp(200px, calc(100vh - 460px), 460px);
+        --page-max-height: 380px;
       }
     }
   </style>
@@ -141,6 +142,7 @@
     const nextButton = document.getElementById("next-button");
 
     const mobileQuery = window.matchMedia("(max-width: 899px)");
+    const viewer = document.querySelector(".viewer");
     let currentPage = 1;
     let lastWheelTime = 0;
 
@@ -173,6 +175,17 @@
 
     const setLoading = (isLoading, message = "Loading pages…") => {
       loadingIndicator.textContent = isLoading ? message : "";
+    };
+
+    const updatePageMaxHeight = () => {
+      if (!viewer) return;
+      const spreadTop = spread.getBoundingClientRect().top;
+      const viewportPadding = 24;
+      const available = window.innerHeight - spreadTop - viewportPadding;
+      const minHeight = isMobile() ? 220 : 260;
+      const maxHeight = isMobile() ? 460 : 560;
+      const nextHeight = Math.max(minHeight, Math.min(available, maxHeight));
+      viewer.style.setProperty("--page-max-height", `${nextHeight}px`);
     };
 
     const preloadNext = (page) => {
@@ -214,6 +227,7 @@
     const renderPages = (page) => {
       spread.classList.add("turning");
       setLoading(true);
+      updatePageMaxHeight();
       spread.innerHTML = "";
 
       const pages = isMobile() ? [page] : [page, page + 1];
@@ -304,6 +318,8 @@
     mobileQuery.addEventListener("change", () => {
       goToPage(currentPage);
     });
+
+    window.addEventListener("resize", updatePageMaxHeight);
 
     const initialPage = snapToSpreadStart(parseHash());
     currentPage = initialPage;
