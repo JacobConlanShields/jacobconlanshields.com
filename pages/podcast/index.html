@@ -273,6 +273,14 @@
 
       if (axis === "y") {
         const card = el.querySelector(".card");
+        const isMobile = window.matchMedia("(max-width: 900px)").matches;
+
+        if (isMobile) {
+          const step = card ? (card.getBoundingClientRect().width + 10) : 220;
+          el.scrollBy({ left: dir * step, behavior: "smooth" });
+          return;
+        }
+
         const step = card ? (card.getBoundingClientRect().height + 10) : 220;
         el.scrollBy({ top: dir * step, behavior: "smooth" });
       } else {

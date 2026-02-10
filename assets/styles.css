@@ -39,6 +39,7 @@ html, body{
   color: var(--text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.55;
+  overflow-x: hidden;
 }
 
 main{
@@ -75,6 +76,7 @@ hr, .tight-hr{
   display:flex;
   gap:10px;
   align-items:center;
+  flex-wrap: wrap;
   margin: 0 0 14px;
 }
 .nav .dot{ opacity: .5; }
@@ -89,6 +91,7 @@ button{
   color: var(--text);
   cursor: pointer;
   font: inherit;
+  min-height: 42px;
 }
 
 .btn{ text-decoration: none; }
@@ -534,7 +537,45 @@ textarea:focus{
 @media (max-width: 900px){
   :root{
     --clips-col-w: 100%;
-    --card-w: 250px;
+    --card-w: min(78vw, 300px);
+  }
+
+  main,
+  .ebook-page{
+    margin: 14px auto;
+    padding: 0 14px;
+  }
+
+  h1{
+    font-size: clamp(1.45rem, 6.2vw, 1.9rem);
+    line-height: 1.15;
+  }
+
+  h2{
+    font-size: clamp(1.1rem, 5.1vw, 1.35rem);
+    line-height: 1.2;
+  }
+
+  p{
+    font-size: 0.97rem;
+  }
+
+  .row-head{
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .row-title{
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .row-controls{
+    flex-shrink: 0;
+  }
+
+  .status{
+    font-size: 12px;
   }
 
   .podcast-topgrid{
@@ -560,8 +601,39 @@ textarea:focus{
   }
 
   .clips-rail .card{
-    width: 200px;
+    width: min(52vw, 220px);
     scroll-snap-align: start;
+  }
+
+  .preview-head,
+  .substack-head{
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .substack-track{
+    grid-auto-columns: minmax(78vw, 1fr);
+  }
+
+  .modal-card{
+    width: min(100vw - 18px, 1000px);
+    margin-top: 3vh;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .modal-close{
+    width: 40px;
+    height: 40px;
+  }
+
+  .player-wrap,
+  .reader-wrap{
+    margin-top: 32px;
+  }
+
+  .reader-wrap{
+    height: 72vh;
   }
 }
 /* =========================
@@ -659,7 +731,47 @@ textarea:focus{
   }
 
   .page img{
-    max-height: calc(100vh - 360px);
+    max-height: calc(100vh - 300px);
+  }
+}
+
+@media (max-width: 600px){
+  .nav{
+    gap: 8px;
+  }
+
+  .nav .dot{
+    display: none;
+  }
+
+  .btn,
+  button{
+    width: 100%;
+    justify-content: center;
+  }
+
+  .icon-btn{
+    width: 40px;
+    min-width: 40px;
+  }
+
+  .row-controls .icon-btn,
+  .substack-controls .icon-btn{
+    width: 38px;
+    min-width: 38px;
+  }
+
+  .preview-grid{
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .preview-card{
+    min-width: min(60vw, 220px);
+    scroll-snap-align: start;
   }
 }
 
