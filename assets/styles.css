@@ -756,3 +756,133 @@ textarea:focus{
   height: auto;
   object-fit: contain;
 }
+
+/* =========================
+   Video Flow Builder
+   ========================= */
+
+.flow-page{
+  max-width: 1320px;
+}
+
+.flow-toolbar{
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.02);
+  border-radius: 14px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.flow-control-row{
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.flow-control-row label{
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.flow-actions{
+  display: flex;
+  gap: 10px;
+}
+
+.ghost{
+  background: transparent;
+}
+
+.flow-canvas{
+  position: relative;
+  min-height: 72vh;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    #1d1d1d;
+  overflow: auto;
+}
+
+.flow-edges{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flow-edge{
+  fill: none;
+  stroke: rgba(242,242,242,.48);
+  stroke-width: 2;
+}
+
+.flow-node{
+  position: absolute;
+  width: 180px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 8px 18px rgba(0,0,0,.2);
+}
+
+.flow-node.is-selected{
+  border-color: rgba(242,242,242,.5);
+  box-shadow: 0 0 0 2px rgba(242,242,242,.2);
+}
+
+.flow-node__inner{
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.flow-node img{
+  width: 100%;
+  height: 102px;
+  object-fit: cover;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  display: block;
+}
+
+.flow-node span{
+  display: block;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.2;
+  max-height: 45px;
+  overflow: hidden;
+  color: var(--text);
+}
+
+.flow-modal-card{
+  width: min(1100px, 96vw);
+}
+
+.flow-upload-player{
+  margin-top: 12px;
+}
+
+.flow-upload-player video{
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+@media (max-width: 900px){
+  .flow-control-row{
+    grid-template-columns: 1fr;
+  }
+
+  .flow-node{
+    width: 165px;
+  }
+}

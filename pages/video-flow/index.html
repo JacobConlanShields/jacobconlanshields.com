@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Video Flow Builder</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="flow-page">
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/video-flow/">Video Flow Builder</a>
+      <span class="dot">•</span>
+      <a href="/pages/podcast/">Podcast</a>
+    </p>
+
+    <h1>Video Flow Builder</h1>
+    <p class="lede">Build a visual map of your YouTube videos. Drag thumbnails, branch ideas, and click nodes to watch.</p>
+
+    <section class="flow-toolbar" aria-label="Flow controls">
+      <div class="flow-control-row">
+        <label for="playlistUrl">Playlist URL</label>
+        <input id="playlistUrl" type="text" placeholder="https://www.youtube.com/playlist?list=..." />
+        <button id="loadPlaylistBtn" type="button">Load Playlist</button>
+      </div>
+      <div class="flow-control-row">
+        <label for="videoUrl">Single YouTube Video</label>
+        <input id="videoUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+        <button id="addVideoBtn" type="button">Add Video Node</button>
+      </div>
+      <div class="flow-control-row">
+        <label for="localVideo">Local Video File</label>
+        <input id="localVideo" type="file" accept="video/*" />
+        <button id="addUploadBtn" type="button">Add Upload Node</button>
+      </div>
+      <div class="flow-actions">
+        <button id="branchBtn" type="button" disabled>Add Branch from Selected Node</button>
+        <button id="clearBtn" type="button" class="ghost">Clear Canvas</button>
+      </div>
+      <p id="flowStatus" class="status" aria-live="polite">No nodes yet.</p>
+    </section>
+
+    <section id="flowCanvas" class="flow-canvas" aria-label="Video flow canvas">
+      <svg id="edgeLayer" class="flow-edges" aria-hidden="true"></svg>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <div class="modal-card flow-modal-card">
+      <button type="button" class="modal-close" id="closeModal" aria-label="Close player">✕</button>
+      <h2 id="modalTitle">Video</h2>
+      <div class="player-wrap" id="youtubePlayerWrap"></div>
+      <div class="flow-upload-player" id="uploadPlayerWrap" hidden>
+        <video id="uploadVideoPlayer" controls preload="metadata"></video>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      nodes: [],
+      edges: [],
+      selectedNodeId: null,
+      nodeCounter: 0
+    };
+
+    const flowCanvas = document.getElementById('flowCanvas');
+    const edgeLayer = document.getElementById('edgeLayer');
+    const flowStatus = document.getElementById('flowStatus');
+    const branchBtn = document.getElementById('branchBtn');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const youtubePlayerWrap = document.getElementById('youtubePlayerWrap');
+    const uploadPlayerWrap = document.getElementById('uploadPlayerWrap');
+    const uploadVideoPlayer = document.getElementById('uploadVideoPlayer');
+
+    function status(message) {
+      flowStatus.textContent = message;
+    }
+
+    function getYouTubeVideoId(url) {
+      if (!url) return null;
+      try {
+        const parsed = new URL(url.trim());
+        if (parsed.hostname.includes('youtu.be')) {
+          return parsed.pathname.replace('/', '') || null;
+        }
+        if (parsed.searchParams.get('v')) {
+          return parsed.searchParams.get('v');
+        }
+        const pathParts = parsed.pathname.split('/').filter(Boolean);
+        if (pathParts[0] === 'shorts' && pathParts[1]) {
+          return pathParts[1];
+        }
+      } catch (error) {
+        return null;
+      }
+      return null;
+    }
+
+    function getPlaylistId(url) {
+      if (!url) return null;
+      try {
+        const parsed = new URL(url.trim());
+        return parsed.searchParams.get('list');
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function makeNode({ title, videoId = null, thumbnail = '', type = 'youtube', src = null, x = 80, y = 80 }) {
+      const node = {
+        id: `node-${++state.nodeCounter}`,
+        title,
+        videoId,
+        thumbnail,
+        type,
+        src,
+        x,
+        y
+      };
+      state.nodes.push(node);
+      return node;
+    }
+
+    function createNodeElement(node) {
+      const el = document.createElement('article');
+      el.className = 'flow-node';
+      el.dataset.nodeId = node.id;
+      el.style.left = `${node.x}px`;
+      el.style.top = `${node.y}px`;
+      el.innerHTML = `
+        <button type="button" class="flow-node__inner" data-open-node="true" aria-label="Open ${node.title}">
+          <img src="${node.thumbnail}" alt="${node.title}" />
+          <span>${node.title}</span>
+        </button>
+      `;
+
+      const inner = el.querySelector('.flow-node__inner');
+      inner.addEventListener('click', () => openNode(node.id));
+
+      let dragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      el.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('[data-open-node="true"]')) {
+          event.preventDefault();
+        }
+        dragging = true;
+        selectNode(node.id);
+        offsetX = event.clientX - el.offsetLeft;
+        offsetY = event.clientY - el.offsetTop;
+        el.setPointerCapture(event.pointerId);
+      });
+
+      el.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        const nextX = Math.max(10, event.clientX - offsetX);
+        const nextY = Math.max(10, event.clientY - offsetY);
+        node.x = nextX;
+        node.y = nextY;
+        el.style.left = `${nextX}px`;
+        el.style.top = `${nextY}px`;
+        drawEdges();
+      });
+
+      el.addEventListener('pointerup', (event) => {
+        dragging = false;
+        el.releasePointerCapture(event.pointerId);
+      });
+
+      el.addEventListener('click', () => selectNode(node.id));
+      flowCanvas.appendChild(el);
+    }
+
+    function nodeCenter(node) {
+      return { x: node.x + 90, y: node.y + 68 };
+    }
+
+    function drawEdges() {
+      const width = flowCanvas.clientWidth;
+      const height = flowCanvas.clientHeight;
+      edgeLayer.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      edgeLayer.innerHTML = '';
+
+      for (const edge of state.edges) {
+        const from = state.nodes.find((n) => n.id === edge.from);
+        const to = state.nodes.find((n) => n.id === edge.to);
+        if (!from || !to) continue;
+
+        const start = nodeCenter(from);
+        const end = nodeCenter(to);
+        const dx = Math.abs(end.x - start.x) * 0.4;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`);
+        path.setAttribute('class', 'flow-edge');
+        edgeLayer.appendChild(path);
+      }
+    }
+
+    function selectNode(nodeId) {
+      state.selectedNodeId = nodeId;
+      const elements = flowCanvas.querySelectorAll('.flow-node');
+      for (const el of elements) {
+        el.classList.toggle('is-selected', el.dataset.nodeId === nodeId);
+      }
+      branchBtn.disabled = !nodeId;
+      const selected = state.nodes.find((node) => node.id === nodeId);
+      if (selected) {
+        status(`Selected: ${selected.title}`);
+      }
+    }
+
+    function addNodeFromVideoUrl() {
+      const input = document.getElementById('videoUrl');
+      const videoId = getYouTubeVideoId(input.value);
+      if (!videoId) {
+        status('Could not parse that YouTube URL.');
+        return;
+      }
+      const node = makeNode({
+        title: `Video ${state.nodes.length + 1}`,
+        videoId,
+        thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        x: 50 + (state.nodes.length % 4) * 210,
+        y: 80 + Math.floor(state.nodes.length / 4) * 170
+      });
+      createNodeElement(node);
+      selectNode(node.id);
+      drawEdges();
+      status('Video node added. Drag it into position.');
+      input.value = '';
+    }
+
+    async function loadPlaylist() {
+      const input = document.getElementById('playlistUrl');
+      const playlistId = getPlaylistId(input.value);
+      if (!playlistId) {
+        status('Could not read playlist ID from URL.');
+        return;
+      }
+
+      status('Loading playlist...');
+      try {
+        const feedUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+        const proxyUrl = `/yt?url=${encodeURIComponent(feedUrl)}`;
+        const response = await fetch(proxyUrl);
+        if (!response.ok) {
+          throw new Error('Playlist request failed.');
+        }
+        const xmlText = await response.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlText, 'application/xml');
+        const entries = [...xml.querySelectorAll('entry')];
+
+        if (!entries.length) {
+          status('Playlist loaded but no entries found.');
+          return;
+        }
+
+        const startX = 60;
+        const startY = 80 + Math.floor(state.nodes.length / 4) * 180;
+
+        entries.slice(0, 20).forEach((entry, index) => {
+          const videoId = entry.querySelector('video\\:videoId, videoId')?.textContent?.trim();
+          const title = entry.querySelector('title')?.textContent?.trim() || 'Untitled video';
+          if (!videoId) return;
+          const node = makeNode({
+            title,
+            videoId,
+            thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            x: startX + (index % 5) * 200,
+            y: startY + Math.floor(index / 5) * 170
+          });
+          createNodeElement(node);
+        });
+
+        drawEdges();
+        status(`Loaded ${Math.min(entries.length, 20)} videos. Drag to arrange.`);
+        input.value = '';
+      } catch (error) {
+        status('Could not load playlist feed. If running locally, use `wrangler pages dev .` to enable /yt.');
+      }
+    }
+
+    function addUploadNode() {
+      const fileInput = document.getElementById('localVideo');
+      const file = fileInput.files?.[0];
+      if (!file) {
+        status('Choose a video file first.');
+        return;
+      }
+
+      const node = makeNode({
+        title: file.name,
+        thumbnail: 'https://placehold.co/640x360/202020/f2f2f2?text=Uploaded+Video',
+        type: 'upload',
+        src: URL.createObjectURL(file),
+        x: 70 + (state.nodes.length % 4) * 210,
+        y: 90 + Math.floor(state.nodes.length / 4) * 170
+      });
+
+      createNodeElement(node);
+      selectNode(node.id);
+      drawEdges();
+      status('Upload node added.');
+      fileInput.value = '';
+    }
+
+    function addBranchNode() {
+      if (!state.selectedNodeId) {
+        status('Select a node first.');
+        return;
+      }
+      const parent = state.nodes.find((n) => n.id === state.selectedNodeId);
+      if (!parent) return;
+
+      const child = makeNode({
+        title: `${parent.title} branch`,
+        videoId: parent.videoId,
+        thumbnail: parent.thumbnail,
+        type: parent.type,
+        src: parent.src,
+        x: parent.x + 220,
+        y: parent.y + 120
+      });
+      state.edges.push({ from: parent.id, to: child.id });
+      createNodeElement(child);
+      selectNode(child.id);
+      drawEdges();
+      status('Branch created. Drag the new node to refine the path.');
+    }
+
+    function openNode(nodeId) {
+      const node = state.nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      modalTitle.textContent = node.title;
+
+      youtubePlayerWrap.innerHTML = '';
+      uploadVideoPlayer.pause();
+      uploadVideoPlayer.removeAttribute('src');
+
+      if (node.type === 'upload' && node.src) {
+        uploadPlayerWrap.hidden = false;
+        youtubePlayerWrap.hidden = true;
+        uploadVideoPlayer.src = node.src;
+        uploadVideoPlayer.play().catch(() => {});
+      } else {
+        uploadPlayerWrap.hidden = true;
+        youtubePlayerWrap.hidden = false;
+        youtubePlayerWrap.innerHTML = `<iframe src="https://www.youtube.com/embed/${node.videoId}" title="${node.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+      }
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      youtubePlayerWrap.innerHTML = '';
+      uploadVideoPlayer.pause();
+      uploadVideoPlayer.removeAttribute('src');
+    }
+
+    function clearCanvas() {
+      state.nodes = [];
+      state.edges = [];
+      state.selectedNodeId = null;
+      flowCanvas.querySelectorAll('.flow-node').forEach((node) => node.remove());
+      drawEdges();
+      branchBtn.disabled = true;
+      status('Canvas cleared.');
+    }
+
+    document.getElementById('addVideoBtn').addEventListener('click', addNodeFromVideoUrl);
+    document.getElementById('loadPlaylistBtn').addEventListener('click', loadPlaylist);
+    document.getElementById('addUploadBtn').addEventListener('click', addUploadNode);
+    document.getElementById('branchBtn').addEventListener('click', addBranchNode);
+    document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+    document.getElementById('closeModal').addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+      if (event.target.matches('[data-close-modal="true"]')) {
+        closeModal();
+      }
+    });
+
+    window.addEventListener('resize', drawEdges);
+    drawEdges();
+  </script>
+</body>
+</html>
