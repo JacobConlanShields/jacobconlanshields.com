@@ -168,10 +168,71 @@
     // YouTube playlist feed (XML)
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // Cloudflare Worker proxy (CORS-safe).
-    // This avoids browser CORS errors when fetching YouTube XML feeds.
-    const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
-    const PROXY = (url) => WORKER_PROXY + encodeURIComponent(url);
+    // Multiple proxy endpoints for durability.
+    // We first try same-origin Pages Functions, then external workers.
+    const PROXY_ENDPOINTS = [
+      "/yt?url=",
+      "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=",
+      "https://yt.jacobconlanshields.workers.dev/?url=",
+    ];
+
+    function cacheKeyForPlaylist(playlistId) {
+      return `qv_podcast_cache_v1:${playlistId}`;
+    }
+
+    function readCachedItems(playlistId) {
+      try {
+        const raw = localStorage.getItem(cacheKeyForPlaylist(playlistId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed?.items)) return null;
+        return parsed.items;
+      } catch {
+        return null;
+      }
+    }
+
+    function writeCachedItems(playlistId, items) {
+      try {
+        localStorage.setItem(cacheKeyForPlaylist(playlistId), JSON.stringify({
+          savedAt: Date.now(),
+          items,
+        }));
+      } catch {
+        // Ignore storage quota/privacy mode errors; network path still works.
+      }
+    }
+
+    async function fetchWithTimeout(url, timeoutMs = 8000) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const resp = await fetch(url, { signal: ctrl.signal });
+        return resp;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function fetchPlaylistXmlResilient(playlistId) {
+      const feedUrl = FEED(playlistId);
+      const errors = [];
+
+      for (const proxy of PROXY_ENDPOINTS) {
+        const url = proxy + encodeURIComponent(feedUrl);
+        try {
+          const resp = await fetchWithTimeout(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const xml = await resp.text();
+          if (!xml || !xml.trim().startsWith("<?xml")) throw new Error("Non-XML response");
+          return { xml, source: proxy };
+        } catch (err) {
+          errors.push(`${proxy} -> ${String(err?.message || err)}`);
+        }
+      }
+
+      throw new Error(`All feed endpoints failed. ${errors.join(" | ")}`);
+    }
 
     function escapeHtml(s) {
       // Basic HTML escaping for titles injected into the page.
@@ -223,10 +284,7 @@
       status.textContent = "Loading…";
 
       try {
-        const resp = await fetch(PROXY(FEED(playlistId)));
-        if (!resp.ok) throw new Error(`Feed error: ${resp.status}`);
-        const xml = await resp.text();
-
+        const { xml, source } = await fetchPlaylistXmlResilient(playlistId);
         const items = parseFeed(xml).slice(0, limit);
 
         if (!items.length) {
@@ -236,9 +294,18 @@
         }
 
         row.innerHTML = items.map(cardHTML).join("");
+        writeCachedItems(playlistId, items);
         status.textContent = "";
+        row.dataset.feedSource = source;
       } catch (err) {
-        status.textContent = "Could not load videos right now.";
+        const cached = readCachedItems(playlistId);
+        if (cached?.length) {
+          row.innerHTML = cached.slice(0, limit).map(cardHTML).join("");
+          status.textContent = "Live feed unavailable — showing last saved videos.";
+          row.dataset.feedSource = "cache";
+        } else {
+          status.textContent = "Could not load videos right now.";
+        }
         console.error(err);
       }
     }
