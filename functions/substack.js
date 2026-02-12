@@ -17,7 +17,7 @@ export async function onRequest(context) {
       "www.substack.com",
     ]);
 
-    if (!allowedHosts.has(t.hostname)) {
+    if (t.protocol !== "https:" || !allowedHosts.has(t.hostname)) {
       return new Response("Blocked host", { status: 403 });
     }
 
@@ -50,6 +50,7 @@ export async function onRequest(context) {
         "Content-Type": "application/xml; charset=utf-8",
         // cache for 5 minutes at the edge
         "Cache-Control": "public, max-age=300",
+        "X-Content-Type-Options": "nosniff",
         // If you ever need to fetch this from other domains later:
         "Access-Control-Allow-Origin": "*",
       },

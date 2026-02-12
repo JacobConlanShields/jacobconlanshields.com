@@ -43,7 +43,7 @@
 
         <a class="btn"
            href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
-           target="_blank" rel="noopener">
+           target="_blank" rel="noopener noreferrer">
           Open on YouTube
         </a>
 
@@ -324,6 +324,9 @@
     const playerWrap = document.getElementById("playerWrap");
 
     function openPlayer(videoId) {
+      // Only allow expected YouTube IDs before injecting into iframe src.
+      if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId || "")) return;
+
       // When a card is clicked, swap in an iframe with autoplay.
       modal.setAttribute("aria-hidden", "false");
       modal.classList.add("open");
