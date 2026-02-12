@@ -168,10 +168,27 @@
     // YouTube playlist feed (XML)
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // Cloudflare Worker proxy (CORS-safe).
-    // This avoids browser CORS errors when fetching YouTube XML feeds.
+    // Proxy options (CORS-safe).
+    // Prefer local Pages Function (/yt), then fall back to dedicated Worker.
     const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
-    const PROXY = (url) => WORKER_PROXY + encodeURIComponent(url);
+    const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
+    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+
+    async function fetchFeedViaProxy(feedUrl) {
+      let lastErr = null;
+
+      for (const proxyBase of PROXIES) {
+        try {
+          const resp = await fetch(proxyBase + encodeURIComponent(feedUrl));
+          if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
+          return await resp.text();
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+
+      throw lastErr || new Error("Unable to load feed through available proxies.");
+    }
 
     function escapeHtml(s) {
       // Basic HTML escaping for titles injected into the page.
@@ -223,9 +240,7 @@
       status.textContent = "Loading…";
 
       try {
-        const resp = await fetch(PROXY(FEED(playlistId)));
-        if (!resp.ok) throw new Error(`Feed error: ${resp.status}`);
-        const xml = await resp.text();
+        const xml = await fetchFeedViaProxy(FEED(playlistId));
 
         const items = parseFeed(xml).slice(0, limit);
 
