@@ -801,10 +801,6 @@ textarea:focus{
   background: transparent;
 }
 
-button.is-active{
-  background: rgba(255,255,255,.14);
-}
-
 .flow-layout{
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
@@ -862,9 +858,7 @@ button.is-active{
   cursor: grab;
 }
 
-.video-bank-card:active{
-  cursor: grabbing;
-}
+.video-bank-card:active{ cursor: grabbing; }
 
 .video-bank-card img{
   width: 100%;
@@ -903,20 +897,41 @@ button.is-active{
   right: 12px;
   color: var(--muted);
   font-size: 0.82rem;
+  z-index: 1;
 }
 
 .flow-edges{
   position: absolute;
   inset: 0;
-  width: 2000px;
-  height: 1500px;
+  width: 2200px;
+  height: 1600px;
   pointer-events: none;
 }
 
-.flow-edge{
+.flow-edge,
+.flow-edge-preview{
   fill: none;
-  stroke: rgba(242,242,242,.5);
   stroke-width: 2;
+  marker-end: url(#arrowhead);
+}
+
+.flow-edge{
+  stroke: rgba(242,242,242,.55);
+}
+
+.flow-edge-preview{
+  stroke: rgba(138,157,255,.92);
+  stroke-dasharray: 6 6;
+}
+
+.flow-preview-target{
+  position: absolute;
+  width: 170px;
+  height: 90px;
+  border: 2px dashed rgba(138,157,255,.9);
+  border-radius: 999px;
+  background: rgba(138,157,255,.08);
+  pointer-events: none;
 }
 
 .flow-node{
@@ -929,8 +944,8 @@ button.is-active{
 }
 
 .flow-node.is-selected{
-  border-color: rgba(242,242,242,.65);
-  box-shadow: 0 0 0 2px rgba(242,242,242,.2);
+  border-color: rgba(138,157,255,.8);
+  box-shadow: 0 0 0 2px rgba(138,157,255,.25);
 }
 
 .flow-node img{
@@ -958,7 +973,7 @@ button.is-active{
 
 .flow-node__actions{
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 6px;
 }
 
@@ -968,26 +983,45 @@ button.is-active{
   border-radius: 8px;
 }
 
-.flow-modal-card{
-  width: min(1100px, 96vw);
+.flow-node__connector{
+  position: absolute;
+  right: -18px;
+  top: calc(50% - 17px);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(138,157,255,.75);
+  background: rgba(74,96,235,.95);
+  color: #eef1ff;
+  font-size: 20px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity .15s ease, transform .15s ease, box-shadow .15s ease;
 }
 
-@media (max-width: 1100px){
-  .flow-layout{
-    grid-template-columns: 1fr;
-  }
+.flow-node:hover .flow-node__connector,
+.flow-node.is-selected .flow-node__connector,
+.flow-node__connector.is-active{
+  opacity: 1;
+}
 
-  .video-bank{
-    max-height: 320px;
-  }
+.flow-node__connector:hover,
+.flow-node__connector.is-active{
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(138,157,255,.25);
+}
+
+.flow-modal-card{ width: min(1100px, 96vw); }
+
+@media (max-width: 1100px){
+  .flow-layout{ grid-template-columns: 1fr; }
+  .video-bank{ max-height: 320px; }
 }
 
 @media (max-width: 900px){
-  .flow-control-row{
-    grid-template-columns: 1fr;
-  }
-
-  .flow-node{
-    width: 170px;
-  }
+  .flow-control-row{ grid-template-columns: 1fr; }
+  .flow-node{ width: 170px; }
+  .flow-node__connector{ right: -14px; }
 }
