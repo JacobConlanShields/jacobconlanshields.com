@@ -82,7 +82,8 @@
       bankCounter: 0,
       nodeCounter: 0,
       selectedNodeId: null,
-      pendingConnectFrom: null
+      pendingConnectFrom: null,
+      draggingBankId: null
     };
 
     const flowStatus = document.getElementById('flowStatus');
@@ -139,7 +140,10 @@
     }
 
     function getBankItemFromDrag(event) {
-      const bankId = event.dataTransfer?.getData('text/bank-id');
+      const bankId =
+        event.dataTransfer?.getData('text/bank-id') ||
+        event.dataTransfer?.getData('text/plain') ||
+        state.draggingBankId;
       if (!bankId) return null;
       return state.bankItems.find((item) => item.id === bankId) || null;
     }
@@ -164,11 +168,16 @@
 
         card.addEventListener('dragstart', (event) => {
           card.classList.add('is-dragging');
+          state.draggingBankId = item.id;
           event.dataTransfer.setData('text/bank-id', item.id);
+          event.dataTransfer.setData('text/plain', item.id);
           event.dataTransfer.effectAllowed = 'copy';
         });
 
-        card.addEventListener('dragend', () => card.classList.remove('is-dragging'));
+        card.addEventListener('dragend', () => {
+          state.draggingBankId = null;
+          card.classList.remove('is-dragging');
+        });
 
         card.querySelector('.video-bank-card__open').addEventListener('click', () => openVideo(item.title, item.videoId));
         videoBankList.appendChild(card);
@@ -428,6 +437,7 @@
         event.stopPropagation();
         el.classList.remove('is-drop-target');
         replaceNodeWithBankItem(node.id, bankItem);
+        state.draggingBankId = null;
       });
 
       el.addEventListener('click', () => {
@@ -571,6 +581,7 @@
       event.stopPropagation();
       previewTarget.classList.remove('is-drop-target');
       addBranchNodeFromPreviewDrop(bankItem);
+      state.draggingBankId = null;
     });
 
     flowCanvas.addEventListener('dragover', (event) => {
@@ -591,6 +602,7 @@
       } else {
         addNodeToCanvasFromBank(bankItem, event.clientX, event.clientY);
       }
+      state.draggingBankId = null;
     });
 
     flowCanvas.addEventListener('click', (event) => {
