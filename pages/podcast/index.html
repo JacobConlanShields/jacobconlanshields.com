@@ -6,6 +6,15 @@
   <title>Quality Values Podcast — Jacob Shields</title>
   <!-- Shared stylesheet handles the grid, cards, buttons, and modal. -->
   <link rel="stylesheet" href="/assets/styles.css" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-X00G23WVDJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-X00G23WVDJ');
+</script>
 </head>
 
 <body>
@@ -251,9 +260,18 @@
         }
 
         row.innerHTML = items.map(cardHTML).join("");
+        writeCachedItems(playlistId, items);
         status.textContent = "";
+        row.dataset.feedSource = source;
       } catch (err) {
-        status.textContent = "Could not load videos right now.";
+        const cached = readCachedItems(playlistId);
+        if (cached?.length) {
+          row.innerHTML = cached.slice(0, limit).map(cardHTML).join("");
+          status.textContent = "Live feed unavailable — showing last saved videos.";
+          row.dataset.feedSource = "cache";
+        } else {
+          status.textContent = "Could not load videos right now.";
+        }
         console.error(err);
       }
     }
@@ -288,6 +306,14 @@
 
       if (axis === "y") {
         const card = el.querySelector(".card");
+        const isMobile = window.matchMedia("(max-width: 900px)").matches;
+
+        if (isMobile) {
+          const step = card ? (card.getBoundingClientRect().width + 10) : 220;
+          el.scrollBy({ left: dir * step, behavior: "smooth" });
+          return;
+        }
+
         const step = card ? (card.getBoundingClientRect().height + 10) : 220;
         el.scrollBy({ top: dir * step, behavior: "smooth" });
       } else {

@@ -39,6 +39,7 @@ html, body{
   color: var(--text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.55;
+  overflow-x: hidden;
 }
 
 main{
@@ -75,6 +76,7 @@ hr, .tight-hr{
   display:flex;
   gap:10px;
   align-items:center;
+  flex-wrap: wrap;
   margin: 0 0 14px;
 }
 .nav .dot{ opacity: .5; }
@@ -89,6 +91,7 @@ button{
   color: var(--text);
   cursor: pointer;
   font: inherit;
+  min-height: 42px;
 }
 
 .btn{ text-decoration: none; }
@@ -169,7 +172,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--clips-col-w);
   gap: var(--gutter);
-  align-items: start; /* key change 2x */
+  align-items: stretch;
 }
 
 /* critical: stops left side from blowing up the grid */
@@ -178,15 +181,11 @@ button:hover{ background: rgba(255,255,255,.06); }
 .top-right{
   width: var(--clips-col-w);
   justify-self: end;
-
-  position: sticky;
-  top: 18px;
-  align-self: start;                 /* ✅ sticky works reliably in grid */
-  height: calc(100vh - 36px);
+  align-self: stretch;
 
   display: flex;
   flex-direction: column;
-  min-height: 0;                     /* ✅ lets child scroller shrink */
+  min-height: 0;
 }
 
 /* Step B: keep the clips header + status from stretching */
@@ -382,6 +381,149 @@ textarea:focus{
   border: 0;
 }
 
+.reader-wrap{
+  margin-top: 36px;
+  height: 70vh;
+}
+
+.reader-wrap iframe{
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: #111;
+}
+
+/* =========================
+   Writing page preview strip
+   ========================= */
+
+.preview-wrap{
+  margin: 12px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.02);
+}
+
+.preview-head{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.preview-title{
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.preview-link{
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.preview-grid{
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.preview-card{
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+  background: var(--panel);
+}
+
+.preview-card img{
+  width: 100%;
+  border-radius: 8px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-page{
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.preview-card--cta{
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  min-height: 220px;
+}
+
+.preview-arrow{
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.substack-carousel{
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.substack-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.substack-title{
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.substack-controls{
+  display: flex;
+  gap: 8px;
+}
+
+.substack-track{
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.substack-entry{
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  text-decoration: none;
+  scroll-snap-align: start;
+}
+
+.substack-entry__title{
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.substack-entry__meta{
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 /* =========================
    Mobile
    Stack columns; clips become horizontal swipe
@@ -391,7 +533,45 @@ textarea:focus{
 @media (max-width: 900px){
   :root{
     --clips-col-w: 100%;
-    --card-w: 250px;
+    --card-w: min(78vw, 300px);
+  }
+
+  main,
+  .ebook-page{
+    margin: 14px auto;
+    padding: 0 14px;
+  }
+
+  h1{
+    font-size: clamp(1.45rem, 6.2vw, 1.9rem);
+    line-height: 1.15;
+  }
+
+  h2{
+    font-size: clamp(1.1rem, 5.1vw, 1.35rem);
+    line-height: 1.2;
+  }
+
+  p{
+    font-size: 0.97rem;
+  }
+
+  .row-head{
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .row-title{
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .row-controls{
+    flex-shrink: 0;
+  }
+
+  .status{
+    font-size: 12px;
   }
 
   .podcast-topgrid{
@@ -417,8 +597,39 @@ textarea:focus{
   }
 
   .clips-rail .card{
-    width: 200px;
+    width: min(52vw, 220px);
     scroll-snap-align: start;
+  }
+
+  .preview-head,
+  .substack-head{
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .substack-track{
+    grid-auto-columns: minmax(78vw, 1fr);
+  }
+
+  .modal-card{
+    width: min(100vw - 18px, 1000px);
+    margin-top: 3vh;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .modal-close{
+    width: 40px;
+    height: 40px;
+  }
+
+  .player-wrap,
+  .reader-wrap{
+    margin-top: 32px;
+  }
+
+  .reader-wrap{
+    height: 72vh;
   }
 }
 /* =========================
@@ -516,7 +727,47 @@ textarea:focus{
   }
 
   .page img{
-    max-height: calc(100vh - 360px);
+    max-height: calc(100vh - 300px);
+  }
+}
+
+@media (max-width: 600px){
+  .nav{
+    gap: 8px;
+  }
+
+  .nav .dot{
+    display: none;
+  }
+
+  .btn,
+  button{
+    width: 100%;
+    justify-content: center;
+  }
+
+  .icon-btn{
+    width: 40px;
+    min-width: 40px;
+  }
+
+  .row-controls .icon-btn,
+  .substack-controls .icon-btn{
+    width: 38px;
+    min-width: 38px;
+  }
+
+  .preview-grid{
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .preview-card{
+    min-width: min(60vw, 220px);
+    scroll-snap-align: start;
   }
 }
 

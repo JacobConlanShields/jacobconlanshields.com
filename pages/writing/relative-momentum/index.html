@@ -89,6 +89,7 @@
     }
 
     .page-frame {
+      touch-action: pan-y;
       border: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(0, 0, 0, 0.2);
       padding: 6px;
@@ -369,8 +370,33 @@
       .viewer {
         --page-max-height: 380px;
       }
+
+      .viewer-controls {
+        margin-left: 0;
+      }
+
+      .buy-row {
+        align-items: stretch;
+      }
+
+      .buy-row .btn {
+        width: 100%;
+      }
+
+      .progress-slider {
+        height: 12px;
+      }
     }
   </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-X00G23WVDJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-X00G23WVDJ');
+</script>
 </head>
 
 <body>
@@ -379,6 +405,8 @@
       <a href="/">Home</a>
       <span class="dot">•</span>
       <a href="/pages/writing/">Writing</a>
+      <span class="dot">•</span>
+      <a href="/pages/podcast/">Podcast</a>
       <span class="dot">•</span>
       <a href="/contact/">Contact</a>
     </p>
@@ -471,6 +499,8 @@
     let currentPage = 1;
     let lastWheelTime = 0;
     let lastDirection = "forward";
+    let touchStartX = 0;
+    let touchStartY = 0;
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
@@ -684,6 +714,37 @@
 
     spread.addEventListener("wheel", handleWheel, { passive: false });
     fullscreenSpread.addEventListener("wheel", handleWheel, { passive: false });
+
+
+    const handleTouchStart = (event) => {
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    };
+
+    const handleTouchEnd = (event) => {
+      const touch = event.changedTouches?.[0];
+      if (!touch) return;
+
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+
+      if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY)) {
+        return;
+      }
+
+      if (deltaX < 0) {
+        goNext();
+      } else {
+        goPrev();
+      }
+    };
+
+    [spread, fullscreenSpread].forEach((targetSpread) => {
+      targetSpread.addEventListener("touchstart", handleTouchStart, { passive: true });
+      targetSpread.addEventListener("touchend", handleTouchEnd, { passive: true });
+    });
 
     window.addEventListener("hashchange", () => {
       goToPage(parseHash());
