@@ -172,7 +172,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--clips-col-w);
   gap: var(--gutter);
-  align-items: start; /* key change 2x */
+  align-items: stretch;
 }
 
 /* critical: stops left side from blowing up the grid */
@@ -181,15 +181,11 @@ button:hover{ background: rgba(255,255,255,.06); }
 .top-right{
   width: var(--clips-col-w);
   justify-self: end;
-
-  position: sticky;
-  top: 18px;
-  align-self: start;                 /* ✅ sticky works reliably in grid */
-  height: calc(100vh - 36px);
+  align-self: stretch;
 
   display: flex;
   flex-direction: column;
-  min-height: 0;                     /* ✅ lets child scroller shrink */
+  min-height: 0;
 }
 
 /* Step B: keep the clips header + status from stretching */
