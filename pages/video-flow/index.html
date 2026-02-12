@@ -19,7 +19,7 @@
     </p>
 
     <h1>Video Flow Builder</h1>
-    <p class="lede">Load playlists into a video bank, drag videos onto the canvas, and connect them with Lucidchart-style branching arrows.</p>
+    <p class="lede">Drag videos from your bank to the canvas, replace nodes by dropping over them, and fill branch previews by dropping directly onto the preview box.</p>
 
     <section class="flow-toolbar" aria-label="Video bank and flow controls">
       <div class="flow-control-row flow-control-row--stack">
@@ -58,7 +58,7 @@
           </defs>
         </svg>
         <div id="previewTarget" class="flow-preview-target" hidden></div>
-        <div class="flow-canvas__hint">Drag from bank. Use node arrow button to branch.</div>
+        <div class="flow-canvas__hint">Drop on canvas to add, on node to replace, on preview box to fill branch.</div>
       </section>
     </section>
   </main>
@@ -157,7 +157,9 @@
         card.addEventListener('dragstart', (event) => {
           event.dataTransfer.setData('text/bank-id', item.id);
           event.dataTransfer.effectAllowed = 'copy';
+          flowCanvas.classList.add('is-drag-active');
         });
+        card.addEventListener('dragend', clearDragIndicators);
 
         card.querySelector('.video-bank-card__open').addEventListener('click', () => openVideo(item.title, item.videoId));
         videoBankList.appendChild(card);
@@ -221,14 +223,7 @@
     }
 
     function makeNode({ title, videoId, thumbnail, x, y }) {
-      const node = {
-        id: `node-${++state.nodeCounter}`,
-        title,
-        videoId,
-        thumbnail,
-        x,
-        y
-      };
+      const node = { id: `node-${++state.nodeCounter}`, title, videoId, thumbnail, x, y };
       state.nodes.push(node);
       return node;
     }
@@ -247,8 +242,8 @@
     }
 
     function renderEdges() {
-      const width = Math.max(2000, flowCanvas.scrollWidth);
-      const height = Math.max(1500, flowCanvas.scrollHeight);
+      const width = Math.max(2200, flowCanvas.scrollWidth);
+      const height = Math.max(1600, flowCanvas.scrollHeight);
       edgeLayer.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
       edgeLayer.querySelectorAll('.flow-edge').forEach((edge) => edge.remove());
@@ -275,6 +270,8 @@
       const previewY = node.y + 15;
       previewTarget.style.left = `${previewX}px`;
       previewTarget.style.top = `${previewY}px`;
+      previewTarget.dataset.x = String(previewX);
+      previewTarget.dataset.y = String(previewY);
       previewTarget.hidden = false;
 
       const start = getNodeHandleAnchor(node);
@@ -290,7 +287,31 @@
 
     function clearPreview() {
       previewTarget.hidden = true;
+      previewTarget.classList.remove('is-drop-target');
       edgeLayer.querySelectorAll('.flow-edge-preview').forEach((edge) => edge.remove());
+    }
+
+
+    function findNodeElementAt(clientX, clientY) {
+      const elements = [...flowCanvas.querySelectorAll('.flow-node')];
+      for (const el of elements) {
+        const rect = el.getBoundingClientRect();
+        if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+          return el;
+        }
+      }
+      return null;
+    }
+
+    function isPointInPreviewTarget(clientX, clientY) {
+      if (previewTarget.hidden) return false;
+      const rect = previewTarget.getBoundingClientRect();
+      return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+    }
+    function clearDragIndicators() {
+      flowCanvas.classList.remove('is-drag-active');
+      flowCanvas.querySelectorAll('.flow-node').forEach((nodeEl) => nodeEl.classList.remove('is-drop-target'));
+      previewTarget.classList.remove('is-drop-target');
     }
 
     function selectNode(nodeId) {
@@ -307,7 +328,7 @@
       selectNode(nodeId);
       setPreviewAt(nodeId);
       flowCanvas.querySelector(`.flow-node[data-node-id="${nodeId}"] .flow-node__connector`)?.classList.add('is-active');
-      status('Connection started. Click another node to connect or click canvas to create a branch node.');
+      status('Connection started. Click another node to connect or drop a video in the preview box to fill a branch.');
     }
 
     function cancelConnect() {
@@ -334,6 +355,64 @@
       status(`Connected: ${fromNode?.title || 'Node'} → ${toNode?.title || 'Node'}`);
     }
 
+    function getDraggedVideo(event) {
+      const bankId = event.dataTransfer.getData('text/bank-id');
+      if (bankId) {
+        const bankItem = state.bankItems.find((item) => item.id === bankId);
+        if (bankItem) return { title: bankItem.title, videoId: bankItem.videoId, thumbnail: bankItem.thumbnail, source: 'bank' };
+      }
+
+      const sourceNodeId = event.dataTransfer.getData('text/node-id');
+      if (sourceNodeId) {
+        const sourceNode = state.nodes.find((node) => node.id === sourceNodeId);
+        if (sourceNode) return { title: sourceNode.title, videoId: sourceNode.videoId, thumbnail: sourceNode.thumbnail, source: 'node', sourceNodeId };
+      }
+
+      return null;
+    }
+
+    function updateNodeVideo(nodeId, draggedVideo) {
+      const node = state.nodes.find((item) => item.id === nodeId);
+      if (!node || !draggedVideo) return;
+      node.title = draggedVideo.title;
+      node.videoId = draggedVideo.videoId;
+      node.thumbnail = draggedVideo.thumbnail;
+
+      const nodeEl = flowCanvas.querySelector(`.flow-node[data-node-id="${node.id}"]`);
+      if (!nodeEl) return;
+      nodeEl.querySelector('img').src = node.thumbnail;
+      nodeEl.querySelector('img').alt = node.title;
+      nodeEl.querySelector('.flow-node__title').textContent = node.title;
+      nodeEl.querySelector('.flow-node__connector').setAttribute('aria-label', `Create connection from ${node.title}`);
+      status(`Replaced node video with "${node.title}".`);
+    }
+
+    function addBranchFromPreview(draggedVideo) {
+      if (!state.pendingConnectFrom || !draggedVideo) return;
+      const fromNode = state.nodes.find((node) => node.id === state.pendingConnectFrom);
+      if (!fromNode) {
+        cancelConnect();
+        return;
+      }
+
+      const previewX = Number(previewTarget.dataset.x || fromNode.x + 250);
+      const previewY = Number(previewTarget.dataset.y || fromNode.y + 15);
+
+      const newNode = makeNode({
+        title: draggedVideo.title,
+        videoId: draggedVideo.videoId,
+        thumbnail: draggedVideo.thumbnail,
+        x: Math.max(10, previewX),
+        y: Math.max(10, previewY)
+      });
+
+      createNodeElement(newNode);
+      connectNodes(fromNode.id, newNode.id);
+      selectNode(newNode.id);
+      cancelConnect();
+      status(`Created branch node from preview: "${newNode.title}".`);
+    }
+
     function createNodeElement(node) {
       const el = document.createElement('article');
       el.className = 'flow-node';
@@ -343,9 +422,10 @@
       el.innerHTML = `
         <img src="${node.thumbnail}" alt="${node.title}" />
         <div class="flow-node__meta">
-          <span>${node.title}</span>
+          <span class="flow-node__title">${node.title}</span>
           <div class="flow-node__actions">
             <button type="button" data-role="open">Open</button>
+            <button type="button" data-role="drag" draggable="true">Drag Video</button>
           </div>
         </div>
         <button type="button" class="flow-node__connector" aria-label="Create connection from ${node.title}">→</button>
@@ -409,26 +489,31 @@
         openVideo(node.title, node.videoId);
       });
 
+      const dragVideoBtn = el.querySelector('[data-role="drag"]');
+      dragVideoBtn.addEventListener('dragstart', (event) => {
+        event.dataTransfer.setData('text/node-id', node.id);
+        event.dataTransfer.effectAllowed = 'copy';
+        flowCanvas.classList.add('is-drag-active');
+      });
+      dragVideoBtn.addEventListener('dragend', clearDragIndicators);
+
       flowCanvas.appendChild(el);
     }
 
-    function addNodeToCanvasFromBank(bankId, dropX, dropY) {
-      const bankItem = state.bankItems.find((item) => item.id === bankId);
-      if (!bankItem) return;
-
+    function addNodeToCanvasFromVideo(video, clientX, clientY) {
       const rect = flowCanvas.getBoundingClientRect();
       const node = makeNode({
-        title: bankItem.title,
-        videoId: bankItem.videoId,
-        thumbnail: bankItem.thumbnail,
-        x: Math.max(10, dropX - rect.left + flowCanvas.scrollLeft - 95),
-        y: Math.max(10, dropY - rect.top + flowCanvas.scrollTop - 55)
+        title: video.title,
+        videoId: video.videoId,
+        thumbnail: video.thumbnail,
+        x: Math.max(10, clientX - rect.left + flowCanvas.scrollLeft - 95),
+        y: Math.max(10, clientY - rect.top + flowCanvas.scrollTop - 55)
       });
 
       createNodeElement(node);
       selectNode(node.id);
       renderEdges();
-      status(`Added "${bankItem.title}" to the flowchart.`);
+      status(`Added "${video.title}" to the flowchart.`);
     }
 
     function addBranchNodeFromCanvasClick(clientX, clientY) {
@@ -493,14 +578,50 @@
     }
 
     flowCanvas.addEventListener('dragover', (event) => {
+      const draggedVideo = getDraggedVideo(event);
+      if (!draggedVideo) return;
       event.preventDefault();
+      flowCanvas.classList.add('is-drag-active');
+
+      const nodeTarget = findNodeElementAt(event.clientX, event.clientY);
+      const isPreviewTarget = isPointInPreviewTarget(event.clientX, event.clientY);
+
+      flowCanvas.querySelectorAll('.flow-node').forEach((nodeEl) => nodeEl.classList.remove('is-drop-target'));
+      previewTarget.classList.remove('is-drop-target');
+
+      if (nodeTarget) {
+        nodeTarget.classList.add('is-drop-target');
+      } else if (isPreviewTarget) {
+        previewTarget.classList.add('is-drop-target');
+      }
       event.dataTransfer.dropEffect = 'copy';
     });
 
+    flowCanvas.addEventListener('dragleave', (event) => {
+      if (event.relatedTarget && flowCanvas.contains(event.relatedTarget)) return;
+      clearDragIndicators();
+    });
+
     flowCanvas.addEventListener('drop', (event) => {
+      const draggedVideo = getDraggedVideo(event);
+      if (!draggedVideo) return;
       event.preventDefault();
-      const bankId = event.dataTransfer.getData('text/bank-id');
-      if (bankId) addNodeToCanvasFromBank(bankId, event.clientX, event.clientY);
+
+      const nodeTarget = findNodeElementAt(event.clientX, event.clientY);
+      const isPreviewDrop = isPointInPreviewTarget(event.clientX, event.clientY);
+
+      if (isPreviewDrop && state.pendingConnectFrom) {
+        addBranchFromPreview(draggedVideo);
+      } else if (nodeTarget) {
+        const targetNodeId = nodeTarget.dataset.nodeId;
+        if (!(draggedVideo.source === 'node' && draggedVideo.sourceNodeId === targetNodeId)) {
+          updateNodeVideo(targetNodeId, draggedVideo);
+        }
+      } else {
+        addNodeToCanvasFromVideo(draggedVideo, event.clientX, event.clientY);
+      }
+
+      clearDragIndicators();
     });
 
     flowCanvas.addEventListener('click', (event) => {

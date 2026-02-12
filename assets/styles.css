@@ -931,9 +931,37 @@ textarea:focus{
   border: 2px dashed rgba(138,157,255,.9);
   border-radius: 999px;
   background: rgba(138,157,255,.08);
-  pointer-events: none;
+  pointer-events: auto;
+  z-index: 3;
 }
 
+.flow-preview-target[hidden]{
+  display:none;
+}
+
+
+
+.flow-canvas.is-drag-active{
+  box-shadow: inset 0 0 0 2px rgba(138,157,255,.25);
+}
+
+.flow-node.is-drop-target{
+  border-color: rgba(138,157,255,.95);
+  box-shadow: 0 0 0 3px rgba(138,157,255,.25);
+}
+
+.flow-preview-target.is-drop-target{
+  background: rgba(138,157,255,.18);
+  border-color: rgba(138,157,255,1);
+}
+
+.flow-node__actions [data-role="drag"]{
+  cursor: grab;
+}
+
+.flow-node__actions [data-role="drag"]:active{
+  cursor: grabbing;
+}
 .flow-node{
   position: absolute;
   width: 190px;
