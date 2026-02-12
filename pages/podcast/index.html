@@ -207,6 +207,25 @@
       }[c]));
     }
 
+    function normalizeYouTubeThumb(url, videoId) {
+      // Feed thumbnails may come from hosts like i1/i2/i4.ytimg.com, but CSP only allows i.ytimg.com.
+      // Normalize to a stable HTTPS host so cards render consistently.
+      const fallback = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      if (!url) return fallback;
+
+      try {
+        const absolute = new URL(url, window.location.origin);
+        const isYouTubeThumb = /(^|\.)ytimg\.com$/i.test(absolute.hostname);
+        if (!isYouTubeThumb) return absolute.href;
+
+        absolute.protocol = "https:";
+        absolute.hostname = "i.ytimg.com";
+        return absolute.href;
+      } catch {
+        return fallback;
+      }
+    }
+
     function parseFeed(xmlText) {
       // Turn YouTube's XML feed into a simple array of {title, videoId, thumb}.
       const doc = new DOMParser().parseFromString(xmlText, "text/xml");
@@ -220,7 +239,7 @@
           || "";
 
         const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
-        const thumb = feedThumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+        const thumb = normalizeYouTubeThumb(feedThumb, videoId);
 
         return { title, videoId, thumb };
       }).filter(x => x.videoId);
