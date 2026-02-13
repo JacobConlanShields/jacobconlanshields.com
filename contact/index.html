@@ -35,18 +35,19 @@
 
   gtag('config', 'G-X00G23WVDJ');
 </script>
+<script defer src="/assets/analytics.js"></script>
 </head>
 <body>
 
   <!-- Simple "top links" pattern so visitors can escape the page quickly. -->
   <div class="toplinks">
-    <a href="/">← Back to home</a> · <a href="/pages/projects/">Projects</a> · <a href="/pages/writing/">Writing</a> · <a href="/pages/podcast/">Podcast</a>
+    <a href="/" data-ga-event="nav_contact_to_home">← Back to home</a> · <a href="/pages/projects/" data-ga-event="nav_contact_to_projects">Projects</a> · <a href="/pages/writing/" data-ga-event="nav_contact_to_writing">Writing</a> · <a href="/pages/podcast/" data-ga-event="nav_contact_to_podcast">Podcast</a>
   </div>
 
   <h1>Contact</h1>
 
   <p>
-    Email: <a href="mailto:jacobconlanshields@gmail.com">jacobconlanshields@gmail.com</a>
+    Email: <a href="mailto:jacobconlanshields@gmail.com" data-ga-event="contact_email_link_click">jacobconlanshields@gmail.com</a>
   </p>
 
   <h2>Send a message</h2>
@@ -66,7 +67,7 @@
     <label for="message">Message (required)</label>
     <textarea id="message" name="message" required placeholder="Write your message..."></textarea>
 
-    <button type="submit">Open email draft</button>
+    <button type="submit" data-ga-event="contact_form_submit_open_email_draft">Open email draft</button>
     <p class="hint">If nothing happens, your browser may be blocking popups or you may not have a default mail app set.</p>
   </form>
 
@@ -94,8 +95,15 @@
         `?subject=${encodeURIComponent(subject || "Website contact")}` +
         `&body=${encodeURIComponent(bodyLines.join("\n"))}`;
 
+      window.JCSAnalytics?.trackEvent("contact_form_submission", {
+        has_subject: Boolean(subject),
+        message_length: message.length
+      });
+
       window.location.href = mailto;
     });
+
+    window.JCSAnalytics?.trackPageView("page_view_contacts", "contacts");
   </script>
 
 </body>
