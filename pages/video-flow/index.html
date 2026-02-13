@@ -83,7 +83,8 @@
       nodeCounter: 0,
       selectedNodeId: null,
       pendingConnectFrom: null,
-      draggingBankId: null
+      draggingBankId: null,
+      historyStack: []
     };
 
     const flowStatus = document.getElementById('flowStatus');
@@ -98,8 +99,47 @@
     const modalTitle = document.getElementById('modalTitle');
     const youtubePlayerWrap = document.getElementById('youtubePlayerWrap');
 
+
     function status(message) {
       flowStatus.textContent = message;
+    }
+
+    function snapshotState() {
+      return {
+        nodes: JSON.parse(JSON.stringify(state.nodes)),
+        edges: JSON.parse(JSON.stringify(state.edges)),
+        nodeCounter: state.nodeCounter,
+        selectedNodeId: state.selectedNodeId
+      };
+    }
+
+    function pushHistory() {
+      state.historyStack.push(snapshotState());
+      if (state.historyStack.length > 100) state.historyStack.shift();
+    }
+
+    function rebuildCanvasFromState() {
+      flowCanvas.querySelectorAll('.flow-node').forEach((nodeEl) => nodeEl.remove());
+      for (const node of state.nodes) {
+        createNodeElement(node);
+      }
+      selectNode(state.selectedNodeId);
+      renderEdges();
+    }
+
+    function undoLastChange() {
+      const previous = state.historyStack.pop();
+      if (!previous) {
+        status('Nothing to undo.');
+        return;
+      }
+      state.nodes = previous.nodes;
+      state.edges = previous.edges;
+      state.nodeCounter = previous.nodeCounter;
+      state.selectedNodeId = previous.selectedNodeId;
+      cancelConnect(true);
+      rebuildCanvasFromState();
+      status('Undid last change.');
     }
 
     function getYouTubeVideoId(url) {
@@ -297,6 +337,7 @@
       previewTarget.style.left = `${previewX}px`;
       previewTarget.style.top = `${previewY}px`;
       previewTarget.hidden = false;
+      renderPreviewDropContent(null);
 
       const start = getNodeHandleAnchor(node);
       const end = { x: previewX + 10, y: previewY + 45 };
@@ -309,9 +350,25 @@
       edgeLayer.appendChild(path);
     }
 
+
+    function renderPreviewDropContent(bankItem = null) {
+      if (!bankItem) {
+        previewTarget.classList.remove('is-filled');
+        previewTarget.innerHTML = '<span>Drop video here to create branch</span>';
+        return;
+      }
+
+      previewTarget.classList.add('is-filled');
+      previewTarget.innerHTML = `
+        <img src="${bankItem.thumbnail}" alt="${bankItem.title}" />
+        <span class="flow-preview-target__arrow">→</span>
+      `;
+    }
+
     function clearPreview() {
       previewTarget.hidden = true;
       previewTarget.classList.remove('is-drop-target');
+      renderPreviewDropContent(null);
       edgeLayer.querySelectorAll('.flow-edge-preview').forEach((edge) => edge.remove());
     }
 
@@ -341,14 +398,17 @@
       if (hadConnection && !silent) status('Connection canceled.');
     }
 
-    function connectNodes(fromId, toId) {
+    function connectNodes(fromId, toId, pushToHistory = true) {
       if (fromId === toId) {
         status('Choose a different destination node.');
         return;
       }
 
       const duplicate = state.edges.some((edge) => edge.from === fromId && edge.to === toId);
-      if (!duplicate) state.edges.push({ from: fromId, to: toId });
+      if (!duplicate) {
+        if (pushToHistory) pushHistory();
+        state.edges.push({ from: fromId, to: toId });
+      }
       renderEdges();
 
       const fromNode = state.nodes.find((node) => node.id === fromId);
@@ -360,6 +420,7 @@
       const node = state.nodes.find((item) => item.id === nodeId);
       if (!node || !bankItem) return;
 
+      pushHistory();
       node.title = bankItem.title;
       node.videoId = bankItem.videoId;
       node.thumbnail = bankItem.thumbnail;
@@ -442,7 +503,7 @@
 
       el.addEventListener('click', () => {
         if (state.pendingConnectFrom && state.pendingConnectFrom !== node.id) {
-          connectNodes(state.pendingConnectFrom, node.id);
+          connectNodes(state.pendingConnectFrom, node.id, false);
           cancelConnect(true);
           return;
         }
@@ -474,6 +535,7 @@
     }
 
     function addNodeToCanvasFromBank(bankItem, clientX, clientY) {
+      pushHistory();
       const rect = flowCanvas.getBoundingClientRect();
       const node = makeNode({
         title: bankItem.title,
@@ -498,6 +560,7 @@
         return;
       }
 
+      pushHistory();
       const rect = flowCanvas.getBoundingClientRect();
       const bankItem = overrideBankItem || {
         title: `${fromNode.title} branch`,
@@ -514,7 +577,7 @@
       });
 
       createNodeElement(newNode);
-      connectNodes(fromNode.id, newNode.id);
+      connectNodes(fromNode.id, newNode.id, false);
       cancelConnect(true);
       selectNode(newNode.id);
       status(`Branch created with "${bankItem.title}".`);
@@ -529,6 +592,7 @@
 
     function deleteSelectedNode() {
       if (!state.selectedNodeId) return;
+      pushHistory();
       const id = state.selectedNodeId;
       state.nodes = state.nodes.filter((node) => node.id !== id);
       state.edges = state.edges.filter((edge) => edge.from !== id && edge.to !== id);
@@ -541,6 +605,8 @@
     }
 
     function clearCanvas() {
+      if (!state.nodes.length && !state.edges.length) return;
+      pushHistory();
       state.nodes = [];
       state.edges = [];
       state.selectedNodeId = null;
@@ -570,9 +636,13 @@
       if (!bankItem || !state.pendingConnectFrom) return;
       event.preventDefault();
       previewTarget.classList.add('is-drop-target');
+      renderPreviewDropContent(bankItem);
     });
 
-    previewTarget.addEventListener('dragleave', () => previewTarget.classList.remove('is-drop-target'));
+    previewTarget.addEventListener('dragleave', () => {
+      previewTarget.classList.remove('is-drop-target');
+      renderPreviewDropContent(null);
+    });
 
     previewTarget.addEventListener('drop', (event) => {
       const bankItem = getBankItemFromDrag(event);
@@ -597,7 +667,7 @@
 
       if (state.pendingConnectFrom) {
         const node = addNodeToCanvasFromBank(bankItem, event.clientX, event.clientY);
-        connectNodes(state.pendingConnectFrom, node.id);
+        connectNodes(state.pendingConnectFrom, node.id, false);
         cancelConnect(true);
       } else {
         addNodeToCanvasFromBank(bankItem, event.clientX, event.clientY);
@@ -620,6 +690,28 @@
     document.getElementById('closeModal').addEventListener('click', closeVideo);
     modal.addEventListener('click', (event) => {
       if (event.target.matches('[data-close-modal="true"]')) closeVideo();
+    });
+
+
+    document.addEventListener('keydown', (event) => {
+      const target = event.target;
+      const isTypingTarget = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+
+      if (!isTypingTarget && (event.key === 'Backspace' || event.key === 'Delete')) {
+        if (state.selectedNodeId) {
+          event.preventDefault();
+          deleteSelectedNode();
+        }
+      }
+
+      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        undoLastChange();
+      }
     });
 
     window.addEventListener('resize', renderEdges);
