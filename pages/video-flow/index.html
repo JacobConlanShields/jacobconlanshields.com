@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Video Flow Builder</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="flow-page">
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/video-flow/">Video Flow Builder</a>
+      <span class="dot">•</span>
+      <a href="/pages/podcast/">Podcast</a>
+    </p>
+
+    <h1>Video Flow Builder</h1>
+    <p class="lede">Load playlists into a video bank, drag videos onto the canvas, then branch videos into an interconnected web.</p>
+
+    <section class="flow-toolbar" aria-label="Video bank and flow controls">
+      <div class="flow-control-row flow-control-row--stack">
+        <label for="playlistUrls">YouTube Playlist URLs (one per line)</label>
+        <textarea id="playlistUrls" rows="3" placeholder="https://www.youtube.com/playlist?list=...&#10;https://www.youtube.com/playlist?list=..."></textarea>
+      </div>
+      <div class="flow-control-row">
+        <label for="singleVideoUrl">Single YouTube Video URL</label>
+        <input id="singleVideoUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+        <button id="addVideoToBankBtn" type="button">Add to Video Bank</button>
+      </div>
+      <div class="flow-actions">
+        <button id="loadPlaylistsBtn" type="button">Load Playlist(s) to Video Bank</button>
+        <button id="cancelConnectBtn" type="button" class="ghost" disabled>Cancel Connection</button>
+        <button id="deleteSelectedBtn" type="button" class="ghost" disabled>Delete Selected Node</button>
+        <button id="clearCanvasBtn" type="button" class="ghost">Clear Flowchart</button>
+      </div>
+      <p id="flowStatus" class="status" aria-live="polite">Load a playlist to start building.</p>
+    </section>
+
+    <section class="flow-layout" aria-label="Video bank and flowchart workspace">
+      <aside class="video-bank" aria-label="Video bank">
+        <div class="video-bank__head">
+          <h2>Video Bank</h2>
+          <p>Drag thumbnails into the flowchart. Drop onto a node to replace it.</p>
+        </div>
+        <div id="videoBankList" class="video-bank__list"></div>
+      </aside>
+
+      <section id="flowCanvas" class="flow-canvas" aria-label="Flowchart canvas">
+        <svg id="edgeLayer" class="flow-edges" aria-hidden="true">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L8,4 L0,8 z" fill="rgba(242,242,242,.72)"></path>
+            </marker>
+          </defs>
+        </svg>
+        <div id="previewTarget" class="flow-preview-target" hidden>
+          <span>Drop video here to create branch</span>
+        </div>
+        <div class="flow-canvas__hint">Connector button → preview target → click/drop to branch.</div>
+      </section>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <div class="modal-card flow-modal-card">
+      <button type="button" class="modal-close" id="closeModal" aria-label="Close player">✕</button>
+      <h2 id="modalTitle">Video</h2>
+      <div class="player-wrap" id="youtubePlayerWrap"></div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      bankItems: [],
+      nodes: [],
+      edges: [],
+      bankCounter: 0,
+      nodeCounter: 0,
+      selectedNodeId: null,
+      pendingConnectFrom: null,
+      draggingBankId: null,
+      undoStack: []
+    };
+
+    const flowStatus = document.getElementById('flowStatus');
+    const videoBankList = document.getElementById('videoBankList');
+    const flowCanvas = document.getElementById('flowCanvas');
+    const edgeLayer = document.getElementById('edgeLayer');
+    const previewTarget = document.getElementById('previewTarget');
+    const cancelConnectBtn = document.getElementById('cancelConnectBtn');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const youtubePlayerWrap = document.getElementById('youtubePlayerWrap');
+
+    function status(message) {
+      flowStatus.textContent = message;
+    }
+
+    function isTypingTarget(element) {
+      if (!element) return false;
+      return Boolean(element.closest('input, textarea, [contenteditable="true"]'));
+    }
+
+    function snapshotFlowState() {
+      return JSON.stringify({
+        nodes: state.nodes,
+        edges: state.edges,
+        nodeCounter: state.nodeCounter,
+        selectedNodeId: state.selectedNodeId
+      });
+    }
+
+    function rememberFlowState() {
+      const snapshot = snapshotFlowState();
+      state.undoStack.push(snapshot);
+      if (state.undoStack.length > 120) state.undoStack.shift();
+    }
+
+    function restoreFlowState(serialized) {
+      const restored = JSON.parse(serialized);
+      state.nodes = restored.nodes || [];
+      state.edges = restored.edges || [];
+      state.nodeCounter = restored.nodeCounter || 0;
+      state.selectedNodeId = restored.selectedNodeId || null;
+      state.pendingConnectFrom = null;
+      cancelConnect(true);
+      flowCanvas.querySelectorAll('.flow-node').forEach((node) => node.remove());
+      for (const node of state.nodes) {
+        createNodeElement(node);
+      }
+      selectNode(state.selectedNodeId);
+      renderEdges();
+    }
+
+    function undoFlow() {
+      if (!state.undoStack.length) {
+        status('Nothing to undo.');
+        return;
+      }
+      const previousSnapshot = state.undoStack.pop();
+      restoreFlowState(previousSnapshot);
+      status('Undid last change.');
+    }
+
+    function resetPreviewContent() {
+      previewTarget.innerHTML = '<span>Drop video here to create branch</span>';
+      previewTarget.classList.remove('is-filled');
+    }
+
+    function fillPreviewWithBankItem(bankItem) {
+      if (!bankItem) return;
+      previewTarget.classList.add('is-filled');
+      previewTarget.innerHTML = `
+        <img src="${bankItem.thumbnail}" alt="${bankItem.title}" />
+        <div class="flow-preview-arrow">→</div>
+      `;
+    }
+
+    function getYouTubeVideoId(url) {
+      if (!url) return null;
+      try {
+        const parsed = new URL(url.trim());
+        if (parsed.hostname.includes('youtu.be')) return parsed.pathname.replace('/', '') || null;
+        if (parsed.searchParams.get('v')) return parsed.searchParams.get('v');
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'shorts' && parts[1]) return parts[1];
+      } catch (error) {
+        return null;
+      }
+      return null;
+    }
+
+    function getPlaylistId(url) {
+      if (!url) return null;
+      try {
+        return new URL(url.trim()).searchParams.get('list');
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function makeBankItem({ title, videoId }) {
+      if (!videoId) return null;
+      if (state.bankItems.some((item) => item.videoId === videoId)) return null;
+
+      const item = {
+        id: `bank-${++state.bankCounter}`,
+        title: title || `Video ${state.bankCounter}`,
+        videoId,
+        thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+      };
+      state.bankItems.push(item);
+      return item;
+    }
+
+    function getBankItemFromDrag(event) {
+      const bankId =
+        event.dataTransfer?.getData('text/bank-id') ||
+        event.dataTransfer?.getData('text/plain') ||
+        state.draggingBankId;
+      if (!bankId) return null;
+      return state.bankItems.find((item) => item.id === bankId) || null;
+    }
+
+    function renderVideoBank() {
+      videoBankList.innerHTML = '';
+      if (!state.bankItems.length) {
+        videoBankList.innerHTML = '<p class="video-bank__empty">No videos yet.</p>';
+        return;
+      }
+
+      for (const item of state.bankItems) {
+        const card = document.createElement('article');
+        card.className = 'video-bank-card';
+        card.draggable = true;
+        card.dataset.bankId = item.id;
+        card.innerHTML = `
+          <img src="${item.thumbnail}" alt="${item.title}" />
+          <h3>${item.title}</h3>
+          <button type="button" class="video-bank-card__open">Preview</button>
+        `;
+
+        card.addEventListener('dragstart', (event) => {
+          card.classList.add('is-dragging');
+          state.draggingBankId = item.id;
+          event.dataTransfer.setData('text/bank-id', item.id);
+          event.dataTransfer.setData('text/plain', item.id);
+          event.dataTransfer.effectAllowed = 'copy';
+        });
+
+        card.addEventListener('dragend', () => {
+          state.draggingBankId = null;
+          card.classList.remove('is-dragging');
+          if (state.pendingConnectFrom) {
+            resetPreviewContent();
+            setPreviewAt(state.pendingConnectFrom);
+          }
+        });
+
+        card.querySelector('.video-bank-card__open').addEventListener('click', () => openVideo(item.title, item.videoId));
+        videoBankList.appendChild(card);
+      }
+    }
+
+    async function loadPlaylistsToBank() {
+      const value = document.getElementById('playlistUrls').value.trim();
+      if (!value) {
+        status('Add at least one playlist URL.');
+        return;
+      }
+
+      const urls = value.split('\n').map((line) => line.trim()).filter(Boolean);
+      status('Loading playlist videos into the bank...');
+      let addedCount = 0;
+
+      for (const url of urls) {
+        const playlistId = getPlaylistId(url);
+        if (!playlistId) continue;
+        try {
+          const feedUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+          const response = await fetch(`/yt?url=${encodeURIComponent(feedUrl)}`);
+          if (!response.ok) continue;
+
+          const xmlText = await response.text();
+          const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
+          const entries = [...xml.querySelectorAll('entry')];
+
+          for (const entry of entries) {
+            const videoId = entry.querySelector('video\\:videoId, videoId')?.textContent?.trim();
+            const title = entry.querySelector('title')?.textContent?.trim() || 'Untitled video';
+            if (makeBankItem({ title, videoId })) addedCount += 1;
+          }
+        } catch (error) {
+          // Continue with remaining playlists.
+        }
+      }
+
+      renderVideoBank();
+      status(addedCount ? `Added ${addedCount} videos to the bank.` : 'No new videos added. Run with `/yt` enabled for playlist loading.');
+    }
+
+    function addSingleVideoToBank() {
+      const input = document.getElementById('singleVideoUrl');
+      const videoId = getYouTubeVideoId(input.value);
+      if (!videoId) {
+        status('Could not parse that YouTube video URL.');
+        return;
+      }
+
+      const created = makeBankItem({ title: `Video ${state.bankItems.length + 1}`, videoId });
+      if (!created) {
+        status('That video already exists in the bank.');
+        return;
+      }
+
+      renderVideoBank();
+      input.value = '';
+      status('Video added to bank. Drag it into the flowchart.');
+    }
+
+    function makeNode({ title, videoId, thumbnail, x, y }) {
+      const node = {
+        id: `node-${++state.nodeCounter}`,
+        title,
+        videoId,
+        thumbnail,
+        x,
+        y
+      };
+      state.nodes.push(node);
+      return node;
+    }
+
+    function getNodeCenter(node) {
+      return { x: node.x + 95, y: node.y + 66 };
+    }
+
+    function getNodeHandleAnchor(node) {
+      return { x: node.x + 190, y: node.y + 66 };
+    }
+
+    function drawEdgePath(start, end) {
+      const dx = Math.max(70, Math.abs(end.x - start.x) * 0.35);
+      return `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`;
+    }
+
+    function renderEdges() {
+      const width = Math.max(2000, flowCanvas.scrollWidth);
+      const height = Math.max(1500, flowCanvas.scrollHeight);
+      edgeLayer.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+      edgeLayer.querySelectorAll('.flow-edge').forEach((edge) => edge.remove());
+      for (const edge of state.edges) {
+        const from = state.nodes.find((node) => node.id === edge.from);
+        const to = state.nodes.find((node) => node.id === edge.to);
+        if (!from || !to) continue;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'flow-edge');
+        path.setAttribute('d', drawEdgePath(getNodeCenter(from), getNodeCenter(to)));
+        path.setAttribute('marker-end', 'url(#arrowhead)');
+        edgeLayer.appendChild(path);
+      }
+    }
+
+    function setPreviewAt(nodeId) {
+      const node = state.nodes.find((item) => item.id === nodeId);
+      if (!node) {
+        previewTarget.hidden = true;
+        return;
+      }
+
+      const previewX = node.x + 250;
+      const previewY = node.y + 15;
+      previewTarget.style.left = `${previewX}px`;
+      previewTarget.style.top = `${previewY}px`;
+      previewTarget.hidden = false;
+      resetPreviewContent();
+
+      const start = getNodeHandleAnchor(node);
+      const end = { x: previewX + 10, y: previewY + 45 };
+      edgeLayer.querySelectorAll('.flow-edge-preview').forEach((edge) => edge.remove());
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('class', 'flow-edge-preview');
+      path.setAttribute('d', drawEdgePath(start, end));
+      path.setAttribute('marker-end', 'url(#arrowhead)');
+      edgeLayer.appendChild(path);
+    }
+
+    function clearPreview() {
+      previewTarget.hidden = true;
+      previewTarget.classList.remove('is-drop-target');
+      resetPreviewContent();
+      edgeLayer.querySelectorAll('.flow-edge-preview').forEach((edge) => edge.remove());
+    }
+
+    function selectNode(nodeId) {
+      state.selectedNodeId = nodeId;
+      deleteSelectedBtn.disabled = !nodeId;
+      flowCanvas.querySelectorAll('.flow-node').forEach((el) => {
+        el.classList.toggle('is-selected', el.dataset.nodeId === nodeId);
+      });
+    }
+
+    function beginConnectFromNode(nodeId) {
+      state.pendingConnectFrom = nodeId;
+      cancelConnectBtn.disabled = false;
+      selectNode(nodeId);
+      setPreviewAt(nodeId);
+      flowCanvas.querySelector(`.flow-node[data-node-id="${nodeId}"] .flow-node__connector`)?.classList.add('is-active');
+      status('Connection started. Click another node, drop on preview box, or click canvas to create a branch node.');
+    }
+
+    function cancelConnect(silent = false) {
+      const hadConnection = Boolean(state.pendingConnectFrom);
+      state.pendingConnectFrom = null;
+      cancelConnectBtn.disabled = true;
+      clearPreview();
+      flowCanvas.querySelectorAll('.flow-node__connector').forEach((btn) => btn.classList.remove('is-active'));
+      if (hadConnection && !silent) status('Connection canceled.');
+    }
+
+    function connectNodes(fromId, toId, withHistory = true) {
+      if (fromId === toId) {
+        status('Choose a different destination node.');
+        return;
+      }
+
+      const duplicate = state.edges.some((edge) => edge.from === fromId && edge.to === toId);
+      if (duplicate) return;
+      if (withHistory) rememberFlowState();
+      state.edges.push({ from: fromId, to: toId });
+      renderEdges();
+
+      const fromNode = state.nodes.find((node) => node.id === fromId);
+      const toNode = state.nodes.find((node) => node.id === toId);
+      status(`Connected: ${fromNode?.title || 'Node'} → ${toNode?.title || 'Node'}`);
+    }
+
+    function replaceNodeWithBankItem(nodeId, bankItem) {
+      const node = state.nodes.find((item) => item.id === nodeId);
+      if (!node || !bankItem) return;
+
+      rememberFlowState();
+      node.title = bankItem.title;
+      node.videoId = bankItem.videoId;
+      node.thumbnail = bankItem.thumbnail;
+
+      const nodeEl = flowCanvas.querySelector(`.flow-node[data-node-id="${nodeId}"]`);
+      if (!nodeEl) return;
+      const img = nodeEl.querySelector('img');
+      const title = nodeEl.querySelector('.flow-node__meta span');
+      const connector = nodeEl.querySelector('.flow-node__connector');
+      img.src = bankItem.thumbnail;
+      img.alt = bankItem.title;
+      title.textContent = bankItem.title;
+      connector.setAttribute('aria-label', `Create connection from ${bankItem.title}`);
+
+      status(`Replaced node with "${bankItem.title}".`);
+    }
+
+    function createNodeElement(node) {
+      const el = document.createElement('article');
+      el.className = 'flow-node';
+      el.dataset.nodeId = node.id;
+      el.style.left = `${node.x}px`;
+      el.style.top = `${node.y}px`;
+      el.innerHTML = `
+        <img src="${node.thumbnail}" alt="${node.title}" />
+        <div class="flow-node__meta">
+          <span>${node.title}</span>
+          <div class="flow-node__actions">
+            <button type="button" data-role="open">Open</button>
+          </div>
+        </div>
+        <button type="button" class="flow-node__connector" aria-label="Create connection from ${node.title}">→</button>
+      `;
+
+      let dragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      el.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('button')) return;
+        dragging = true;
+        offsetX = event.clientX - el.offsetLeft;
+        offsetY = event.clientY - el.offsetTop;
+        selectNode(node.id);
+        el.setPointerCapture(event.pointerId);
+      });
+
+      el.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        node.x = Math.max(10, event.clientX - offsetX + flowCanvas.scrollLeft);
+        node.y = Math.max(10, event.clientY - offsetY + flowCanvas.scrollTop);
+        el.style.left = `${node.x}px`;
+        el.style.top = `${node.y}px`;
+        renderEdges();
+        if (state.pendingConnectFrom === node.id) setPreviewAt(node.id);
+      });
+
+      el.addEventListener('pointerup', (event) => {
+        dragging = false;
+        if (el.hasPointerCapture(event.pointerId)) el.releasePointerCapture(event.pointerId);
+      });
+
+      el.addEventListener('dragover', (event) => {
+        if (!getBankItemFromDrag(event)) return;
+        event.preventDefault();
+        el.classList.add('is-drop-target');
+      });
+
+      el.addEventListener('dragleave', () => el.classList.remove('is-drop-target'));
+
+      el.addEventListener('drop', (event) => {
+        const bankItem = getBankItemFromDrag(event);
+        if (!bankItem) return;
+        event.preventDefault();
+        event.stopPropagation();
+        el.classList.remove('is-drop-target');
+        replaceNodeWithBankItem(node.id, bankItem);
+        state.draggingBankId = null;
+      });
+
+      el.addEventListener('click', () => {
+        if (state.pendingConnectFrom && state.pendingConnectFrom !== node.id) {
+          connectNodes(state.pendingConnectFrom, node.id);
+          cancelConnect(true);
+          return;
+        }
+        selectNode(node.id);
+      });
+
+      const connector = el.querySelector('.flow-node__connector');
+      connector.addEventListener('mouseenter', () => {
+        if (!state.pendingConnectFrom || state.pendingConnectFrom === node.id) setPreviewAt(node.id);
+      });
+      connector.addEventListener('mouseleave', () => {
+        if (!state.pendingConnectFrom) clearPreview();
+      });
+      connector.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (state.pendingConnectFrom === node.id) {
+          cancelConnect();
+          return;
+        }
+        beginConnectFromNode(node.id);
+      });
+
+      el.querySelector('[data-role="open"]').addEventListener('click', (event) => {
+        event.stopPropagation();
+        openVideo(node.title, node.videoId);
+      });
+
+      flowCanvas.appendChild(el);
+    }
+
+    function addNodeToCanvasFromBank(bankItem, clientX, clientY, withHistory = true) {
+      if (withHistory) rememberFlowState();
+      const rect = flowCanvas.getBoundingClientRect();
+      const node = makeNode({
+        title: bankItem.title,
+        videoId: bankItem.videoId,
+        thumbnail: bankItem.thumbnail,
+        x: Math.max(10, clientX - rect.left + flowCanvas.scrollLeft - 95),
+        y: Math.max(10, clientY - rect.top + flowCanvas.scrollTop - 55)
+      });
+
+      createNodeElement(node);
+      selectNode(node.id);
+      renderEdges();
+      status(`Added "${bankItem.title}" to the flowchart.`);
+      return node;
+    }
+
+    function addBranchNodeFromCanvasClick(clientX, clientY, overrideBankItem = null) {
+      if (!state.pendingConnectFrom) return;
+      const fromNode = state.nodes.find((node) => node.id === state.pendingConnectFrom);
+      if (!fromNode) {
+        cancelConnect();
+        return;
+      }
+
+      rememberFlowState();
+      const rect = flowCanvas.getBoundingClientRect();
+      const bankItem = overrideBankItem || {
+        title: `${fromNode.title} branch`,
+        videoId: fromNode.videoId,
+        thumbnail: fromNode.thumbnail
+      };
+
+      const newNode = makeNode({
+        title: bankItem.title,
+        videoId: bankItem.videoId,
+        thumbnail: bankItem.thumbnail,
+        x: Math.max(10, clientX - rect.left + flowCanvas.scrollLeft - 95),
+        y: Math.max(10, clientY - rect.top + flowCanvas.scrollTop - 55)
+      });
+
+      createNodeElement(newNode);
+      connectNodes(fromNode.id, newNode.id, false);
+      cancelConnect(true);
+      selectNode(newNode.id);
+      status(`Branch created with "${bankItem.title}".`);
+    }
+
+    function addBranchNodeFromPreviewDrop(bankItem) {
+      if (!state.pendingConnectFrom || !bankItem) return;
+      const previewX = parseFloat(previewTarget.style.left || '0');
+      const previewY = parseFloat(previewTarget.style.top || '0');
+      addBranchNodeFromCanvasClick(previewX + 95, previewY + 55, bankItem);
+    }
+
+    function deleteSelectedNode() {
+      if (!state.selectedNodeId) return;
+      rememberFlowState();
+      const id = state.selectedNodeId;
+      state.nodes = state.nodes.filter((node) => node.id !== id);
+      state.edges = state.edges.filter((edge) => edge.from !== id && edge.to !== id);
+      flowCanvas.querySelector(`.flow-node[data-node-id="${id}"]`)?.remove();
+      state.selectedNodeId = null;
+      deleteSelectedBtn.disabled = true;
+      if (state.pendingConnectFrom === id) cancelConnect(true);
+      renderEdges();
+      status('Selected node deleted.');
+    }
+
+    function clearCanvas() {
+      rememberFlowState();
+      state.nodes = [];
+      state.edges = [];
+      state.selectedNodeId = null;
+      flowCanvas.querySelectorAll('.flow-node').forEach((node) => node.remove());
+      deleteSelectedBtn.disabled = true;
+      cancelConnect(true);
+      renderEdges();
+      status('Flowchart cleared. Video bank preserved.');
+    }
+
+    function openVideo(title, videoId) {
+      if (!videoId) return;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      modalTitle.textContent = title;
+      youtubePlayerWrap.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+    }
+
+    function closeVideo() {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      youtubePlayerWrap.innerHTML = '';
+    }
+
+    previewTarget.addEventListener('dragover', (event) => {
+      const bankItem = getBankItemFromDrag(event);
+      if (!bankItem || !state.pendingConnectFrom) return;
+      event.preventDefault();
+      previewTarget.classList.add('is-drop-target');
+      fillPreviewWithBankItem(bankItem);
+    });
+
+    previewTarget.addEventListener('dragleave', () => {
+      previewTarget.classList.remove('is-drop-target');
+      if (state.pendingConnectFrom) {
+        resetPreviewContent();
+      }
+    });
+
+    previewTarget.addEventListener('drop', (event) => {
+      const bankItem = getBankItemFromDrag(event);
+      if (!bankItem || !state.pendingConnectFrom) return;
+      event.preventDefault();
+      event.stopPropagation();
+      previewTarget.classList.remove('is-drop-target');
+      addBranchNodeFromPreviewDrop(bankItem);
+      resetPreviewContent();
+      state.draggingBankId = null;
+    });
+
+    flowCanvas.addEventListener('dragover', (event) => {
+      if (!getBankItemFromDrag(event)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    });
+
+    flowCanvas.addEventListener('drop', (event) => {
+      const bankItem = getBankItemFromDrag(event);
+      if (!bankItem) return;
+      event.preventDefault();
+
+      if (state.pendingConnectFrom) {
+        rememberFlowState();
+        const node = addNodeToCanvasFromBank(bankItem, event.clientX, event.clientY, false);
+        connectNodes(state.pendingConnectFrom, node.id, false);
+        cancelConnect(true);
+      } else {
+        addNodeToCanvasFromBank(bankItem, event.clientX, event.clientY);
+      }
+      state.draggingBankId = null;
+    });
+
+    flowCanvas.addEventListener('click', (event) => {
+      if (!state.pendingConnectFrom) return;
+      if (event.target.closest('.flow-node')) return;
+      addBranchNodeFromCanvasClick(event.clientX, event.clientY);
+    });
+
+    document.getElementById('loadPlaylistsBtn').addEventListener('click', loadPlaylistsToBank);
+    document.getElementById('addVideoToBankBtn').addEventListener('click', addSingleVideoToBank);
+    document.getElementById('cancelConnectBtn').addEventListener('click', () => cancelConnect());
+    document.getElementById('deleteSelectedBtn').addEventListener('click', deleteSelectedNode);
+    document.getElementById('clearCanvasBtn').addEventListener('click', clearCanvas);
+
+    document.getElementById('closeModal').addEventListener('click', closeVideo);
+    modal.addEventListener('click', (event) => {
+      if (event.target.matches('[data-close-modal="true"]')) closeVideo();
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (isTypingTarget(event.target)) return;
+
+      if (event.key === 'Backspace' && state.selectedNodeId) {
+        event.preventDefault();
+        deleteSelectedNode();
+        return;
+      }
+
+      const isUndo = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey;
+      if (isUndo) {
+        event.preventDefault();
+        undoFlow();
+      }
+    });
+
+    window.addEventListener('resize', renderEdges);
+    rememberFlowState();
+    renderVideoBank();
+    renderEdges();
+  </script>
+</body>
+</html>
