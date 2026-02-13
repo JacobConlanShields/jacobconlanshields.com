@@ -3,9 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="https://pub-aad15324564c43c49955b96d781f71eb.r2.dev/JCS%20Logo%20Black%20Background.png" />
   <title>Quality Values Podcast — Jacob Shields</title>
   <!-- Shared stylesheet handles the grid, cards, buttons, and modal. -->
   <link rel="stylesheet" href="/assets/styles.css" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-X00G23WVDJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-X00G23WVDJ');
+</script>
 </head>
 
 <body>
@@ -34,7 +44,7 @@
 
         <a class="btn"
            href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
-           target="_blank" rel="noopener">
+           target="_blank" rel="noopener noreferrer">
           Open on YouTube
         </a>
 
@@ -168,16 +178,52 @@
     // YouTube playlist feed (XML)
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // Cloudflare Worker proxy (CORS-safe).
-    // This avoids browser CORS errors when fetching YouTube XML feeds.
+    // Proxy options (CORS-safe).
+    // Prefer local Pages Function (/yt), then fall back to dedicated Worker.
     const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
-    const PROXY = (url) => WORKER_PROXY + encodeURIComponent(url);
+    const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
+    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+
+    async function fetchFeedViaProxy(feedUrl) {
+      let lastErr = null;
+
+      for (const proxyBase of PROXIES) {
+        try {
+          const resp = await fetch(proxyBase + encodeURIComponent(feedUrl));
+          if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
+          return await resp.text();
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+
+      throw lastErr || new Error("Unable to load feed through available proxies.");
+    }
 
     function escapeHtml(s) {
       // Basic HTML escaping for titles injected into the page.
       return (s || "").replace(/[&<>"']/g, (c) => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
       }[c]));
+    }
+
+    function normalizeYouTubeThumb(url, videoId) {
+      // Feed thumbnails may come from hosts like i1/i2/i4.ytimg.com, but CSP only allows i.ytimg.com.
+      // Normalize to a stable HTTPS host so cards render consistently.
+      const fallback = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      if (!url) return fallback;
+
+      try {
+        const absolute = new URL(url, window.location.origin);
+        const isYouTubeThumb = /(^|\.)ytimg\.com$/i.test(absolute.hostname);
+        if (!isYouTubeThumb) return absolute.href;
+
+        absolute.protocol = "https:";
+        absolute.hostname = "i.ytimg.com";
+        return absolute.href;
+      } catch {
+        return fallback;
+      }
     }
 
     function parseFeed(xmlText) {
@@ -193,7 +239,7 @@
           || "";
 
         const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
-        const thumb = feedThumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+        const thumb = normalizeYouTubeThumb(feedThumb, videoId);
 
         return { title, videoId, thumb };
       }).filter(x => x.videoId);
@@ -223,9 +269,7 @@
       status.textContent = "Loading…";
 
       try {
-        const resp = await fetch(PROXY(FEED(playlistId)));
-        if (!resp.ok) throw new Error(`Feed error: ${resp.status}`);
-        const xml = await resp.text();
+        const xml = await fetchFeedViaProxy(FEED(playlistId));
 
         const items = parseFeed(xml).slice(0, limit);
 
@@ -236,9 +280,18 @@
         }
 
         row.innerHTML = items.map(cardHTML).join("");
+        writeCachedItems(playlistId, items);
         status.textContent = "";
+        row.dataset.feedSource = source;
       } catch (err) {
-        status.textContent = "Could not load videos right now.";
+        const cached = readCachedItems(playlistId);
+        if (cached?.length) {
+          row.innerHTML = cached.slice(0, limit).map(cardHTML).join("");
+          status.textContent = "Live feed unavailable — showing last saved videos.";
+          row.dataset.feedSource = "cache";
+        } else {
+          status.textContent = "Could not load videos right now.";
+        }
         console.error(err);
       }
     }
@@ -248,6 +301,9 @@
     const playerWrap = document.getElementById("playerWrap");
 
     function openPlayer(videoId) {
+      // Only allow expected YouTube IDs before injecting into iframe src.
+      if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId || "")) return;
+
       // When a card is clicked, swap in an iframe with autoplay.
       modal.setAttribute("aria-hidden", "false");
       modal.classList.add("open");
@@ -273,6 +329,14 @@
 
       if (axis === "y") {
         const card = el.querySelector(".card");
+        const isMobile = window.matchMedia("(max-width: 900px)").matches;
+
+        if (isMobile) {
+          const step = card ? (card.getBoundingClientRect().width + 10) : 220;
+          el.scrollBy({ left: dir * step, behavior: "smooth" });
+          return;
+        }
+
         const step = card ? (card.getBoundingClientRect().height + 10) : 220;
         el.scrollBy({ top: dir * step, behavior: "smooth" });
       } else {

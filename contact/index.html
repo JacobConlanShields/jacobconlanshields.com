@@ -3,6 +3,7 @@
 <head>
   <link rel="stylesheet" href="/assets/styles.css" />
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="https://pub-aad15324564c43c49955b96d781f71eb.r2.dev/JCS%20Logo%20Black%20Background.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Contact — Jacob Conlon Shields</title>
   <!--
@@ -10,21 +11,36 @@
     read/edited by beginners without navigating a build system.
   -->
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 720px; margin: 48px auto; padding: 0 16px; line-height: 1.5; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 720px; margin: 36px auto; padding: 0 16px; line-height: 1.5; }
     a { color: inherit; }
     label { display:block; margin-top: 16px; font-weight: 600; }
-    input, textarea { width: 100%; padding: 10px; margin-top: 6px; font: inherit; }
+    input, textarea { width: 100%; padding: 11px; margin-top: 6px; font: inherit; }
     textarea { min-height: 160px; }
     button { margin-top: 16px; padding: 10px 14px; font: inherit; cursor: pointer; }
     .hint { font-size: 0.95rem; opacity: 0.8; margin-top: 6px; }
-    .toplinks { margin-bottom: 24px; }
+    .toplinks { margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+    @media (max-width: 600px) {
+      body { margin: 18px auto; padding: 0 14px; }
+      h1 { margin-bottom: 6px; }
+      .toplinks { margin-bottom: 16px; }
+    }
   </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-X00G23WVDJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-X00G23WVDJ');
+</script>
 </head>
 <body>
 
   <!-- Simple "top links" pattern so visitors can escape the page quickly. -->
   <div class="toplinks">
-    <a href="/">← Back to home</a> · <a href="/pages/projects/">Projects</a>
+    <a href="/">← Back to home</a> · <a href="/pages/projects/">Projects</a> · <a href="/pages/writing/">Writing</a> · <a href="/pages/podcast/">Podcast</a>
   </div>
 
   <h1>Contact</h1>

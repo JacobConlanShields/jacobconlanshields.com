@@ -12,20 +12,36 @@ export async function onRequest({ request }) {
     return new Response("Bad url", { status: 400 });
   }
 
-  // Safety: only allow YouTube feeds
+  // Safety: only allow HTTPS YouTube feeds.
   const allowedHosts = new Set(["www.youtube.com", "youtube.com"]);
-  if (!allowedHosts.has(t.hostname) || !t.pathname.startsWith("/feeds/")) {
+  if (t.protocol !== "https:" || !allowedHosts.has(t.hostname) || !t.pathname.startsWith("/feeds/")) {
     return new Response("Blocked", { status: 403 });
   }
 
   // Forward the request to YouTube and keep a lightweight caching policy.
-  const resp = await fetch(target, {
-    headers: {
-      // Helps avoid occasional upstream weirdness
-      "User-Agent": "Mozilla/5.0",
-      "Accept": "application/xml,text/xml,*/*",
-    },
-  });
+  let resp;
+  try {
+    resp = await fetch(t.toString(), {
+      headers: {
+        // Helps avoid occasional upstream weirdness
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/xml,text/xml,*/*",
+      },
+      cf: {
+        cacheTtl: 300,
+        cacheEverything: true,
+      },
+    });
+  } catch (err) {
+    return new Response(`Upstream fetch failed: ${String(err?.message || err)}`, {
+      status: 502,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "x-content-type-options": "nosniff",
+        "access-control-allow-origin": "*",
+      },
+    });
+  }
 
   const body = await resp.text();
 
@@ -34,7 +50,9 @@ export async function onRequest({ request }) {
     headers: {
       "content-type": "application/xml; charset=utf-8",
       // Cache for 5 minutes at the edge (fast + auto-updates)
-      "cache-control": "public, max-age=300",
+      "cache-control": "public, max-age=300, stale-while-revalidate=86400",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-origin": "*",
     },
   });
 }
