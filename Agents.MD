@@ -1,7 +1,7 @@
 # Agents.MD — jacobconlanshields.com
 
 ## Purpose of this document
-This file is a short onboarding guide for coding agents (Codex, Cursor, etc.). It explains the website's goals, structure, and hosting so you can make changes safely without breaking the site.
+This file is a short onboarding guide for coding agents (Codex, Cursor, etc.). It explains the website's goals, structure, and hosting so you can make changes safely without breaking the site. Ensure all major changes are documented corectly in the ReadMe so the ReadMe file is always accurate and reflective of the current codebase. Ensure this document is also updated with major changes to accuratly reflect the codebase. 
 
 ## Project goals (high level)
 - Keep the site **simple, fast, and durable** (no build step, no heavy frameworks).
