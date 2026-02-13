@@ -97,3 +97,9 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Do all navigation links work?
 - If the podcast page was touched, do video cards still load and open the modal?
 - If the contact form was touched, does it still open a mail client?
+
+
+## Recent updates
+- Added a dedicated `/pages/spincline/` page with a horizontally scrollable photo/video gallery and arrow controls.
+- Added `/media/spincline/` as the Cloudflare Pages static media folder (with `photos/` and `videos/` subfolders).
+- Added Spincline navigation links on the home and projects pages for easier discovery.
