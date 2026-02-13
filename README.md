@@ -7,7 +7,7 @@ This repository is a static personal website with a small amount of JavaScript f
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
 - **CSS**: Global styles, layout rules, and component styles.
-- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation) and an optional serverless proxy function.
+- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation, and an interactive drag-and-drop flowchart builder for YouTube videos) plus an optional serverless proxy function.
 
 ## File-by-file reference (every tracked file)
 Below is a detailed description of every tracked file in the repository, as an example for future documentation.
@@ -30,6 +30,7 @@ Below is a detailed description of every tracked file in the repository, as an e
   - The modal video player.
   - The Relative Momentum ebook viewer (two-page spread + lightbox).
 - Includes responsive behavior for screens below 900px, switching the clips column to a horizontal row and stacking layouts.
+- Includes styling for the YouTube flowchart wireframe whiteboard, video bank, and draggable node states.
 
 ### `contact/index.html`
 - The contact page.
@@ -46,6 +47,12 @@ Below is a detailed description of every tracked file in the repository, as an e
 - The Projects landing page.
 - Lists the main projects and provides navigation back to the homepage.
 - Simple, static HTML with no external CSS references.
+
+### `pages/projects/video-flowchart/index.html`
+- Interactive wireframe prototype for creating flowcharts from YouTube playlists.
+- Left sidebar loads playlist videos into a draggable “video bank.”
+- Whiteboard canvas supports draggable video nodes, draggable text boxes, and directional arrow connections between nodes.
+- Uses the same YouTube feed proxy strategy as the podcast page, preferring local `/yt` first and falling back to the Worker proxy.
 
 ### `pages/podcast/index.html`
 - The Quality Values Podcast page.

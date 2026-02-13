@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="https://pub-aad15324564c43c49955b96d781f71eb.r2.dev/JCS%20Logo%20Black%20Background.png" />
+  <title>YouTube Flowchart Wireframe — Jacob Conlon Shields</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="flow-builder-page">
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/podcast/">Podcast</a>
+      <span class="dot">•</span>
+      <a href="/contact/">Contact</a>
+    </p>
+
+    <h1>YouTube Video Flowchart Wireframe</h1>
+    <p>Load a playlist into the video bank, drag cards to the whiteboard, add text boxes, and connect nodes with arrows.</p>
+
+    <section class="flow-builder-layout">
+      <aside class="flow-sidebar">
+        <h2>Video Bank</h2>
+        <label for="playlistInput">YouTube playlist URL or ID</label>
+        <div class="flow-form-row">
+          <input id="playlistInput" type="text" placeholder="https://www.youtube.com/playlist?list=..." />
+          <button type="button" id="loadPlaylistBtn">Load</button>
+        </div>
+        <p class="flow-status" id="playlistStatus">Load a playlist to populate draggable video cards.</p>
+
+        <div class="flow-bank" id="videoBank"></div>
+      </aside>
+
+      <section class="flow-canvas-shell">
+        <div class="flow-toolbar">
+          <button type="button" id="addTextBtn">+ Add Text Box</button>
+          <button type="button" id="connectBtn" aria-pressed="false">Connect Nodes</button>
+          <button type="button" id="clearBoardBtn">Clear Board</button>
+        </div>
+
+        <div class="flow-canvas" id="flowCanvas" aria-label="Flowchart whiteboard" role="application">
+          <svg class="flow-links" id="flowLinks" aria-hidden="true">
+            <defs>
+              <marker id="arrowHead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                <path d="M0,0 L10,4 L0,8 Z"></path>
+              </marker>
+            </defs>
+          </svg>
+          <div class="flow-node flow-node--start" style="left: 70px; top: 64px;" data-node-id="seed-start">
+            <div class="flow-node-head">Start here</div>
+          </div>
+          <div class="flow-node flow-node--decision" style="left: 120px; top: 210px;" data-node-id="seed-decision">
+            <div class="flow-node-head">Decision</div>
+          </div>
+          <div class="flow-node flow-node--step" style="left: 410px; top: 230px;" data-node-id="seed-step">
+            <div class="flow-node-head">Add a step</div>
+          </div>
+          <div class="flow-node flow-node--action" style="left: 660px; top: 440px;" data-node-id="seed-action">
+            <div class="flow-node-head">Action</div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const playlistInput = document.getElementById('playlistInput');
+    const loadPlaylistBtn = document.getElementById('loadPlaylistBtn');
+    const playlistStatus = document.getElementById('playlistStatus');
+    const videoBank = document.getElementById('videoBank');
+    const flowCanvas = document.getElementById('flowCanvas');
+    const flowLinks = document.getElementById('flowLinks');
+    const addTextBtn = document.getElementById('addTextBtn');
+    const connectBtn = document.getElementById('connectBtn');
+    const clearBoardBtn = document.getElementById('clearBoardBtn');
+
+    const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
+    const WORKER_PROXY = 'https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=';
+    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+
+    let nodeCounter = 0;
+    const nodes = new Map();
+    let connections = [];
+    let connectMode = false;
+    let pendingSourceNodeId = null;
+
+    function normalizeThumbnail(url, videoId) {
+      if (!url) return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      try {
+        const parsed = new URL(url, window.location.origin);
+        if (/(^|\.)ytimg\.com$/i.test(parsed.hostname)) {
+          parsed.protocol = 'https:';
+          parsed.hostname = 'i.ytimg.com';
+        }
+        return parsed.href;
+      } catch {
+        return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      }
+    }
+
+    function parsePlaylistId(value) {
+      const raw = value.trim();
+      if (!raw) return '';
+      if (!raw.includes('http')) return raw;
+      try {
+        const parsed = new URL(raw);
+        return parsed.searchParams.get('list') || '';
+      } catch {
+        return '';
+      }
+    }
+
+    async function fetchFeedXML(playlistId) {
+      const feed = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+      let lastError = null;
+      for (const proxy of PROXIES) {
+        try {
+          const response = await fetch(proxy + encodeURIComponent(feed));
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return await response.text();
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error('Unable to load playlist feed.');
+    }
+
+    function parseFeed(xmlText) {
+      const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+      const entries = Array.from(doc.getElementsByTagName('entry'));
+      return entries.map((entry) => {
+        const title = entry.getElementsByTagName('title')[0]?.textContent?.trim() || 'Untitled';
+        const videoId = entry.getElementsByTagName('yt:videoId')[0]?.textContent?.trim() || entry.getElementsByTagName('videoId')[0]?.textContent?.trim() || '';
+        const thumbRaw = entry.getElementsByTagName('media:thumbnail')[0]?.getAttribute('url') || '';
+        return {
+          title,
+          videoId,
+          thumb: normalizeThumbnail(thumbRaw, videoId),
+        };
+      }).filter((item) => item.videoId);
+    }
+
+    function createVideoBankCard(video) {
+      const card = document.createElement('article');
+      card.className = 'flow-bank-card';
+      card.draggable = true;
+      card.innerHTML = `
+        <img src="${video.thumb}" alt="${video.title}" loading="lazy" />
+        <h3>${video.title}</h3>
+      `;
+      card.addEventListener('dragstart', (event) => {
+        event.dataTransfer.setData('application/json', JSON.stringify({ type: 'video', ...video }));
+      });
+      return card;
+    }
+
+    function nodeCenter(node) {
+      return {
+        x: node.offsetLeft + (node.offsetWidth / 2),
+        y: node.offsetTop + (node.offsetHeight / 2),
+      };
+    }
+
+    function drawConnections() {
+      flowLinks.querySelectorAll('line').forEach((line) => line.remove());
+      for (const connection of connections) {
+        const source = document.querySelector(`[data-node-id="${connection.from}"]`);
+        const target = document.querySelector(`[data-node-id="${connection.to}"]`);
+        if (!source || !target) continue;
+        const start = nodeCenter(source);
+        const end = nodeCenter(target);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', String(start.x));
+        line.setAttribute('y1', String(start.y));
+        line.setAttribute('x2', String(end.x));
+        line.setAttribute('y2', String(end.y));
+        line.classList.add('flow-link-line');
+        flowLinks.append(line);
+      }
+    }
+
+    function makeNodeDraggable(node) {
+      const handle = node.querySelector('.flow-node-head');
+      let dragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      handle.addEventListener('pointerdown', (event) => {
+        if (event.target.tagName.toLowerCase() === 'textarea') return;
+        dragging = true;
+        offsetX = event.clientX - node.offsetLeft;
+        offsetY = event.clientY - node.offsetTop;
+        node.setPointerCapture(event.pointerId);
+      });
+
+      node.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        const bounds = flowCanvas.getBoundingClientRect();
+        const x = Math.min(Math.max(0, event.clientX - bounds.left - offsetX), flowCanvas.clientWidth - node.offsetWidth);
+        const y = Math.min(Math.max(0, event.clientY - bounds.top - offsetY), flowCanvas.clientHeight - node.offsetHeight);
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        drawConnections();
+      });
+
+      node.addEventListener('pointerup', () => {
+        dragging = false;
+      });
+
+      node.addEventListener('click', () => {
+        if (!connectMode) return;
+        const id = node.dataset.nodeId;
+        if (!pendingSourceNodeId) {
+          pendingSourceNodeId = id;
+          node.classList.add('flow-node--selected');
+          return;
+        }
+
+        if (pendingSourceNodeId !== id) {
+          connections.push({ from: pendingSourceNodeId, to: id });
+          drawConnections();
+        }
+
+        document.querySelectorAll('.flow-node--selected').forEach((selected) => selected.classList.remove('flow-node--selected'));
+        pendingSourceNodeId = null;
+      });
+    }
+
+    function registerNode(node) {
+      const nodeId = node.dataset.nodeId || `node-${++nodeCounter}`;
+      node.dataset.nodeId = nodeId;
+      nodes.set(nodeId, node);
+      makeNodeDraggable(node);
+    }
+
+    function addVideoNode(video, x, y) {
+      const node = document.createElement('article');
+      node.className = 'flow-node flow-node--video';
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+      node.innerHTML = `
+        <div class="flow-node-head">${video.title}</div>
+        <div class="flow-video-frame">
+          <iframe src="https://www.youtube.com/embed/${video.videoId}" title="${video.title}" loading="lazy" allowfullscreen></iframe>
+        </div>
+      `;
+      flowCanvas.append(node);
+      registerNode(node);
+      drawConnections();
+    }
+
+    function addTextNode(x = 280, y = 120) {
+      const node = document.createElement('article');
+      node.className = 'flow-node flow-node--text';
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+      node.innerHTML = `
+        <div class="flow-node-head">Text</div>
+        <textarea class="flow-textbox" aria-label="Flowchart text">Add text...</textarea>
+      `;
+      flowCanvas.append(node);
+      registerNode(node);
+    }
+
+    flowCanvas.addEventListener('dragover', (event) => {
+      event.preventDefault();
+    });
+
+    flowCanvas.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const raw = event.dataTransfer.getData('application/json');
+      if (!raw) return;
+      const item = JSON.parse(raw);
+      if (item.type !== 'video') return;
+
+      const bounds = flowCanvas.getBoundingClientRect();
+      const x = Math.max(8, event.clientX - bounds.left - 140);
+      const y = Math.max(8, event.clientY - bounds.top - 40);
+      addVideoNode(item, x, y);
+    });
+
+    loadPlaylistBtn.addEventListener('click', async () => {
+      const playlistId = parsePlaylistId(playlistInput.value);
+      if (!playlistId) {
+        playlistStatus.textContent = 'Enter a valid playlist URL or playlist ID.';
+        return;
+      }
+
+      playlistStatus.textContent = 'Loading playlist...';
+      loadPlaylistBtn.disabled = true;
+
+      try {
+        const xml = await fetchFeedXML(playlistId);
+        const videos = parseFeed(xml).slice(0, 30);
+        videoBank.innerHTML = '';
+
+        if (!videos.length) {
+          playlistStatus.textContent = 'No videos were found in that playlist.';
+          return;
+        }
+
+        videos.forEach((video) => videoBank.append(createVideoBankCard(video)));
+        playlistStatus.textContent = `Loaded ${videos.length} videos. Drag cards to the whiteboard.`;
+      } catch (error) {
+        playlistStatus.textContent = `Could not load playlist: ${error.message}`;
+      } finally {
+        loadPlaylistBtn.disabled = false;
+      }
+    });
+
+    addTextBtn.addEventListener('click', () => addTextNode());
+
+    connectBtn.addEventListener('click', () => {
+      connectMode = !connectMode;
+      connectBtn.setAttribute('aria-pressed', String(connectMode));
+      connectBtn.classList.toggle('is-active', connectMode);
+      if (!connectMode) {
+        pendingSourceNodeId = null;
+        document.querySelectorAll('.flow-node--selected').forEach((selected) => selected.classList.remove('flow-node--selected'));
+      }
+    });
+
+    clearBoardBtn.addEventListener('click', () => {
+      connections = [];
+      flowCanvas.querySelectorAll('.flow-node--video, .flow-node--text').forEach((node) => {
+        nodes.delete(node.dataset.nodeId);
+        node.remove();
+      });
+      pendingSourceNodeId = null;
+      drawConnections();
+    });
+
+    document.querySelectorAll('.flow-node').forEach(registerNode);
+    connections = [
+      { from: 'seed-start', to: 'seed-decision' },
+      { from: 'seed-decision', to: 'seed-step' },
+      { from: 'seed-step', to: 'seed-action' }
+    ];
+    drawConnections();
+    window.addEventListener('resize', drawConnections);
+  </script>
+</body>
+</html>
