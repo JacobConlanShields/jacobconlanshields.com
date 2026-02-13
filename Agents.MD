@@ -53,6 +53,11 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `pages/projects/index.html`
 - Purpose: lists key projects with short descriptions.
 
+
+### YouTube Flowchart wireframe
+- `pages/projects/video-flowchart/index.html`
+- Purpose: prototype an interactive flowchart workspace where users load a YouTube playlist into a video bank, drag videos onto a whiteboard, add text boxes, and connect nodes with arrows.
+
 ### Writing
 - `pages/writing/index.html`
 - Purpose: links to the Relative Momentum ebook and external writing platforms.
