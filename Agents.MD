@@ -53,6 +53,11 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `pages/projects/index.html`
 - Purpose: lists key projects with short descriptions.
 
+### YouTube Flowchart Whiteboard (new)
+- `pages/projects/video-flowchart/index.html`
+- Purpose: prototype a node-based flowchart where videos from a YouTube playlist can be dragged from a bank to a whiteboard, connected with arrows, and combined with editable text nodes.
+- Depends on the existing YouTube proxy pattern (`/yt` or Worker URL) to fetch playlist feeds client-side.
+
 ### Writing
 - `pages/writing/index.html`
 - Purpose: links to the Relative Momentum ebook and external writing platforms.
