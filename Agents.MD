@@ -88,7 +88,7 @@ There are **no automated tests** at the moment. Manual validation is expected.
 ## Editing guidelines (to avoid breaking the site)
 - Keep HTML **semantic and minimal**; avoid introducing frameworks or build steps.
 - When adding new pages, follow the existing structure under `/pages/...` and reuse `/assets/styles.css`.
-- If you change playlist IDs or the proxy URL, verify the podcast page still loads playlists.
+- If you change playlist IDs or the API route, verify the podcast page still loads playlists.
 - Avoid removing the modal player or proxy logic without providing a replacement.
 - Keep navigation links consistent so visitors can move between sections easily.
 
