@@ -158,95 +158,23 @@
   </div>
 
   <script>
-    // Playlist IDs (Quality Values).
-    // Each playlist maps to a visual section above.
-    const PLAYLIST_FULL            = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
-    const PLAYLIST_HIGHLIGHTS      = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
-    const PLAYLIST_MOVEMENT        = "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY";
-    const PLAYLIST_SCIENCE         = "PLcDYjJATsN-PtE4LDtPYqaJ7d3lx3Ov4r";
-    const PLAYLIST_ENTREPRENEURSHIP= "PLcDYjJATsN-Msn3AQKaegXhSZdkiLVsgC";
-    const PLAYLIST_CLIPS           = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
-
-    // "Counts" = how many videos to show in each carousel/column
-    const COUNT_FULL            = 10;
-    const COUNT_HIGHLIGHTS      = 10;
-    const COUNT_MOVEMENT        = 10;
-    const COUNT_SCIENCE         = 10;
-    const COUNT_ENTREPRENEURSHIP= 10;
-    const COUNT_CLIPS           = 25;
-
-    // YouTube playlist feed (XML)
-    const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
-
-    // Proxy options (CORS-safe).
-    // Prefer local Pages Function (/yt), then fall back to dedicated Worker.
-    const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
-    const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
-    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
-
-    async function fetchFeedViaProxy(feedUrl) {
-      let lastErr = null;
-
-      for (const proxyBase of PROXIES) {
-        try {
-          const resp = await fetch(proxyBase + encodeURIComponent(feedUrl));
-          if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
-          return await resp.text();
-        } catch (err) {
-          lastErr = err;
-        }
-      }
-
-      throw lastErr || new Error("Unable to load feed through available proxies.");
-    }
+    const PLAYLISTS = [
+      { title: "Full Podcast (Latest)", playlistId: "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg", rowId: "row-full", statusId: "status-full", displayCount: 10 },
+      { title: "Highlight Episodes", playlistId: "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0", rowId: "row-highlights", statusId: "status-highlights", displayCount: 10 },
+      { title: "Movement Episodes", playlistId: "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY", rowId: "row-movement", statusId: "status-movement", displayCount: 10 },
+      { title: "Science & Sustainability", playlistId: "PLcDYjJATsN-PtE4LDtPYqaJ7d3lx3Ov4r", rowId: "row-science", statusId: "status-science", displayCount: 10 },
+      { title: "Entrepreneurship Episodes", playlistId: "PLcDYjJATsN-Msn3AQKaegXhSZdkiLVsgC", rowId: "row-entrepreneurship", statusId: "status-entrepreneurship", displayCount: 10 },
+      { title: "Clips", playlistId: "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p", rowId: "row-clips", statusId: "status-clips", displayCount: 25 },
+    ];
+    const LIMIT_PER_PLAYLIST = 120;
 
     function escapeHtml(s) {
-      // Basic HTML escaping for titles injected into the page.
       return (s || "").replace(/[&<>"']/g, (c) => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
       }[c]));
     }
 
-    function normalizeYouTubeThumb(url, videoId) {
-      // Feed thumbnails may come from hosts like i1/i2/i4.ytimg.com, but CSP only allows i.ytimg.com.
-      // Normalize to a stable HTTPS host so cards render consistently.
-      const fallback = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-      if (!url) return fallback;
-
-      try {
-        const absolute = new URL(url, window.location.origin);
-        const isYouTubeThumb = /(^|\.)ytimg\.com$/i.test(absolute.hostname);
-        if (!isYouTubeThumb) return absolute.href;
-
-        absolute.protocol = "https:";
-        absolute.hostname = "i.ytimg.com";
-        return absolute.href;
-      } catch {
-        return fallback;
-      }
-    }
-
-    function parseFeed(xmlText) {
-      // Turn YouTube's XML feed into a simple array of {title, videoId, thumb}.
-      const doc = new DOMParser().parseFromString(xmlText, "text/xml");
-      const entries = Array.from(doc.getElementsByTagName("entry"));
-
-      return entries.map((e) => {
-        const title = e.getElementsByTagName("title")[0]?.textContent?.trim() || "";
-        const videoId =
-          e.getElementsByTagName("yt:videoId")[0]?.textContent?.trim()
-          || e.getElementsByTagName("videoId")[0]?.textContent?.trim()
-          || "";
-
-        const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
-        const thumb = normalizeYouTubeThumb(feedThumb, videoId);
-
-        return { title, videoId, thumb };
-      }).filter(x => x.videoId);
-    }
-
     function cardHTML(item) {
-      // Returns the HTML for one video card.
       return `
         <button class="card" type="button" data-video="${item.videoId}" title="${escapeHtml(item.title)}">
           <div class="thumb">
@@ -258,20 +186,58 @@
       `;
     }
 
-    async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
-      // Fetches playlist XML via proxy, then injects cards into a row.
+    function mapPlaylistItem(item) {
+      const videoId = item?.contentDetails?.videoId || item?.snippet?.resourceId?.videoId || "";
+      const thumb = item?.snippet?.thumbnails?.high?.url
+        || item?.snippet?.thumbnails?.medium?.url
+        || item?.snippet?.thumbnails?.default?.url
+        || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+      return {
+        title: item?.snippet?.title || "",
+        videoId,
+        thumb,
+      };
+    }
+
+    async function fetchPlaylistItems(playlistId, limit = LIMIT_PER_PLAYLIST) {
+      let items = [];
+      let pageToken = "";
+
+      while (items.length < limit) {
+        const params = new URLSearchParams({
+          playlistId,
+          maxResults: String(Math.min(50, limit - items.length)),
+        });
+
+        if (pageToken) params.set("pageToken", pageToken);
+
+        const response = await fetch(`/api/youtube-playlist?${params.toString()}`);
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(`YouTube API request failed (${response.status}): ${body}`);
+        }
+
+        const payload = await response.json();
+        const nextItems = Array.isArray(payload.items) ? payload.items.map(mapPlaylistItem).filter((x) => x.videoId) : [];
+        items = items.concat(nextItems);
+
+        pageToken = payload.nextPageToken || "";
+        if (!pageToken || !nextItems.length) break;
+      }
+
+      return items.slice(0, limit);
+    }
+
+    async function loadPlaylistInto({ rowId, statusId, playlistId, displayCount }) {
       const row = document.getElementById(rowId);
       const status = document.getElementById(statusId);
-
-      // guard against null
       if (!row || !status) return;
 
       status.textContent = "Loading…";
 
       try {
-        const xml = await fetchFeedViaProxy(FEED(playlistId));
-
-        const items = parseFeed(xml).slice(0, limit);
+        const items = await fetchPlaylistItems(playlistId, LIMIT_PER_PLAYLIST);
 
         if (!items.length) {
           status.textContent = "No videos found right now.";
@@ -279,32 +245,20 @@
           return;
         }
 
-        row.innerHTML = items.map(cardHTML).join("");
-        writeCachedItems(playlistId, items);
+        row.innerHTML = items.slice(0, displayCount).map(cardHTML).join("");
         status.textContent = "";
-        row.dataset.feedSource = source;
-      } catch (err) {
-        const cached = readCachedItems(playlistId);
-        if (cached?.length) {
-          row.innerHTML = cached.slice(0, limit).map(cardHTML).join("");
-          status.textContent = "Live feed unavailable — showing last saved videos.";
-          row.dataset.feedSource = "cache";
-        } else {
-          status.textContent = "Could not load videos right now.";
-        }
-        console.error(err);
+      } catch (error) {
+        row.innerHTML = "";
+        status.textContent = "Could not load videos right now. Please try again later.";
+        console.error(error);
       }
     }
 
-    // Modal player
     const modal = document.getElementById("playerModal");
     const playerWrap = document.getElementById("playerWrap");
 
     function openPlayer(videoId) {
-      // Only allow expected YouTube IDs before injecting into iframe src.
       if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId || "")) return;
-
-      // When a card is clicked, swap in an iframe with autoplay.
       modal.setAttribute("aria-hidden", "false");
       modal.classList.add("open");
       playerWrap.innerHTML =
@@ -317,13 +271,11 @@
     }
 
     function closePlayer() {
-      // Remove the iframe to stop playback and free memory.
       modal.setAttribute("aria-hidden", "true");
       modal.classList.remove("open");
       playerWrap.innerHTML = "";
     }
 
-    // Scrolling helpers (x for horizontal rows, y for clips)
     function scrollRow(el, dir, axis) {
       if (!el) return;
 
@@ -346,7 +298,6 @@
     }
 
     document.addEventListener("click", (e) => {
-      // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
       if (card?.dataset.video) openPlayer(card.dataset.video);
 
@@ -362,17 +313,10 @@
     });
 
     document.addEventListener("keydown", (e) => {
-      // Allow "Esc" to close the modal video.
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
 
-    // Load playlists (order matters, matches page order)
-    loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
-    loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
-    loadPlaylistInto("row-movement", "status-movement", PLAYLIST_MOVEMENT, COUNT_MOVEMENT);
-    loadPlaylistInto("row-science", "status-science", PLAYLIST_SCIENCE, COUNT_SCIENCE);
-    loadPlaylistInto("row-entrepreneurship", "status-entrepreneurship", PLAYLIST_ENTREPRENEURSHIP, COUNT_ENTREPRENEURSHIP);
-    loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
+    PLAYLISTS.forEach(loadPlaylistInto);
   </script>
 </body>
 </html>

@@ -20,10 +20,10 @@ This file is a short onboarding guide for coding agents (Codex, Cursor, etc.). I
   - Framework preset: `None`
   - Build command: *(empty)*
   - Output directory: `.`
-- Optional Pages Function:
-  - `functions/yt.js` is deployed automatically by Cloudflare Pages.
-  - It runs at `https://<pages-domain>/yt?url=<encoded-feed-url>`.
-  - The podcast page can use this local Pages Function instead of the separate Worker if desired.
+- Pages Functions used by the site:
+  - `functions/youtube-playlist.js` (also exposed via `functions/api/youtube-playlist.js`) proxies YouTube Data API playlist queries at `/api/youtube-playlist`.
+  - It requires the `YT_API_KEY` environment variable in Cloudflare Pages (Preview + Production).
+  - `functions/yt.js` remains as a legacy XML feed proxy.
 
 ## How to test locally
 Because there is no build step, local testing is simple:
@@ -70,10 +70,8 @@ There are **no automated tests** at the moment. Manual validation is expected.
 
 **How it works (current behavior):**
 - The page lists multiple **playlist sections** (rows) and a **clips column**.
-- JavaScript fetches YouTube playlist feeds (XML) for each playlist.
-- Fetching goes through a **proxy** to avoid browser CORS errors:
-  - Current proxy is a dedicated Cloudflare Worker URL.
-  - You can optionally switch to the local Pages Function (`/yt?url=...`) if desired.
+- JavaScript fetches YouTube playlist data via `/api/youtube-playlist` for each playlist.
+- The Pages Function handles API key usage server-side and paginates with `nextPageToken` to support larger result sets.
 - Each playlist is rendered into **card rows** (horizontal scrolling).
 - The **Clips** section is a **sticky column** on the right for quick access.
 - Clicking a card opens a **modal video player** (embedded YouTube iframe).
@@ -88,7 +86,7 @@ There are **no automated tests** at the moment. Manual validation is expected.
 ## Editing guidelines (to avoid breaking the site)
 - Keep HTML **semantic and minimal**; avoid introducing frameworks or build steps.
 - When adding new pages, follow the existing structure under `/pages/...` and reuse `/assets/styles.css`.
-- If you change playlist IDs or the proxy URL, verify the podcast page still loads playlists.
+- If you change playlist IDs or the API route, verify the podcast page still loads playlists.
 - Avoid removing the modal player or proxy logic without providing a replacement.
 - Keep navigation links consistent so visitors can move between sections easily.
 
