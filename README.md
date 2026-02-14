@@ -2,12 +2,12 @@
 Personal website to display arrays of talent
 
 ## Overview
-This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, and an ebook viewer). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
+This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube playlist fetching via the YouTube Data API, a modal video player, and an ebook viewer). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
 
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
 - **CSS**: Global styles, layout rules, and component styles.
-- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation) and an optional serverless proxy function.
+- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation) and serverless proxy functions.
 
 ## File-by-file reference (every tracked file)
 Below is a detailed description of every tracked file in the repository, as an example for future documentation.
@@ -38,9 +38,17 @@ Below is a detailed description of every tracked file in the repository, as an e
 - Includes a small JavaScript snippet that builds the `mailto:` URL from form input.
 
 ### `functions/yt.js`
-- A Cloudflare Pages Function (or Worker-style handler) that proxies YouTube playlist feeds.
-- Accepts a `?url=` query string, validates that it is a YouTube feed URL, fetches the XML, and returns it with cache headers.
-- Used to avoid CORS issues when the client-side podcast page fetches YouTube playlist feeds.
+- Legacy Cloudflare Pages Function that proxies YouTube XML feeds.
+- Kept for backward compatibility, but no longer used by the podcast gallery.
+
+### `functions/youtube-playlist.js`
+- Cloudflare Pages Function that proxies YouTube Data API `playlistItems.list`.
+- Accepts `playlistId` (required), plus optional `pageToken` and `maxResults` (clamped to 50).
+- Reads `YT_API_KEY` from Cloudflare environment variables and returns JSON with cache headers.
+
+### `functions/api/youtube-playlist.js`
+- Route alias for `functions/youtube-playlist.js`.
+- Exposes the function at `/api/youtube-playlist` for the podcast page client script.
 
 ### `pages/projects/index.html`
 - The Projects landing page.
@@ -51,7 +59,7 @@ Below is a detailed description of every tracked file in the repository, as an e
 - The Quality Values Podcast page.
 - Uses `/assets/styles.css` for layout and card styling.
 - JavaScript on this page:
-  - Fetches YouTube playlist feeds through the proxy.
+  - Fetches YouTube playlist data through `/api/youtube-playlist` (Pages Function proxy).
   - Populates horizontal carousels for different playlist categories.
   - Populates a vertical clips column.
   - Opens a modal player with an embedded YouTube video when a card is clicked.
@@ -83,17 +91,18 @@ This site is designed to work as a static Cloudflare Pages project. The optional
    - **Build output directory**: `.` (the repo root)
 4. Save and deploy.
 
-### 2) (Optional) Enable the YouTube feed proxy on your own domain
-If you want the YouTube feed proxy to run on the same domain instead of a separate Worker:
-1. Ensure the `functions/yt.js` file remains in the repo. Cloudflare Pages will automatically deploy it.
-2. Once deployed, the proxy will be available at:
-   - `https://<your-pages-domain>/yt?url=<encoded-youtube-feed-url>`
-3. Update `pages/podcast/index.html` to point `WORKER_PROXY` to your Pages domain if desired.
+### 2) Configure YouTube API key for Pages Functions
+1. In Cloudflare Dashboard, open your Pages project.
+2. Go to **Settings → Environment variables**.
+3. Add `YT_API_KEY` with your YouTube Data API key in both:
+   - **Production** environment
+   - **Preview** environment
+4. Redeploy after saving the variable.
 
-### 3) (Optional) Separate Cloudflare Worker alternative
-If you prefer a standalone Worker (as referenced in the podcast page today):
-1. Create a Worker in Cloudflare and deploy the same logic as `functions/yt.js`.
-2. Set the Worker URL in `WORKER_PROXY` inside `pages/podcast/index.html`.
+### 3) Pages Function route for podcast gallery
+- Keep `functions/youtube-playlist.js` and `functions/api/youtube-playlist.js` in the repo.
+- Once deployed, the API endpoint is:
+  - `https://<your-pages-domain>/api/youtube-playlist?playlistId=<playlist_id>`
 
 ## Local development & testing in GitHub Codespaces
 You can run the site locally inside a GitHub Codespace for quick testing.
@@ -106,7 +115,7 @@ You can run the site locally inside a GitHub Codespace for quick testing.
    ```
 3. Use the “Ports” tab to open the forwarded port in your browser.
 
-### Option B: Pages Functions preview (includes `/functions/yt.js`)
+### Option B: Pages Functions preview (includes `/api/youtube-playlist`)
 If you want to test the Cloudflare Pages Function locally:
 1. In the Codespace, install Wrangler (if not already available):
    ```bash

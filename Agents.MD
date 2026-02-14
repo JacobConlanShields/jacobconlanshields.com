@@ -70,10 +70,9 @@ There are **no automated tests** at the moment. Manual validation is expected.
 
 **How it works (current behavior):**
 - The page lists multiple **playlist sections** (rows) and a **clips column**.
-- JavaScript fetches YouTube playlist feeds (XML) for each playlist.
-- Fetching goes through a **proxy** to avoid browser CORS errors:
-  - Current proxy is a dedicated Cloudflare Worker URL.
-  - You can optionally switch to the local Pages Function (`/yt?url=...`) if desired.
+- JavaScript fetches YouTube playlist data from the YouTube Data API for each playlist.
+- Fetching goes through a local **Pages Function** proxy (`/api/youtube-playlist`) so the browser never sees API keys.
+- The Pages Function reads `YT_API_KEY` from environment variables in Cloudflare Pages.
 - Each playlist is rendered into **card rows** (horizontal scrolling).
 - The **Clips** section is a **sticky column** on the right for quick access.
 - Clicking a card opens a **modal video player** (embedded YouTube iframe).
