@@ -119,3 +119,5 @@ If you want to test the Cloudflare Pages Function locally:
 3. Open the forwarded port in the Codespace “Ports” tab.
 
 > Note: If you use Option A (Python server), `/functions/yt.js` will not be executed. Use Option B if you want to validate the proxy behavior.
+>
+> 
