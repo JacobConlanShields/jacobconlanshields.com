@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YouTube Flow Map — Jacob Conlon Shields</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main>
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/video-map/">YouTube Flow Map</a>
+      <span class="dot">•</span>
+      <a href="/contact/">Contact</a>
+    </p>
+    <hr>
+
+    <h1>YouTube Flow Map</h1>
+    <p>Upload a YouTube playlist and drag thumbnails into a wireframe flowchart. Keep the videos hosted on YouTube, but navigate them in your own layout.</p>
+
+    <section class="flow-layout" aria-label="YouTube flowchart builder">
+      <aside class="flow-sidebar">
+        <label for="playlistInput">YouTube playlist URL or ID</label>
+        <div class="stack-row">
+          <input id="playlistInput" type="text" placeholder="https://www.youtube.com/playlist?list=..." />
+          <button id="loadPlaylistBtn" type="button">Load</button>
+        </div>
+
+        <label for="videoInput">Single video URL (optional)</label>
+        <div class="stack-row">
+          <input id="videoInput" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+          <button id="addVideoBtn" type="button">Add</button>
+        </div>
+
+        <div class="stack-row">
+          <button id="addBranchBtn" type="button">Add branch from selected</button>
+          <button id="clearMapBtn" type="button">Clear map</button>
+        </div>
+
+        <p id="flowStatus" class="status" role="status" aria-live="polite"></p>
+
+        <div id="videoLibrary" class="video-library" aria-label="Loaded video thumbnails"></div>
+      </aside>
+
+      <div class="flow-canvas-wrap">
+        <div class="flow-toolbar">
+          <span>Drag cards from the left panel into the map.</span>
+          <a id="openSelectedLink" href="#" target="_blank" rel="noopener" class="btn" aria-disabled="true">Open selected on YouTube</a>
+        </div>
+
+        <div id="flowCanvas" class="flow-canvas" tabindex="0" aria-label="Flowchart canvas">
+          <svg id="flowEdges" class="flow-edges" aria-hidden="true"></svg>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const playlistInput = document.getElementById('playlistInput');
+    const videoInput = document.getElementById('videoInput');
+    const loadPlaylistBtn = document.getElementById('loadPlaylistBtn');
+    const addVideoBtn = document.getElementById('addVideoBtn');
+    const addBranchBtn = document.getElementById('addBranchBtn');
+    const clearMapBtn = document.getElementById('clearMapBtn');
+    const flowStatus = document.getElementById('flowStatus');
+    const videoLibrary = document.getElementById('videoLibrary');
+    const flowCanvas = document.getElementById('flowCanvas');
+    const flowEdges = document.getElementById('flowEdges');
+    const openSelectedLink = document.getElementById('openSelectedLink');
+
+    const NODE_W = 170;
+    const NODE_H = 128;
+
+    const state = {
+      library: [],
+      nodes: [],
+      selectedId: null,
+      drag: null,
+      nextNodeId: 1,
+    };
+
+    const setStatus = (msg) => {
+      flowStatus.textContent = msg;
+    };
+
+    const parsePlaylistId = (raw) => {
+      if (!raw) return null;
+      const trimmed = raw.trim();
+      if (/^[A-Za-z0-9_-]{10,}$/.test(trimmed) && !trimmed.includes('youtube')) {
+        return trimmed;
+      }
+      try {
+        const u = new URL(trimmed);
+        return u.searchParams.get('list');
+      } catch {
+        return null;
+      }
+    };
+
+    const parseVideoId = (raw) => {
+      if (!raw) return null;
+      const trimmed = raw.trim();
+      try {
+        const u = new URL(trimmed);
+        if (u.hostname.includes('youtu.be')) {
+          return u.pathname.replace('/', '').slice(0, 11) || null;
+        }
+        if (u.hostname.includes('youtube.com')) {
+          return u.searchParams.get('v');
+        }
+        return null;
+      } catch {
+        return /^[A-Za-z0-9_-]{11}$/.test(trimmed) ? trimmed : null;
+      }
+    };
+
+    const feedUrlFromPlaylist = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}`;
+
+    const fetchPlaylist = async (playlistId) => {
+      const target = feedUrlFromPlaylist(playlistId);
+      const resp = await fetch(`/yt?url=${encodeURIComponent(target)}`);
+      if (!resp.ok) throw new Error(`Failed to load playlist (${resp.status})`);
+      const xml = await resp.text();
+      const doc = new DOMParser().parseFromString(xml, 'application/xml');
+      const entries = Array.from(doc.querySelectorAll('entry'));
+
+      return entries.map((entry) => {
+        const mediaGroup = entry.getElementsByTagNameNS('*', 'group')[0];
+        const titleNode = mediaGroup?.getElementsByTagNameNS('*', 'title')[0] || entry.querySelector('title');
+        const thumbNode = mediaGroup?.getElementsByTagNameNS('*', 'thumbnail')[0];
+        const videoId = entry.getElementsByTagNameNS('*', 'videoId')[0]?.textContent?.trim() || '';
+
+        return {
+          id: videoId,
+          videoId,
+          title: titleNode?.textContent?.trim() || 'Untitled video',
+          thumb: thumbNode?.getAttribute('url') || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        };
+      }).filter((item) => item.videoId);
+    };
+
+    const renderLibrary = () => {
+      videoLibrary.innerHTML = '';
+      state.library.forEach((video) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'library-item';
+        card.draggable = true;
+        card.dataset.videoId = video.videoId;
+        card.innerHTML = `
+          <img src="${video.thumb}" alt="${video.title}">
+          <span>${video.title}</span>
+        `;
+
+        card.addEventListener('dragstart', (event) => {
+          event.dataTransfer?.setData('text/videoId', video.videoId);
+          event.dataTransfer.effectAllowed = 'copy';
+        });
+
+        card.addEventListener('click', () => {
+          placeNode(video.videoId);
+        });
+
+        videoLibrary.appendChild(card);
+      });
+    };
+
+    const findVideo = (videoId) => state.library.find((video) => video.videoId === videoId);
+
+    const placeNode = (videoId, x = 40 + state.nodes.length * 26, y = 52 + state.nodes.length * 22, parentId = null) => {
+      const video = findVideo(videoId);
+      if (!video) return;
+      const node = {
+        id: state.nextNodeId++,
+        videoId,
+        title: video.title,
+        thumb: video.thumb,
+        x,
+        y,
+        parentId,
+      };
+      state.nodes.push(node);
+      state.selectedId = node.id;
+      renderCanvas();
+    };
+
+    const addVideoToLibrary = (videoId) => {
+      if (!videoId) return;
+      if (state.library.some((video) => video.videoId === videoId)) return;
+      state.library.unshift({
+        id: videoId,
+        videoId,
+        title: `Video ${videoId}`,
+        thumb: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      });
+      renderLibrary();
+    };
+
+    const getSelectedNode = () => state.nodes.find((node) => node.id === state.selectedId);
+
+    const setSelectedLink = () => {
+      const selected = getSelectedNode();
+      if (!selected) {
+        openSelectedLink.href = '#';
+        openSelectedLink.setAttribute('aria-disabled', 'true');
+        return;
+      }
+      openSelectedLink.href = `https://www.youtube.com/watch?v=${selected.videoId}`;
+      openSelectedLink.removeAttribute('aria-disabled');
+    };
+
+    const renderEdges = () => {
+      flowEdges.innerHTML = '';
+      const canvasRect = flowCanvas.getBoundingClientRect();
+      flowEdges.setAttribute('viewBox', `0 0 ${canvasRect.width} ${canvasRect.height}`);
+      flowEdges.setAttribute('width', String(canvasRect.width));
+      flowEdges.setAttribute('height', String(canvasRect.height));
+
+      state.nodes.forEach((node) => {
+        if (!node.parentId) return;
+        const parent = state.nodes.find((candidate) => candidate.id === node.parentId);
+        if (!parent) return;
+
+        const x1 = parent.x + NODE_W / 2;
+        const y1 = parent.y + NODE_H;
+        const x2 = node.x + NODE_W / 2;
+        const y2 = node.y;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const midY = (y1 + y2) / 2;
+        path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+        path.setAttribute('class', 'flow-edge');
+        flowEdges.appendChild(path);
+      });
+    };
+
+    const renderCanvas = () => {
+      flowCanvas.querySelectorAll('.flow-node').forEach((node) => node.remove());
+
+      state.nodes.forEach((node) => {
+        const el = document.createElement('article');
+        el.className = 'flow-node';
+        if (node.id === state.selectedId) el.classList.add('selected');
+        el.style.left = `${node.x}px`;
+        el.style.top = `${node.y}px`;
+        el.dataset.nodeId = String(node.id);
+        el.innerHTML = `
+          <img src="${node.thumb}" alt="${node.title}">
+          <h3>${node.title}</h3>
+          <p>${node.videoId}</p>
+        `;
+
+        el.addEventListener('pointerdown', (event) => {
+          if (event.button !== 0) return;
+          state.selectedId = node.id;
+          const rect = el.getBoundingClientRect();
+          state.drag = {
+            nodeId: node.id,
+            offsetX: event.clientX - rect.left,
+            offsetY: event.clientY - rect.top,
+          };
+          el.setPointerCapture(event.pointerId);
+          renderCanvas();
+        });
+
+        el.addEventListener('pointermove', (event) => {
+          if (!state.drag || state.drag.nodeId !== node.id) return;
+          const canvasRect = flowCanvas.getBoundingClientRect();
+          node.x = Math.max(8, event.clientX - canvasRect.left - state.drag.offsetX);
+          node.y = Math.max(8, event.clientY - canvasRect.top - state.drag.offsetY);
+          el.style.left = `${node.x}px`;
+          el.style.top = `${node.y}px`;
+          renderEdges();
+        });
+
+        el.addEventListener('pointerup', () => {
+          state.drag = null;
+          renderEdges();
+        });
+
+        el.addEventListener('click', () => {
+          state.selectedId = node.id;
+          renderCanvas();
+        });
+
+        flowCanvas.appendChild(el);
+      });
+
+      renderEdges();
+      setSelectedLink();
+    };
+
+    flowCanvas.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    });
+
+    flowCanvas.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const videoId = event.dataTransfer?.getData('text/videoId');
+      if (!videoId) return;
+      const rect = flowCanvas.getBoundingClientRect();
+      const x = event.clientX - rect.left - NODE_W / 2;
+      const y = event.clientY - rect.top - NODE_H / 2;
+      placeNode(videoId, x, y);
+    });
+
+    loadPlaylistBtn.addEventListener('click', async () => {
+      const playlistId = parsePlaylistId(playlistInput.value);
+      if (!playlistId) {
+        setStatus('Enter a valid playlist URL or ID.');
+        return;
+      }
+      setStatus('Loading playlist...');
+      try {
+        const videos = await fetchPlaylist(playlistId);
+        state.library = videos;
+        renderLibrary();
+        setStatus(`Loaded ${videos.length} videos.`);
+      } catch (err) {
+        setStatus(err.message || 'Could not load that playlist.');
+      }
+    });
+
+    addVideoBtn.addEventListener('click', () => {
+      const videoId = parseVideoId(videoInput.value);
+      if (!videoId) {
+        setStatus('Enter a valid YouTube video URL or ID.');
+        return;
+      }
+      addVideoToLibrary(videoId);
+      setStatus('Video added to library. Drag it into the map.');
+      videoInput.value = '';
+    });
+
+    addBranchBtn.addEventListener('click', () => {
+      const selectedNode = getSelectedNode();
+      if (!selectedNode) {
+        setStatus('Select a node first.');
+        return;
+      }
+      placeNode(
+        selectedNode.videoId,
+        selectedNode.x + NODE_W + 32,
+        selectedNode.y + NODE_H + 36,
+        selectedNode.id,
+      );
+      setStatus('Branch added. Drag nodes to adjust layout.');
+    });
+
+    clearMapBtn.addEventListener('click', () => {
+      state.nodes = [];
+      state.selectedId = null;
+      renderCanvas();
+      setStatus('Map cleared.');
+    });
+
+    window.addEventListener('resize', renderEdges);
+
+    // Start with one sample node to make the interface obvious.
+    addVideoToLibrary('dQw4w9WgXcQ');
+    placeNode('dQw4w9WgXcQ', 120, 100, null);
+    setStatus('Load a playlist, then drag cards into the canvas.');
+  </script>
+</body>
+</html>
