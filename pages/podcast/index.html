@@ -158,46 +158,55 @@
   </div>
 
   <script>
-    // Playlist IDs (Quality Values).
-    // Each playlist maps to a visual section above.
-    const PLAYLIST_FULL            = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
-    const PLAYLIST_HIGHLIGHTS      = "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0";
-    const PLAYLIST_MOVEMENT        = "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY";
-    const PLAYLIST_SCIENCE         = "PLcDYjJATsN-PtE4LDtPYqaJ7d3lx3Ov4r";
-    const PLAYLIST_ENTREPRENEURSHIP= "PLcDYjJATsN-Msn3AQKaegXhSZdkiLVsgC";
-    const PLAYLIST_CLIPS           = "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p";
+    // Configuration: playlist labels + IDs.
+    const PLAYLISTS = [
+      { title: "Full Podcast (Latest)", playlistId: "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg" },
+      { title: "Highlight Episodes", playlistId: "PLcDYjJATsN-OGocXwl1Hkqb3HWdSf6GA0" },
+      { title: "Movement Episodes", playlistId: "PLcDYjJATsN-Mbc7QGlLSuLgeQZzDzS9KY" },
+      { title: "Science & Sustainability", playlistId: "PLcDYjJATsN-PtE4LDtPYqaJ7d3lx3Ov4r" },
+      { title: "Entrepreneurship Episodes", playlistId: "PLcDYjJATsN-Msn3AQKaegXhSZdkiLVsgC" },
+      { title: "Clips", playlistId: "PLcDYjJATsN-NiSRQwR9BepKMA0LiV6t-p" },
+    ];
+    const LIMIT_PER_PLAYLIST = 120;
 
-    // "Counts" = how many videos to show in each carousel/column
-    const COUNT_FULL            = 10;
-    const COUNT_HIGHLIGHTS      = 10;
-    const COUNT_MOVEMENT        = 10;
-    const COUNT_SCIENCE         = 10;
-    const COUNT_ENTREPRENEURSHIP= 10;
-    const COUNT_CLIPS           = 25;
+    const PLAYLIST_SECTION_MAP = {
+      "Full Podcast (Latest)": { rowId: "row-full", statusId: "status-full" },
+      "Highlight Episodes": { rowId: "row-highlights", statusId: "status-highlights" },
+      "Movement Episodes": { rowId: "row-movement", statusId: "status-movement" },
+      "Science & Sustainability": { rowId: "row-science", statusId: "status-science" },
+      "Entrepreneurship Episodes": { rowId: "row-entrepreneurship", statusId: "status-entrepreneurship" },
+      "Clips": { rowId: "row-clips", statusId: "status-clips" },
+    };
 
-    // YouTube playlist feed (XML)
-    const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+    async function fetchPlaylistItems(playlistId, limit = LIMIT_PER_PLAYLIST) {
+      const items = [];
+      let pageToken = "";
 
-    // Proxy options (CORS-safe).
-    // Prefer local Pages Function (/yt), then fall back to dedicated Worker.
-    const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
-    const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
-    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+      while (items.length < limit) {
+        const remaining = limit - items.length;
+        const maxResults = Math.min(50, remaining);
+        const params = new URLSearchParams({
+          playlistId,
+          maxResults: String(maxResults),
+        });
 
-    async function fetchFeedViaProxy(feedUrl) {
-      let lastErr = null;
+        if (pageToken) params.set("pageToken", pageToken);
 
-      for (const proxyBase of PROXIES) {
-        try {
-          const resp = await fetch(proxyBase + encodeURIComponent(feedUrl));
-          if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
-          return await resp.text();
-        } catch (err) {
-          lastErr = err;
+        const resp = await fetch(`/api/youtube-playlist?${params.toString()}`);
+        if (!resp.ok) {
+          const errBody = await resp.text();
+          throw new Error(`YouTube playlist request failed (${resp.status}): ${errBody}`);
         }
+
+        const data = await resp.json();
+        const pageItems = Array.isArray(data.items) ? data.items : [];
+        items.push(...pageItems);
+
+        if (!data.nextPageToken) break;
+        pageToken = data.nextPageToken;
       }
 
-      throw lastErr || new Error("Unable to load feed through available proxies.");
+      return items;
     }
 
     function escapeHtml(s) {
@@ -226,23 +235,24 @@
       }
     }
 
-    function parseFeed(xmlText) {
-      // Turn YouTube's XML feed into a simple array of {title, videoId, thumb}.
-      const doc = new DOMParser().parseFromString(xmlText, "text/xml");
-      const entries = Array.from(doc.getElementsByTagName("entry"));
+    function parsePlaylistItems(apiItems) {
+      return apiItems.map((item) => {
+        const snippet = item?.snippet || {};
+        const contentDetails = item?.contentDetails || {};
+        const videoId = snippet?.resourceId?.videoId || contentDetails?.videoId || "";
 
-      return entries.map((e) => {
-        const title = e.getElementsByTagName("title")[0]?.textContent?.trim() || "";
-        const videoId =
-          e.getElementsByTagName("yt:videoId")[0]?.textContent?.trim()
-          || e.getElementsByTagName("videoId")[0]?.textContent?.trim()
+        const thumbUrl =
+          snippet?.thumbnails?.high?.url
+          || snippet?.thumbnails?.medium?.url
+          || snippet?.thumbnails?.default?.url
           || "";
 
-        const feedThumb = e.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
-        const thumb = normalizeYouTubeThumb(feedThumb, videoId);
-
-        return { title, videoId, thumb };
-      }).filter(x => x.videoId);
+        return {
+          title: snippet?.title || "",
+          videoId,
+          thumb: normalizeYouTubeThumb(thumbUrl, videoId),
+        };
+      }).filter((item) => item.videoId && item.title !== "Private video" && item.title !== "Deleted video");
     }
 
     function cardHTML(item) {
@@ -259,7 +269,7 @@
     }
 
     async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
-      // Fetches playlist XML via proxy, then injects cards into a row.
+      // Fetches playlist data through the Pages Function, then injects cards into a row.
       const row = document.getElementById(rowId);
       const status = document.getElementById(statusId);
 
@@ -269,9 +279,8 @@
       status.textContent = "Loading…";
 
       try {
-        const xml = await fetchFeedViaProxy(FEED(playlistId));
-
-        const items = parseFeed(xml).slice(0, limit);
+        const apiItems = await fetchPlaylistItems(playlistId, limit);
+        const items = parsePlaylistItems(apiItems);
 
         if (!items.length) {
           status.textContent = "No videos found right now.";
@@ -280,18 +289,10 @@
         }
 
         row.innerHTML = items.map(cardHTML).join("");
-        writeCachedItems(playlistId, items);
         status.textContent = "";
-        row.dataset.feedSource = source;
       } catch (err) {
-        const cached = readCachedItems(playlistId);
-        if (cached?.length) {
-          row.innerHTML = cached.slice(0, limit).map(cardHTML).join("");
-          status.textContent = "Live feed unavailable — showing last saved videos.";
-          row.dataset.feedSource = "cache";
-        } else {
-          status.textContent = "Could not load videos right now.";
-        }
+        status.textContent = "Could not load videos right now. Please try again shortly.";
+        row.innerHTML = "";
         console.error(err);
       }
     }
@@ -366,13 +367,13 @@
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
 
-    // Load playlists (order matters, matches page order)
-    loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
-    loadPlaylistInto("row-highlights", "status-highlights", PLAYLIST_HIGHLIGHTS, COUNT_HIGHLIGHTS);
-    loadPlaylistInto("row-movement", "status-movement", PLAYLIST_MOVEMENT, COUNT_MOVEMENT);
-    loadPlaylistInto("row-science", "status-science", PLAYLIST_SCIENCE, COUNT_SCIENCE);
-    loadPlaylistInto("row-entrepreneurship", "status-entrepreneurship", PLAYLIST_ENTREPRENEURSHIP, COUNT_ENTREPRENEURSHIP);
-    loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
+    // Load playlists in page order.
+    for (const playlist of PLAYLISTS) {
+      const section = PLAYLIST_SECTION_MAP[playlist.title];
+      if (!section) continue;
+
+      loadPlaylistInto(section.rowId, section.statusId, playlist.playlistId, LIMIT_PER_PLAYLIST);
+    }
   </script>
 </body>
 </html>
