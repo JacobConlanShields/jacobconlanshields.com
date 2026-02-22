@@ -184,12 +184,48 @@
     const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
     const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
 
+    const FEED_REQUEST_TIMEOUT_MS = 10000;
+
+    const CACHE_KEY_PREFIX = "yt-playlist-cache:";
+
+    function readCachedItems(playlistId) {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY_PREFIX + playlistId);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function writeCachedItems(playlistId, items) {
+      try {
+        localStorage.setItem(CACHE_KEY_PREFIX + playlistId, JSON.stringify(items || []));
+      } catch {
+        // Ignore storage failures (private mode, quota, etc.).
+      }
+    }
+
+    async function fetchWithTimeout(url, timeoutMs) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        return await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     async function fetchFeedViaProxy(feedUrl) {
       let lastErr = null;
 
       for (const proxyBase of PROXIES) {
         try {
-          const resp = await fetch(proxyBase + encodeURIComponent(feedUrl));
+          const resp = await fetchWithTimeout(
+            proxyBase + encodeURIComponent(feedUrl),
+            FEED_REQUEST_TIMEOUT_MS
+          );
           if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
           return await resp.text();
         } catch (err) {
@@ -282,7 +318,7 @@
         row.innerHTML = items.map(cardHTML).join("");
         writeCachedItems(playlistId, items);
         status.textContent = "";
-        row.dataset.feedSource = source;
+        row.dataset.feedSource = "live";
       } catch (err) {
         const cached = readCachedItems(playlistId);
         if (cached?.length) {
