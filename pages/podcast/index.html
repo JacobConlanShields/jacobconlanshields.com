@@ -186,6 +186,26 @@
 
     const FEED_REQUEST_TIMEOUT_MS = 10000;
 
+    const CACHE_KEY_PREFIX = "yt-playlist-cache:";
+
+    function readCachedItems(playlistId) {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY_PREFIX + playlistId);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function writeCachedItems(playlistId, items) {
+      try {
+        localStorage.setItem(CACHE_KEY_PREFIX + playlistId, JSON.stringify(items || []));
+      } catch {
+        // Ignore storage failures (private mode, quota, etc.).
+      }
+    }
+
     async function fetchWithTimeout(url, timeoutMs) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
