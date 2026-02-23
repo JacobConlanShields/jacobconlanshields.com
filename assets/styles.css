@@ -232,9 +232,17 @@ button:hover{ background: rgba(255,255,255,.06); }
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   scroll-padding-left: 2px;
+  scroll-padding-right: 2px;
 
   max-width: 100%;
+  width: 100%;
   scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+}
+
+.row::after{
+  content: "";
+  flex: 0 0 2px;
 }
 
 .row > .card{
@@ -277,6 +285,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   scroll-behavior: smooth;
   scroll-snap-type: y mandatory;
   scrollbar-width: thin;
+  overscroll-behavior-y: contain;
 }
 
 .clips-rail::-webkit-scrollbar{ width: 10px; }
@@ -587,6 +596,7 @@ textarea:focus{
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     overflow-x: hidden;
+    max-width: 100%;
   }
 
   .podcast-page .podcast-title,
@@ -632,6 +642,16 @@ textarea:focus{
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
     padding: 6px 2px 10px;
+    width: 100%;
+    overscroll-behavior-x: contain;
+  }
+
+  .podcast-page .podcast-topgrid,
+  .podcast-page .row-block,
+  .podcast-page .row,
+  .podcast-page .clips-viewport,
+  .podcast-page .clips-rail{
+    max-width: 100%;
   }
 
   .clips-rail .card{

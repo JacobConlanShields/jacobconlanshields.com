@@ -387,25 +387,44 @@
     }
 
     // Scrolling helpers (x for horizontal rows, y for clips)
+    function smoothStepScroll(el, axis, dir, fallbackStep) {
+      const firstCard = el.querySelector(".card");
+      const style = getComputedStyle(el);
+      const gap = Number.parseFloat(style.gap || "0") || 0;
+
+      let step = fallbackStep;
+      if (firstCard) {
+        const box = firstCard.getBoundingClientRect();
+        step = axis === "y" ? (box.height + gap) : (box.width + gap);
+      }
+
+      if (axis === "y") {
+        const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+        const nextTop = Math.min(maxTop, Math.max(0, el.scrollTop + (dir * step)));
+        el.scrollTo({ top: nextTop, behavior: "smooth" });
+        return;
+      }
+
+      const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+      const nextLeft = Math.min(maxLeft, Math.max(0, el.scrollLeft + (dir * step)));
+      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+    }
+
     function scrollRow(el, dir, axis) {
       if (!el) return;
 
       if (axis === "y") {
-        const card = el.querySelector(".card");
         const isMobile = window.matchMedia("(max-width: 900px)").matches;
-
         if (isMobile) {
-          const step = card ? (card.getBoundingClientRect().width + 10) : 220;
-          el.scrollBy({ left: dir * step, behavior: "smooth" });
+          smoothStepScroll(el, "x", dir, 220);
           return;
         }
 
-        const step = card ? (card.getBoundingClientRect().height + 10) : 220;
-        el.scrollBy({ top: dir * step, behavior: "smooth" });
-      } else {
-        const amt = Math.round(el.clientWidth * 0.9) * dir;
-        el.scrollBy({ left: amt, behavior: "smooth" });
+        smoothStepScroll(el, "y", dir, 220);
+        return;
       }
+
+      smoothStepScroll(el, "x", dir, Math.round(el.clientWidth * 0.88));
     }
 
     document.addEventListener("click", (e) => {
