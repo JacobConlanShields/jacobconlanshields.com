@@ -398,6 +398,7 @@
 
   gtag('config', 'G-X00G23WVDJ');
 </script>
+<script defer src="/assets/edge-bounce.js"></script>
 </head>
 
 <body>
@@ -690,6 +691,12 @@
       if (isMobile()) {
         return;
       }
+
+      const inFullscreenReader = fullscreenModal.classList.contains("open");
+      if (!inFullscreenReader) {
+        return;
+      }
+
       const now = Date.now();
       const timeDelta = Math.max(16, now - lastWheelTime);
       const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
