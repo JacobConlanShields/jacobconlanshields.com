@@ -131,6 +131,5 @@
 
     window.clearTimeout(state.wheelReleaseTimer);
     state.wheelReleaseTimer = window.setTimeout(release, 90);
-    event.preventDefault();
-  }, { passive: false });
+  }, { passive: true });
 })();
