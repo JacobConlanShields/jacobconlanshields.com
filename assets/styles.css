@@ -578,6 +578,17 @@ textarea:focus{
     grid-template-columns: 1fr;
   }
 
+  .podcast-page,
+  .podcast-page .top-left{
+    min-width: 0;
+  }
+
+  .podcast-page .podcast-title,
+  .podcast-page .lede{
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
   .top-right{
     width: 100%;
     justify-self: stretch;
