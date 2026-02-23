@@ -178,11 +178,13 @@
     // YouTube playlist feed (XML)
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
-    // Proxy options (CORS-safe).
-    // Prefer local Pages Function (/yt), then fall back to dedicated Worker.
-    const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
-    const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
-    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+    // Multiple proxy endpoints for durability.
+    // We first try same-origin Pages Functions, then external workers.
+    const PROXY_ENDPOINTS = [
+      "/yt?url=",
+      "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=",
+      "https://yt.jacobconlanshields.workers.dev/?url=",
+    ];
 
     const FEED_REQUEST_TIMEOUT_MS = 10000;
 
@@ -217,23 +219,28 @@
       }
     }
 
-    async function fetchFeedViaProxy(feedUrl) {
-      let lastErr = null;
+    async function fetchPlaylistXmlResilient(playlistId) {
+      const feedUrl = FEED(playlistId);
+      const errors = [];
 
-      for (const proxyBase of PROXIES) {
+      for (const proxy of PROXY_ENDPOINTS) {
+        const url = proxy + encodeURIComponent(feedUrl);
         try {
-          const resp = await fetchWithTimeout(
-            proxyBase + encodeURIComponent(feedUrl),
-            FEED_REQUEST_TIMEOUT_MS
-          );
-          if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
-          return await resp.text();
+          const resp = await fetchWithTimeout(url, FEED_REQUEST_TIMEOUT_MS);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+          const xml = await resp.text();
+          if (!xml || !xml.trim().startsWith("<?xml")) {
+            throw new Error("Non-XML response");
+          }
+
+          return { xml, source: proxy };
         } catch (err) {
-          lastErr = err;
+          errors.push(`${proxy} -> ${String(err?.message || err)}`);
         }
       }
 
-      throw lastErr || new Error("Unable to load feed through available proxies.");
+      throw new Error(`All feed endpoints failed. ${errors.join(" | ")}`);
     }
 
     function escapeHtml(s) {
@@ -305,7 +312,7 @@
       status.textContent = "Loading…";
 
       try {
-        const xml = await fetchFeedViaProxy(FEED(playlistId));
+        const { xml, source } = await fetchPlaylistXmlResilient(playlistId);
 
         const items = parseFeed(xml).slice(0, limit);
 
@@ -318,7 +325,7 @@
         row.innerHTML = items.map(cardHTML).join("");
         writeCachedItems(playlistId, items);
         status.textContent = "";
-        row.dataset.feedSource = "live";
+        row.dataset.feedSource = source;
       } catch (err) {
         const cached = readCachedItems(playlistId);
         if (cached?.length) {
