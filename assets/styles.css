@@ -163,13 +163,16 @@ button:hover{ background: rgba(255,255,255,.06); }
 .podcast-title{ margin: 0 0 6px; }
 
 
-.podcast-page{
+.edge-bounce-enabled{
   --edge-shift-y: 0px;
+}
+
+.edge-bounce-enabled.edge-bounce-active{
   transform: translate3d(0, var(--edge-shift-y), 0);
   will-change: transform;
 }
 
-.podcast-page.edge-bounce-animating{
+.edge-bounce-enabled.edge-bounce-animating{
   transition: transform var(--edge-rebound-ms, 220ms) cubic-bezier(0.16, 0.82, 0.28, 1);
 }
 
