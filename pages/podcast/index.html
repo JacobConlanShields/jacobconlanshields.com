@@ -179,12 +179,15 @@
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
     // Proxy options (CORS-safe).
-    // Prefer local Pages Function (/yt), then fall back to dedicated Worker.
-    const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
-    const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
-    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+    // Try multiple known endpoints in parallel and use the first valid XML response.
+    const PROXY_ENDPOINTS = [
+      `${window.location.origin}/yt?url=`,
+      "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=",
+      "https://yt.jacobconlanshields.workers.dev/?url=",
+      "https://yt-feed-proxy.jacobconlanshields.com/?url=",
+    ];
 
-    const FEED_REQUEST_TIMEOUT_MS = 10000;
+    const FEED_REQUEST_TIMEOUT_MS = 6000;
 
     const CACHE_KEY_PREFIX = "yt-playlist-cache:";
 
@@ -218,22 +221,24 @@
     }
 
     async function fetchFeedViaProxy(feedUrl) {
-      let lastErr = null;
+      const attempts = PROXY_ENDPOINTS.map(async (proxyBase) => {
+        const url = proxyBase + encodeURIComponent(feedUrl);
+        const resp = await fetchWithTimeout(url, FEED_REQUEST_TIMEOUT_MS);
+        if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
 
-      for (const proxyBase of PROXIES) {
-        try {
-          const resp = await fetchWithTimeout(
-            proxyBase + encodeURIComponent(feedUrl),
-            FEED_REQUEST_TIMEOUT_MS
-          );
-          if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
-          return await resp.text();
-        } catch (err) {
-          lastErr = err;
+        const xml = await resp.text();
+        if (!xml?.trim().startsWith("<?xml")) {
+          throw new Error(`Non-XML response via ${proxyBase}`);
         }
-      }
 
-      throw lastErr || new Error("Unable to load feed through available proxies.");
+        return xml;
+      });
+
+      try {
+        return await Promise.any(attempts);
+      } catch (err) {
+        throw new Error("Unable to load feed through available proxies.");
+      }
     }
 
     function escapeHtml(s) {
