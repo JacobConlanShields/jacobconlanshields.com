@@ -299,6 +299,26 @@
       `;
     }
 
+    function playlistFallbackHTML(playlistId) {
+      const embed = `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
+      const watch = `https://www.youtube.com/playlist?list=${playlistId}`;
+      return `
+        <article class="playlist-fallback">
+          <div class="playlist-fallback__frame">
+            <iframe
+              src="${embed}"
+              title="YouTube playlist preview"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
+          </div>
+          <a class="btn playlist-fallback__link" href="${watch}" target="_blank" rel="noopener noreferrer">Open playlist on YouTube</a>
+        </article>
+      `;
+    }
+
     async function loadPlaylistInto(rowId, statusId, playlistId, limit) {
       // Fetches playlist XML via proxy, then injects cards into a row.
       const row = document.getElementById(rowId);
@@ -331,7 +351,9 @@
           status.textContent = "Live feed unavailable — showing last saved videos.";
           row.dataset.feedSource = "cache";
         } else {
-          status.textContent = "Could not load videos right now.";
+          row.innerHTML = playlistFallbackHTML(playlistId);
+          status.textContent = "Live feed unavailable — using direct playlist view.";
+          row.dataset.feedSource = "playlist-fallback";
         }
         console.error(err);
       }
