@@ -440,50 +440,82 @@
       smoothStepScroll(el, "x", dir, Math.round(el.clientWidth * 0.88));
     }
 
-    const swipeState = new WeakMap();
+    const touchDragState = new WeakMap();
 
-    function handleSwipeStart(event) {
+    function getTouchAxisForRail(rail) {
+      const isClipsRail = rail.classList.contains("clips-rail");
+      const isMobile = window.matchMedia("(max-width: 900px)").matches;
+      return isClipsRail && !isMobile ? "y" : "x";
+    }
+
+    function handleTouchDragStart(event) {
       const rail = event.currentTarget;
       const touch = event.touches?.[0];
       if (!rail || !touch) return;
 
-      swipeState.set(rail, {
-        x: touch.clientX,
-        y: touch.clientY,
+      touchDragState.set(rail, {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        scrollLeft: rail.scrollLeft,
+        scrollTop: rail.scrollTop,
+        moved: false,
       });
     }
 
-    function handleSwipeEnd(event) {
+    function handleTouchDragMove(event) {
       const rail = event.currentTarget;
-      const start = swipeState.get(rail);
-      const touch = event.changedTouches?.[0];
-      if (!rail || !start || !touch) return;
+      const state = touchDragState.get(rail);
+      const touch = event.touches?.[0];
+      if (!rail || !state || !touch) return;
 
-      const deltaX = touch.clientX - start.x;
-      const deltaY = touch.clientY - start.y;
-      const horizontalSwipe = Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY);
+      const deltaX = touch.clientX - state.startX;
+      const deltaY = touch.clientY - state.startY;
+      const axis = getTouchAxisForRail(rail);
 
-      if (horizontalSwipe) {
-        const dir = deltaX < 0 ? 1 : -1;
-        smoothStepScroll(rail, "x", dir, Math.round(rail.clientWidth * 0.86));
+      if (axis === "x") {
+        rail.scrollLeft = state.scrollLeft - deltaX;
+        if (Math.abs(deltaX) > 8) {
+          state.moved = true;
+          event.preventDefault();
+        }
+        return;
       }
 
-      swipeState.delete(rail);
+      rail.scrollTop = state.scrollTop - deltaY;
+      if (Math.abs(deltaY) > 8) {
+        state.moved = true;
+        event.preventDefault();
+      }
     }
 
-    function bindSwipeScrolling() {
+    function handleTouchDragEnd(event) {
+      const rail = event.currentTarget;
+      const state = touchDragState.get(rail);
+      if (state?.moved) {
+        rail.dataset.draggedAt = String(Date.now());
+      }
+      touchDragState.delete(rail);
+    }
+
+    function bindTouchDragScrolling() {
       const rails = document.querySelectorAll('.row, .clips-rail');
       rails.forEach((rail) => {
-        rail.addEventListener('touchstart', handleSwipeStart, { passive: true });
-        rail.addEventListener('touchend', handleSwipeEnd, { passive: true });
-        rail.addEventListener('touchcancel', () => swipeState.delete(rail), { passive: true });
+        rail.addEventListener('touchstart', handleTouchDragStart, { passive: true });
+        rail.addEventListener('touchmove', handleTouchDragMove, { passive: false });
+        rail.addEventListener('touchend', handleTouchDragEnd, { passive: true });
+        rail.addEventListener('touchcancel', handleTouchDragEnd, { passive: true });
       });
     }
 
     document.addEventListener("click", (e) => {
       // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
-      if (card?.dataset.video) openPlayer(card.dataset.video);
+      if (card?.dataset.video) {
+        const rail = card.closest(".row, .clips-rail");
+        const draggedAt = Number(rail?.dataset.draggedAt || 0);
+        if (Date.now() - draggedAt < 300) return;
+        openPlayer(card.dataset.video);
+      }
 
       if (e.target.matches("[data-close]")) closePlayer();
 
@@ -501,7 +533,7 @@
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
 
-    bindSwipeScrolling();
+    bindTouchDragScrolling();
 
     // Load playlists (order matters, matches page order)
     loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
