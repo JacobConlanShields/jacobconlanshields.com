@@ -441,6 +441,46 @@
       smoothStepScroll(el, "x", dir, Math.round(el.clientWidth * 0.88));
     }
 
+    const swipeState = new WeakMap();
+
+    function handleSwipeStart(event) {
+      const rail = event.currentTarget;
+      const touch = event.touches?.[0];
+      if (!rail || !touch) return;
+
+      swipeState.set(rail, {
+        x: touch.clientX,
+        y: touch.clientY,
+      });
+    }
+
+    function handleSwipeEnd(event) {
+      const rail = event.currentTarget;
+      const start = swipeState.get(rail);
+      const touch = event.changedTouches?.[0];
+      if (!rail || !start || !touch) return;
+
+      const deltaX = touch.clientX - start.x;
+      const deltaY = touch.clientY - start.y;
+      const horizontalSwipe = Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (horizontalSwipe) {
+        const dir = deltaX < 0 ? 1 : -1;
+        smoothStepScroll(rail, "x", dir, Math.round(rail.clientWidth * 0.86));
+      }
+
+      swipeState.delete(rail);
+    }
+
+    function bindSwipeScrolling() {
+      const rails = document.querySelectorAll('.row, .clips-rail');
+      rails.forEach((rail) => {
+        rail.addEventListener('touchstart', handleSwipeStart, { passive: true });
+        rail.addEventListener('touchend', handleSwipeEnd, { passive: true });
+        rail.addEventListener('touchcancel', () => swipeState.delete(rail), { passive: true });
+      });
+    }
+
     document.addEventListener("click", (e) => {
       // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
@@ -461,6 +501,8 @@
       // Allow "Esc" to close the modal video.
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
+
+    bindSwipeScrolling();
 
     // Load playlists (order matters, matches page order)
     loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);

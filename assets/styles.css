@@ -237,7 +237,6 @@ button:hover{ background: rgba(255,255,255,.06); }
   max-width: 100%;
   width: 100%;
   scrollbar-width: thin;
-  touch-action: pan-x;
 }
 
 
@@ -649,7 +648,6 @@ textarea:focus{
     padding: 6px 2px 16px;
     scroll-padding-right: 10px;
     width: 100%;
-    touch-action: pan-x;
   }
 
   .podcast-page .podcast-topgrid,
