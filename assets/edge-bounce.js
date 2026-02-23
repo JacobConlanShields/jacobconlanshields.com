@@ -36,8 +36,12 @@
   };
 
   const getMaxTop = () => Math.max(0, getScrollHeight() - window.innerHeight);
-  const atTop = () => getScrollTop() <= 0;
-  const atBottom = () => getScrollTop() >= (getMaxTop() - 1);
+  const edgeThreshold = 2;
+  const atTop = (scrollTop = getScrollTop()) => scrollTop <= edgeThreshold;
+  const atBottom = (scrollTop = getScrollTop(), maxTop = getMaxTop()) => {
+    if (maxTop <= edgeThreshold) return false;
+    return scrollTop >= (maxTop - edgeThreshold);
+  };
 
   const setShift = (px) => {
     state.shift = Math.round(px * 100) / 100;
@@ -95,8 +99,10 @@
 
     if (state.axisLocked === 'x') return;
 
-    const pullingDownAtTop = atTop() && totalY > 0;
-    const pullingUpAtBottom = atBottom() && totalY < 0;
+    const scrollTopNow = getScrollTop();
+    const maxTopNow = getMaxTop();
+    const pullingDownAtTop = atTop(scrollTopNow) && totalY > 0;
+    const pullingUpAtBottom = atBottom(scrollTopNow, maxTopNow) && totalY < 0;
 
     if (!pullingDownAtTop && !pullingUpAtBottom) {
       if (state.shift) release();
@@ -131,10 +137,11 @@
     if (event.deltaMode !== 0 || event.ctrlKey) return;
 
     const maxTop = getMaxTop();
-    if (maxTop <= 0) return;
+    if (maxTop <= edgeThreshold) return;
 
-    const pullingDownAtTop = atTop() && event.deltaY < 0;
-    const pullingUpAtBottom = atBottom() && event.deltaY > 0;
+    const scrollTopNow = getScrollTop();
+    const pullingDownAtTop = scrollTopNow <= edgeThreshold && event.deltaY < 0;
+    const pullingUpAtBottom = scrollTopNow >= (maxTop - edgeThreshold) && event.deltaY > 0;
 
     if (!pullingDownAtTop && !pullingUpAtBottom) {
       if (state.shift) release();
