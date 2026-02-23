@@ -516,7 +516,7 @@
       if (!page) return;
 
       const speed = Math.abs(pageBounceState.velocity);
-      const duration = clamp(180 + (speed * 38), 180, 420);
+      const duration = clamp(170 + (speed * 30), 170, 320);
       page.style.setProperty('--edge-rebound-ms', `${Math.round(duration)}ms`);
       page.classList.add('edge-bounce-animating');
       setEdgeShift(0);
@@ -577,9 +577,9 @@
 
         const direction = pullingDownAtTop ? 1 : -1;
         const pullDistance = Math.abs(totalY);
-        const damping = 1 / (1 + (pullDistance / 130));
-        const maxShift = 34;
-        const nextShift = clamp(direction * pullDistance * 0.34 * damping, -maxShift, maxShift);
+        const damping = 1 / (1 + (pullDistance / 180));
+        const maxShift = 44;
+        const nextShift = clamp(direction * pullDistance * 0.4 * damping, -maxShift, maxShift);
 
         if (Math.abs(nextShift) > Math.abs(pageBounceState.shift)) {
           podcastPageRoot?.classList.remove('edge-bounce-animating');
