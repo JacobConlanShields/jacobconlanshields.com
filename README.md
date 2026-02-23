@@ -7,7 +7,7 @@ This repository is a static personal website with a small amount of JavaScript f
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
 - **CSS**: Global styles, layout rules, and component styles.
-- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation) and an optional serverless proxy function.
+- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation, global edge-bounce scroll effect) and an optional serverless proxy function.
 
 ## File-by-file reference (every tracked file)
 Below is a detailed description of every tracked file in the repository, as an example for future documentation.
@@ -30,6 +30,11 @@ Below is a detailed description of every tracked file in the repository, as an e
   - The modal video player.
   - The Relative Momentum ebook viewer (two-page spread + lightbox).
 - Includes responsive behavior for screens below 900px, switching the clips column to a horizontal row and stacking layouts.
+
+### `assets/edge-bounce.js`
+- Shared scroll-edge “bumper” behavior used across all pages.
+- Applies a subtle rebound animation when a user tries to scroll past the top or bottom of a page.
+- Supports both touch gestures (mobile) and wheel/trackpad input (desktop).
 
 ### `contact/index.html`
 - The contact page.
