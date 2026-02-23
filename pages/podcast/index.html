@@ -16,6 +16,7 @@
 
   gtag('config', 'G-X00G23WVDJ');
 </script>
+<script defer src="/assets/edge-bounce.js"></script>
 </head>
 
 <body>
@@ -362,8 +363,6 @@
     // Modal player
     const modal = document.getElementById("playerModal");
     const playerWrap = document.getElementById("playerWrap");
-    const podcastPageRoot = document.querySelector(".podcast-page");
-
     function openPlayer(videoId) {
       // Only allow expected YouTube IDs before injecting into iframe src.
       if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId || "")) return;
@@ -482,124 +481,6 @@
       });
     }
 
-    const pageBounceState = {
-      active: false,
-      startY: 0,
-      startX: 0,
-      lastY: 0,
-      lastT: 0,
-      velocity: 0,
-      shift: 0,
-      axisLocked: null,
-    };
-
-    function clamp(n, min, max) {
-      return Math.min(max, Math.max(min, n));
-    }
-
-    function isAtPageBottom() {
-      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
-      const maxTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      return scrollTop >= (maxTop - 1);
-    }
-
-    function setEdgeShift(px) {
-      const shift = Math.round(px * 100) / 100;
-      pageBounceState.shift = shift;
-      podcastPageRoot?.style.setProperty('--edge-shift-y', `${shift}px`);
-    }
-
-    function releaseEdgeBounce() {
-      if (!pageBounceState.shift) return;
-
-      const page = podcastPageRoot;
-      if (!page) return;
-
-      const speed = Math.abs(pageBounceState.velocity);
-      const duration = clamp(170 + (speed * 30), 170, 320);
-      page.style.setProperty('--edge-rebound-ms', `${Math.round(duration)}ms`);
-      page.classList.add('edge-bounce-animating');
-      setEdgeShift(0);
-
-      window.setTimeout(() => {
-        page.classList.remove('edge-bounce-animating');
-      }, duration + 30);
-    }
-
-    function bindEdgeBounce() {
-      const page = podcastPageRoot;
-      if (!page) return;
-
-      window.addEventListener('touchstart', (event) => {
-        if (event.touches?.length !== 1) return;
-        const touch = event.touches[0];
-        pageBounceState.active = true;
-        pageBounceState.startY = touch.clientY;
-        pageBounceState.startX = touch.clientX;
-        pageBounceState.lastY = touch.clientY;
-        pageBounceState.lastT = performance.now();
-        pageBounceState.velocity = 0;
-        pageBounceState.axisLocked = null;
-      }, { passive: true });
-
-      window.addEventListener('touchmove', (event) => {
-        if (!pageBounceState.active || event.touches?.length !== 1) return;
-        const touch = event.touches[0];
-        const now = performance.now();
-
-        const totalY = touch.clientY - pageBounceState.startY;
-        const totalX = touch.clientX - (pageBounceState.startX || touch.clientX);
-        if (!pageBounceState.axisLocked) {
-          const dx = Math.abs(totalX);
-          const dy = Math.abs(totalY);
-          if (dy > 10 || dx > 10) {
-            pageBounceState.axisLocked = dy >= dx ? 'y' : 'x';
-          }
-        }
-
-        const deltaY = touch.clientY - pageBounceState.lastY;
-        const dt = Math.max(16, now - pageBounceState.lastT);
-        pageBounceState.velocity = (deltaY / dt) * 16;
-        pageBounceState.lastY = touch.clientY;
-        pageBounceState.lastT = now;
-
-        if (pageBounceState.axisLocked === 'x') return;
-
-        const atTop = (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
-        const atBottom = isAtPageBottom();
-        const pullingDownAtTop = atTop && totalY > 0;
-        const pullingUpAtBottom = atBottom && totalY < 0;
-
-        if (!pullingDownAtTop && !pullingUpAtBottom) {
-          if (pageBounceState.shift) releaseEdgeBounce();
-          return;
-        }
-
-        const direction = pullingDownAtTop ? 1 : -1;
-        const pullDistance = Math.abs(totalY);
-        const damping = 1 / (1 + (pullDistance / 180));
-        const maxShift = 44;
-        const nextShift = clamp(direction * pullDistance * 0.4 * damping, -maxShift, maxShift);
-
-        if (Math.abs(nextShift) > Math.abs(pageBounceState.shift)) {
-          podcastPageRoot?.classList.remove('edge-bounce-animating');
-        }
-
-        setEdgeShift(nextShift);
-        event.preventDefault();
-      }, { passive: false });
-
-      const end = () => {
-        if (!pageBounceState.active) return;
-        pageBounceState.active = false;
-        pageBounceState.axisLocked = null;
-        if (pageBounceState.shift) releaseEdgeBounce();
-      };
-
-      window.addEventListener('touchend', end, { passive: true });
-      window.addEventListener('touchcancel', end, { passive: true });
-    }
-
     document.addEventListener("click", (e) => {
       // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
@@ -622,7 +503,6 @@
     });
 
     bindSwipeScrolling();
-    bindEdgeBounce();
 
     // Load playlists (order matters, matches page order)
     loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
