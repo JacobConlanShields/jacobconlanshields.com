@@ -387,24 +387,47 @@
     }
 
     // Scrolling helpers (x for horizontal rows, y for clips)
+    function scrollToTarget(el, axis, delta) {
+      const scrollProp = axis === "y" ? "scrollTop" : "scrollLeft";
+      const maxScroll = axis === "y"
+        ? Math.max(0, el.scrollHeight - el.clientHeight)
+        : Math.max(0, el.scrollWidth - el.clientWidth);
+
+      const current = el[scrollProp] || 0;
+      const target = Math.max(0, Math.min(maxScroll, current + delta));
+      el.scrollTo(axis === "y"
+        ? { top: target, behavior: "smooth" }
+        : { left: target, behavior: "smooth" });
+    }
+
+    function getGap(el) {
+      const styles = window.getComputedStyle(el);
+      return Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+    }
+
     function scrollRow(el, dir, axis) {
       if (!el) return;
 
       if (axis === "y") {
         const card = el.querySelector(".card");
         const isMobile = window.matchMedia("(max-width: 900px)").matches;
+        const gap = getGap(el);
 
         if (isMobile) {
-          const step = card ? (card.getBoundingClientRect().width + 10) : 220;
-          el.scrollBy({ left: dir * step, behavior: "smooth" });
+          const step = card ? (card.getBoundingClientRect().width + gap) : 220;
+          scrollToTarget(el, "x", dir * step);
           return;
         }
 
-        const step = card ? (card.getBoundingClientRect().height + 10) : 220;
-        el.scrollBy({ top: dir * step, behavior: "smooth" });
+        const step = card ? (card.getBoundingClientRect().height + gap) : 220;
+        scrollToTarget(el, "y", dir * step);
       } else {
-        const amt = Math.round(el.clientWidth * 0.9) * dir;
-        el.scrollBy({ left: amt, behavior: "smooth" });
+        const card = el.querySelector(".card");
+        const gap = getGap(el);
+        const cardStep = card ? (card.getBoundingClientRect().width + gap) : 220;
+        const viewportStep = Math.round(el.clientWidth * 0.9);
+        const step = Math.max(cardStep, viewportStep);
+        scrollToTarget(el, "x", dir * step);
       }
     }
 
