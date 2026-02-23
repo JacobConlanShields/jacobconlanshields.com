@@ -1,4 +1,15 @@
 export async function onRequest({ request }) {
+  const corsHeaders = {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, OPTIONS",
+    "access-control-allow-headers": "*",
+    "x-content-type-options": "nosniff",
+  };
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   // Cloudflare Pages Function entry point.
   // This proxy exists so the browser can fetch YouTube's XML feeds without CORS errors.
   const u = new URL(request.url);
@@ -13,7 +24,7 @@ export async function onRequest({ request }) {
   }
 
   // Safety: only allow HTTPS YouTube feeds.
-  const allowedHosts = new Set(["www.youtube.com", "youtube.com"]);
+  const allowedHosts = new Set(["www.youtube.com", "youtube.com", "m.youtube.com"]);
   if (t.protocol !== "https:" || !allowedHosts.has(t.hostname) || !t.pathname.startsWith("/feeds/")) {
     return new Response("Blocked", { status: 403 });
   }
@@ -23,9 +34,7 @@ export async function onRequest({ request }) {
   try {
     resp = await fetch(t.toString(), {
       headers: {
-        // Helps avoid occasional upstream weirdness
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/xml,text/xml,*/*",
+        "Accept": "application/atom+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
       },
       cf: {
         cacheTtl: 300,
@@ -37,8 +46,7 @@ export async function onRequest({ request }) {
       status: 502,
       headers: {
         "content-type": "text/plain; charset=utf-8",
-        "x-content-type-options": "nosniff",
-        "access-control-allow-origin": "*",
+        ...corsHeaders,
       },
     });
   }
@@ -48,11 +56,10 @@ export async function onRequest({ request }) {
   return new Response(body, {
     status: resp.status,
     headers: {
-      "content-type": "application/xml; charset=utf-8",
+      "content-type": resp.headers.get("content-type") || "application/xml; charset=utf-8",
       // Cache for 5 minutes at the edge (fast + auto-updates)
       "cache-control": "public, max-age=300, stale-while-revalidate=86400",
-      "x-content-type-options": "nosniff",
-      "access-control-allow-origin": "*",
+      ...corsHeaders,
     },
   });
 }
