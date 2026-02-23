@@ -179,10 +179,11 @@
     const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 
     // Proxy options (CORS-safe).
-    // Prefer local Pages Function (/yt), then fall back to dedicated Worker.
+    // Try dedicated workers first, then local Pages Function (/yt) as fallback.
     const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
+    const LEGACY_WORKER_PROXY = "https://yt.jacobconlanshields.workers.dev/?url=";
     const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
-    const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+    const PROXIES = [WORKER_PROXY, LEGACY_WORKER_PROXY, LOCAL_PROXY];
 
     const FEED_REQUEST_TIMEOUT_MS = 10000;
 
@@ -227,7 +228,10 @@
             FEED_REQUEST_TIMEOUT_MS
           );
           if (!resp.ok) throw new Error(`Feed error: ${resp.status} via ${proxyBase}`);
-          return await resp.text();
+          const body = await resp.text();
+          const looksLikeXml = /<feed[\s>]|<entry[\s>]|<\?xml/i.test(body);
+          if (!looksLikeXml) throw new Error(`Invalid feed payload via ${proxyBase}`);
+          return body;
         } catch (err) {
           lastErr = err;
         }

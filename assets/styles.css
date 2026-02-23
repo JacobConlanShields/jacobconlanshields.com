@@ -578,6 +578,44 @@ textarea:focus{
     grid-template-columns: 1fr;
   }
 
+  .podcast-page,
+  .podcast-page .top-left{
+    min-width: 0;
+  }
+
+  .podcast-page{
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+
+  .podcast-page .podcast-title,
+  .podcast-page .lede,
+  .podcast-page .row-title,
+  .podcast-page .card-title,
+  .podcast-page .status,
+  .podcast-page .nav a{
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .podcast-page .row-head{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .podcast-page .row-title{
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .podcast-page .clips-rail .card-title{
+    max-height: none;
+    overflow: visible;
+  }
+
   .top-right{
     width: 100%;
     justify-self: stretch;
