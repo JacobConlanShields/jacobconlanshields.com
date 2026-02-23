@@ -230,8 +230,8 @@ button:hover{ background: rgba(255,255,255,.06); }
 
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: 2px;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 2px;
 
   max-width: 100%;
   scrollbar-width: thin;
@@ -241,6 +241,11 @@ button:hover{ background: rgba(255,255,255,.06); }
   width: var(--card-w);
   flex: 0 0 auto;
   scroll-snap-align: start;
+}
+
+.row::after{
+  content: "";
+  flex: 0 0 2px;
 }
 
 .row::-webkit-scrollbar{ height: 10px; }
@@ -275,7 +280,7 @@ button:hover{ background: rgba(255,255,255,.06); }
 
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: y proximity;
   scrollbar-width: thin;
 }
 
@@ -289,7 +294,6 @@ button:hover{ background: rgba(255,255,255,.06); }
   width: 100%;
   flex: 0 0 auto;
   scroll-snap-align: start;
-  scroll-snap-stop: always;
 }
 
 .clips-rail .thumb{ aspect-ratio: 9 / 16; }
@@ -587,6 +591,7 @@ textarea:focus{
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     overflow-x: hidden;
+    overflow-y: visible;
   }
 
   .podcast-page .podcast-title,
@@ -630,13 +635,18 @@ textarea:focus{
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x proximity;
     padding: 6px 2px 10px;
   }
 
   .clips-rail .card{
     width: min(52vw, 220px);
     scroll-snap-align: start;
+  }
+
+  .clips-rail::after{
+    content: "";
+    flex: 0 0 2px;
   }
 
   .preview-head,
