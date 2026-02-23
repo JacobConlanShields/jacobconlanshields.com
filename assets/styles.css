@@ -583,10 +583,20 @@ textarea:focus{
     min-width: 0;
   }
 
+  .podcast-page{
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   .podcast-page .podcast-title,
   .podcast-page .lede{
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  .podcast-page .clips-rail .card-title{
+    max-height: none;
+    overflow: visible;
   }
 
   .top-right{
