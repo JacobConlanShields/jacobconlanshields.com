@@ -441,6 +441,8 @@
     }
 
     const swipeState = new WeakMap();
+    const dragState = new WeakMap();
+    const suppressedCardClicks = new WeakSet();
 
     function handleSwipeStart(event) {
       const rail = event.currentTarget;
@@ -480,9 +482,69 @@
       });
     }
 
+    function bindDragScrolling() {
+      const rails = document.querySelectorAll('.row, .clips-rail');
+
+      rails.forEach((rail) => {
+        rail.addEventListener('pointerdown', (event) => {
+          if (event.pointerType !== 'touch') return;
+
+          const axis = rail.scrollWidth > rail.clientWidth ? 'x' : 'y';
+
+          dragState.set(rail, {
+            axis,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            startLeft: rail.scrollLeft,
+            startTop: rail.scrollTop,
+            moved: false,
+          });
+
+          rail.setPointerCapture(event.pointerId);
+        });
+
+        rail.addEventListener('pointermove', (event) => {
+          const state = dragState.get(rail);
+          if (!state || state.pointerId !== event.pointerId) return;
+
+          if (state.axis === 'x') {
+            const deltaX = event.clientX - state.startX;
+            if (Math.abs(deltaX) > 6) state.moved = true;
+            rail.scrollLeft = state.startLeft - deltaX;
+            return;
+          }
+
+          const deltaY = event.clientY - state.startY;
+          if (Math.abs(deltaY) > 6) state.moved = true;
+          rail.scrollTop = state.startTop - deltaY;
+        });
+
+        rail.addEventListener('pointerup', (event) => {
+          const state = dragState.get(rail);
+          if (!state || state.pointerId !== event.pointerId) return;
+
+          if (state.moved) {
+            rail.querySelectorAll('.card').forEach((card) => suppressedCardClicks.add(card));
+            setTimeout(() => {
+              rail.querySelectorAll('.card').forEach((card) => suppressedCardClicks.delete(card));
+            }, 240);
+          }
+
+          dragState.delete(rail);
+        });
+
+        rail.addEventListener('pointercancel', () => dragState.delete(rail));
+      });
+    }
+
     document.addEventListener("click", (e) => {
       // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
+      if (card && suppressedCardClicks.has(card)) {
+        e.preventDefault();
+        return;
+      }
       if (card?.dataset.video) openPlayer(card.dataset.video);
 
       if (e.target.matches("[data-close]")) closePlayer();
@@ -502,6 +564,7 @@
     });
 
     bindSwipeScrolling();
+    bindDragScrolling();
 
     // Load playlists (order matters, matches page order)
     loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
