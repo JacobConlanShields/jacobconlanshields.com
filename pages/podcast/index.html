@@ -362,6 +362,7 @@
     // Modal player
     const modal = document.getElementById("playerModal");
     const playerWrap = document.getElementById("playerWrap");
+    const podcastPageRoot = document.querySelector(".podcast-page");
 
     function openPlayer(videoId) {
       // Only allow expected YouTube IDs before injecting into iframe src.
@@ -387,25 +388,216 @@
     }
 
     // Scrolling helpers (x for horizontal rows, y for clips)
+    function smoothStepScroll(el, axis, dir, fallbackStep) {
+      const firstCard = el.querySelector(".card");
+      const style = getComputedStyle(el);
+      const gap = Number.parseFloat(style.gap || "0") || 0;
+
+      let step = fallbackStep;
+      if (firstCard) {
+        const box = firstCard.getBoundingClientRect();
+        step = axis === "y" ? (box.height + gap) : (box.width + gap);
+      }
+
+      if (axis === "y") {
+        const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+        const targetTop = Math.max(0, el.scrollTop + (dir * step));
+        const threshold = Math.max(10, step * 0.35);
+        const nextTop = dir > 0 && (maxTop - targetTop) < threshold
+          ? maxTop
+          : dir < 0 && targetTop < threshold
+            ? 0
+            : Math.min(maxTop, targetTop);
+
+        el.scrollTo({ top: nextTop, behavior: "smooth" });
+        return;
+      }
+
+      const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+      const targetLeft = Math.max(0, el.scrollLeft + (dir * step));
+      const threshold = Math.max(10, step * 0.35);
+      const nextLeft = dir > 0 && (maxLeft - targetLeft) < threshold
+        ? maxLeft
+        : dir < 0 && targetLeft < threshold
+          ? 0
+          : Math.min(maxLeft, targetLeft);
+
+      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+    }
+
     function scrollRow(el, dir, axis) {
       if (!el) return;
 
       if (axis === "y") {
-        const card = el.querySelector(".card");
         const isMobile = window.matchMedia("(max-width: 900px)").matches;
-
         if (isMobile) {
-          const step = card ? (card.getBoundingClientRect().width + 10) : 220;
-          el.scrollBy({ left: dir * step, behavior: "smooth" });
+          smoothStepScroll(el, "x", dir, 220);
           return;
         }
 
-        const step = card ? (card.getBoundingClientRect().height + 10) : 220;
-        el.scrollBy({ top: dir * step, behavior: "smooth" });
-      } else {
-        const amt = Math.round(el.clientWidth * 0.9) * dir;
-        el.scrollBy({ left: amt, behavior: "smooth" });
+        smoothStepScroll(el, "y", dir, 220);
+        return;
       }
+
+      smoothStepScroll(el, "x", dir, Math.round(el.clientWidth * 0.88));
+    }
+
+    const swipeState = new WeakMap();
+
+    function handleSwipeStart(event) {
+      const rail = event.currentTarget;
+      const touch = event.touches?.[0];
+      if (!rail || !touch) return;
+
+      swipeState.set(rail, {
+        x: touch.clientX,
+        y: touch.clientY,
+      });
+    }
+
+    function handleSwipeEnd(event) {
+      const rail = event.currentTarget;
+      const start = swipeState.get(rail);
+      const touch = event.changedTouches?.[0];
+      if (!rail || !start || !touch) return;
+
+      const deltaX = touch.clientX - start.x;
+      const deltaY = touch.clientY - start.y;
+      const horizontalSwipe = Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (horizontalSwipe) {
+        const dir = deltaX < 0 ? 1 : -1;
+        smoothStepScroll(rail, "x", dir, Math.round(rail.clientWidth * 0.86));
+      }
+
+      swipeState.delete(rail);
+    }
+
+    function bindSwipeScrolling() {
+      const rails = document.querySelectorAll('.row, .clips-rail');
+      rails.forEach((rail) => {
+        rail.addEventListener('touchstart', handleSwipeStart, { passive: true });
+        rail.addEventListener('touchend', handleSwipeEnd, { passive: true });
+        rail.addEventListener('touchcancel', () => swipeState.delete(rail), { passive: true });
+      });
+    }
+
+    const pageBounceState = {
+      active: false,
+      startY: 0,
+      startX: 0,
+      lastY: 0,
+      lastT: 0,
+      velocity: 0,
+      shift: 0,
+      axisLocked: null,
+    };
+
+    function clamp(n, min, max) {
+      return Math.min(max, Math.max(min, n));
+    }
+
+    function isAtPageBottom() {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      const maxTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      return scrollTop >= (maxTop - 1);
+    }
+
+    function setEdgeShift(px) {
+      const shift = Math.round(px * 100) / 100;
+      pageBounceState.shift = shift;
+      podcastPageRoot?.style.setProperty('--edge-shift-y', `${shift}px`);
+    }
+
+    function releaseEdgeBounce() {
+      if (!pageBounceState.shift) return;
+
+      const page = podcastPageRoot;
+      if (!page) return;
+
+      const speed = Math.abs(pageBounceState.velocity);
+      const duration = clamp(170 + (speed * 30), 170, 320);
+      page.style.setProperty('--edge-rebound-ms', `${Math.round(duration)}ms`);
+      page.classList.add('edge-bounce-animating');
+      setEdgeShift(0);
+
+      window.setTimeout(() => {
+        page.classList.remove('edge-bounce-animating');
+      }, duration + 30);
+    }
+
+    function bindEdgeBounce() {
+      const page = podcastPageRoot;
+      if (!page) return;
+
+      window.addEventListener('touchstart', (event) => {
+        if (event.touches?.length !== 1) return;
+        const touch = event.touches[0];
+        pageBounceState.active = true;
+        pageBounceState.startY = touch.clientY;
+        pageBounceState.startX = touch.clientX;
+        pageBounceState.lastY = touch.clientY;
+        pageBounceState.lastT = performance.now();
+        pageBounceState.velocity = 0;
+        pageBounceState.axisLocked = null;
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (event) => {
+        if (!pageBounceState.active || event.touches?.length !== 1) return;
+        const touch = event.touches[0];
+        const now = performance.now();
+
+        const totalY = touch.clientY - pageBounceState.startY;
+        const totalX = touch.clientX - (pageBounceState.startX || touch.clientX);
+        if (!pageBounceState.axisLocked) {
+          const dx = Math.abs(totalX);
+          const dy = Math.abs(totalY);
+          if (dy > 10 || dx > 10) {
+            pageBounceState.axisLocked = dy >= dx ? 'y' : 'x';
+          }
+        }
+
+        const deltaY = touch.clientY - pageBounceState.lastY;
+        const dt = Math.max(16, now - pageBounceState.lastT);
+        pageBounceState.velocity = (deltaY / dt) * 16;
+        pageBounceState.lastY = touch.clientY;
+        pageBounceState.lastT = now;
+
+        if (pageBounceState.axisLocked === 'x') return;
+
+        const atTop = (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+        const atBottom = isAtPageBottom();
+        const pullingDownAtTop = atTop && totalY > 0;
+        const pullingUpAtBottom = atBottom && totalY < 0;
+
+        if (!pullingDownAtTop && !pullingUpAtBottom) {
+          if (pageBounceState.shift) releaseEdgeBounce();
+          return;
+        }
+
+        const direction = pullingDownAtTop ? 1 : -1;
+        const pullDistance = Math.abs(totalY);
+        const damping = 1 / (1 + (pullDistance / 180));
+        const maxShift = 44;
+        const nextShift = clamp(direction * pullDistance * 0.4 * damping, -maxShift, maxShift);
+
+        if (Math.abs(nextShift) > Math.abs(pageBounceState.shift)) {
+          podcastPageRoot?.classList.remove('edge-bounce-animating');
+        }
+
+        setEdgeShift(nextShift);
+        event.preventDefault();
+      }, { passive: false });
+
+      const end = () => {
+        if (!pageBounceState.active) return;
+        pageBounceState.active = false;
+        pageBounceState.axisLocked = null;
+        if (pageBounceState.shift) releaseEdgeBounce();
+      };
+
+      window.addEventListener('touchend', end, { passive: true });
+      window.addEventListener('touchcancel', end, { passive: true });
     }
 
     document.addEventListener("click", (e) => {
@@ -428,6 +620,9 @@
       // Allow "Esc" to close the modal video.
       if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
     });
+
+    bindSwipeScrolling();
+    bindEdgeBounce();
 
     // Load playlists (order matters, matches page order)
     loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
