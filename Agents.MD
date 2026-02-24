@@ -97,3 +97,7 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Do all navigation links work?
 - If the podcast page was touched, do video cards still load and open the modal?
 - If the contact form was touched, does it still open a mail client?
+
+## Recent major change notes
+- Scroll shock absorber demo added at `pages/scroll-shock-demo/index.html` using reusable physics module `assets/scroll-shock-absorber.js`.
+- The effect uses a dedicated scroll container and transform-based overscroll compression with spring-damper + jerk limiting.
