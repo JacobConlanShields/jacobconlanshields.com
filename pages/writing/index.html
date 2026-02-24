@@ -133,6 +133,7 @@
     </div>
   </div>
 
+  <script src="/assets/physics.js"></script>
   <script>
     const substackModal = document.getElementById("substackModal");
     const openSubstack = document.getElementById("openSubstack");
@@ -245,7 +246,16 @@
         if (!card || !substackTrack) return;
         const gap = 12;
         const offset = card.getBoundingClientRect().width + gap;
-        substackTrack.scrollBy({ left: offset * direction, behavior: "smooth" });
+        const target = window.SitePhysics.clamp(
+          substackTrack.scrollLeft + (offset * direction),
+          0,
+          Math.max(0, substackTrack.scrollWidth - substackTrack.clientWidth)
+        );
+        window.SitePhysics.animateScrollTo(substackTrack, {
+          axis: "x",
+          target,
+          initialVelocity: direction * 520,
+        });
       });
     });
 

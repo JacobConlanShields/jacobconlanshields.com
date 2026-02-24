@@ -17,6 +17,8 @@
  * Jerk limiting clamps the change in acceleration per second:
  *   a <- clamp(a_raw, a_prev - J_MAX*dt, a_prev + J_MAX*dt)
  */
+const shared = window.SitePhysics?.PHYSICS || null;
+
 class ScrollShockAbsorber {
   constructor(scrollRoot, options = {}) {
     if (!scrollRoot) throw new Error('ScrollShockAbsorber requires a scrollRoot element.');
@@ -30,16 +32,16 @@ class ScrollShockAbsorber {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const defaults = {
       // Base spring/damper terms. Increase k for firmer stop; increase c for less rebound.
-      k0: 180,
+      k0: shared?.spring?.stiffness ? Math.round(shared.spring.stiffness * 0.82) : 180,
       k1: 14,
-      c0: 34,
+      c0: shared?.spring?.damping ? Math.round(shared.spring.damping * 1.2) : 34,
       c1: 0.06,
-      m: 1,
+      m: shared?.spring?.mass || 1,
       J_MAX: 3600,
       maxOverscrollPx: 72,
-      reboundAmount: 0.05,
+      reboundAmount: shared?.constraints?.bounceEnergyLoss ? Math.max(0.03, shared.constraints.bounceEnergyLoss * 0.1) : 0.05,
       boundaryEpsilon: 1,
-      inputGain: 0.38,
+      inputGain: shared?.constraints?.rubberBandCoefficient ? 0.2 + shared.constraints.rubberBandCoefficient : 0.38,
       settleThresholdX: 0.2,
       settleThresholdV: 3,
       releaseDelayMs: 90,
