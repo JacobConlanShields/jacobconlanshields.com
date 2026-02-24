@@ -16,21 +16,22 @@
 
   gtag('config', 'G-X00G23WVDJ');
 </script>
+<script defer src="/assets/analytics.js"></script>
 </head>
 
 <body>
   <main>
     <!-- Reusable nav pattern used across non-home pages. -->
     <p class="nav">
-      <a href="/">Home</a>
+      <a href="/" data-ga-event="nav_writing_to_home">Home</a>
       <span class="dot">•</span>
-      <a href="/pages/projects/">Projects</a>
+      <a href="/pages/projects/" data-ga-event="nav_writing_to_projects">Projects</a>
       <span class="dot">•</span>
-      <a href="/pages/writing/">Writing</a>
+      <a href="/pages/writing/" data-ga-event="nav_writing_to_writing">Writing</a>
       <span class="dot">•</span>
-      <a href="/pages/podcast/">Podcast</a>
+      <a href="/pages/podcast/" data-ga-event="nav_writing_to_podcast">Podcast</a>
       <span class="dot">•</span>
-      <a href="/contact/">Contact</a>
+      <a href="/contact/" data-ga-event="nav_writing_to_contact">Contact</a>
     </p>
 
     <hr class="tight-hr">
@@ -50,15 +51,16 @@
       <div class="substack-head">
         <p class="substack-title">Latest essays</p>
         <div class="substack-controls">
-          <button class="icon-btn" type="button" aria-label="Scroll left" data-carousel="substack" data-dir="-1">◀</button>
-          <button class="icon-btn" type="button" aria-label="Scroll right" data-carousel="substack" data-dir="1">▶</button>
+          <button class="icon-btn" type="button" aria-label="Scroll left" data-carousel="substack" data-dir="-1" data-ga-event="substack_scroll_left">◀</button>
+          <button class="icon-btn" type="button" aria-label="Scroll right" data-carousel="substack" data-dir="1" data-ga-event="substack_scroll_right">▶</button>
         </div>
       </div>
      <div class="substack-track" id="substackTrack" role="list"></div>
     </div>
     <p class="action-row" style="display:flex; gap:10px; flex-wrap:wrap;">
-      <button class="btn" type="button" id="openSubstack">Open Substack reader</button>
+      <button class="btn" type="button" id="openSubstack" data-ga-event="open_substack_reader_modal">Open Substack reader</button>
       <a class="btn"
+        data-ga-event="read_on_substack_external"
         href="https://substack.com/@jacobconlanshields"
         target="_blank" rel="noopener noreferrer">
         Read on Substack
@@ -77,26 +79,26 @@
     <div class="preview-wrap" aria-label="Relative Momentum preview">
       <div class="preview-head">
         <p class="preview-title">Preview the ebook</p>
-        <a class="preview-link" href="/pages/writing/relative-momentum/">Open the full reader</a>
+        <a class="preview-link" href="/pages/writing/relative-momentum/" data-ga-event="relative_momentum_open_full_reader_link">Open the full reader</a>
       </div>
       <div class="preview-grid" role="list">
-        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook" data-ga-event="relative_momentum_preview_page_1_click">
           <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-001.jpg" alt="Relative Momentum preview page 1" loading="lazy" />
           <span class="preview-page">Page 1</span>
         </a>
-        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook" data-ga-event="relative_momentum_preview_page_4_click">
           <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-004.jpg" alt="Relative Momentum preview page 4" loading="lazy" />
           <span class="preview-page">Page 4</span>
         </a>
-        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook" data-ga-event="relative_momentum_preview_page_5_click">
           <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-005.jpg" alt="Relative Momentum preview page 5" loading="lazy" />
           <span class="preview-page">Page 5</span>
         </a>
-        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook">
+        <a class="preview-card" role="listitem" href="/pages/writing/relative-momentum/" aria-label="Open Relative Momentum ebook" data-ga-event="relative_momentum_preview_page_6_click">
           <img src="https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/page-006.jpg" alt="Relative Momentum preview page 6" loading="lazy" />
           <span class="preview-page">Page 6</span>
         </a>
-        <a class="preview-card preview-card--cta" role="listitem" href="/pages/writing/relative-momentum/" aria-label="See full book">
+        <a class="preview-card preview-card--cta" role="listitem" href="/pages/writing/relative-momentum/" aria-label="See full book" data-ga-event="relative_momentum_preview_cta_click">
           <span class="preview-arrow">→</span>
           <span class="preview-page">See full book</span>
         </a>
@@ -104,9 +106,10 @@
     </div>
 
     <p class="action-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-      <a class="btn" href="/pages/writing/relative-momentum/">Open the free ebook</a>
+      <a class="btn" href="/pages/writing/relative-momentum/" data-ga-event="open_free_ebook">Open the free ebook</a>
 
       <a class="btn"
+         data-ga-event="buy_relative_momentum_amazon"
          href="https://a.co/d/fbTRmg4"
          target="_blank" rel="noopener noreferrer">
         Buy on Amazon
@@ -115,7 +118,7 @@
 
     <hr class="tight-hr">
 
-    <p><a href="/">← Back to home</a></p>
+    <p><a href="/" data-ga-event="writing_back_to_home">← Back to home</a></p>
   </main>
 
   <div class="modal" id="substackModal" aria-hidden="true">
@@ -224,17 +227,22 @@
       substackModal.setAttribute("aria-hidden", "false");
     };
 
-    openSubstack?.addEventListener("click", openModal);
+    openSubstack?.addEventListener("click", () => {
+      openModal();
+      window.JCSAnalytics?.trackEvent("substack_modal_open");
+    });
 
     substackModal?.addEventListener("click", (event) => {
       if (event.target.closest("[data-close]")) {
         closeModal();
+        window.JCSAnalytics?.trackEvent("substack_modal_close_click");
       }
     });
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && substackModal.classList.contains("open")) {
         closeModal();
+        window.JCSAnalytics?.trackEvent("substack_modal_close_escape");
       }
     });
 
@@ -249,6 +257,7 @@
       });
     });
 
+    window.JCSAnalytics?.trackPageView("page_view_writing", "writing");
     loadSubstack();
   </script>
 </body>

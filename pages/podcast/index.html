@@ -16,17 +16,18 @@
 
   gtag('config', 'G-X00G23WVDJ');
 </script>
+<script defer src="/assets/analytics.js"></script>
 </head>
 
 <body>
   <main class="podcast-page">
     <!-- Lightweight nav for consistency across the site. -->
     <p class="nav">
-      <a href="/">← Back to home</a>
+      <a href="/" data-ga-event="nav_podcast_to_home">← Back to home</a>
       <span class="dot">•</span>
-      <a href="/pages/projects/">Projects</a>
+      <a href="/pages/projects/" data-ga-event="nav_podcast_to_projects">Projects</a>
       <span class="dot">•</span>
-      <a href="/contact/">Contact</a>
+      <a href="/contact/" data-ga-event="nav_podcast_to_contact">Contact</a>
     </p>
 
     <!-- ONE grid only -->
@@ -43,6 +44,7 @@
         </p>
 
         <a class="btn"
+           data-ga-event="podcast_open_youtube_playlist"
            href="https://www.youtube.com/playlist?list=PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg"
            target="_blank" rel="noopener noreferrer">
           Open on YouTube
@@ -56,8 +58,8 @@
           <div class="row-head">
             <h2 class="row-title">Full Podcast (Latest)</h2>
             <div class="row-controls">
-              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-full" data-dir="-1">◀</button>
-              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1">▶</button>
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-full" data-dir="-1" data-ga-event="podcast_scroll_full_left">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-full" data-dir="1" data-ga-event="podcast_scroll_full_right">▶</button>
             </div>
           </div>
           <div class="status" id="status-full"></div>
@@ -71,8 +73,8 @@
           <div class="row-head">
             <h2 class="row-title">Highlight Episodes</h2>
             <div class="row-controls">
-              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-highlights" data-dir="-1">◀</button>
-              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1">▶</button>
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-highlights" data-dir="-1" data-ga-event="podcast_scroll_highlights_left">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-highlights" data-dir="1" data-ga-event="podcast_scroll_highlights_right">▶</button>
             </div>
           </div>
           <div class="status" id="status-highlights"></div>
@@ -86,8 +88,8 @@
           <div class="row-head">
             <h2 class="row-title">Movement Episodes</h2>
             <div class="row-controls">
-              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-movement" data-dir="-1">◀</button>
-              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-movement" data-dir="1">▶</button>
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-movement" data-dir="-1" data-ga-event="podcast_scroll_movement_left">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-movement" data-dir="1" data-ga-event="podcast_scroll_movement_right">▶</button>
             </div>
           </div>
           <div class="status" id="status-movement"></div>
@@ -101,8 +103,8 @@
           <div class="row-head">
             <h2 class="row-title">Science &amp; Sustainability</h2>
             <div class="row-controls">
-              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-science" data-dir="-1">◀</button>
-              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-science" data-dir="1">▶</button>
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-science" data-dir="-1" data-ga-event="podcast_scroll_science_left">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-science" data-dir="1" data-ga-event="podcast_scroll_science_right">▶</button>
             </div>
           </div>
           <div class="status" id="status-science"></div>
@@ -116,8 +118,8 @@
           <div class="row-head">
             <h2 class="row-title">Entrepreneurship Episodes</h2>
             <div class="row-controls">
-              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-entrepreneurship" data-dir="-1">◀</button>
-              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-entrepreneurship" data-dir="1">▶</button>
+              <button class="icon-btn" type="button" aria-label="Scroll left"  data-row="row-entrepreneurship" data-dir="-1" data-ga-event="podcast_scroll_entrepreneurship_left">◀</button>
+              <button class="icon-btn" type="button" aria-label="Scroll right" data-row="row-entrepreneurship" data-dir="1" data-ga-event="podcast_scroll_entrepreneurship_right">▶</button>
             </div>
           </div>
           <div class="status" id="status-entrepreneurship"></div>
@@ -131,8 +133,8 @@
         <div class="row-head row-head--clips">
           <h2 class="row-title">Clips</h2>
           <div class="row-controls">
-            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
-            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
+            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y" data-ga-event="podcast_scroll_clips_up">▲</button>
+            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y" data-ga-event="podcast_scroll_clips_down">▼</button>
           </div>
         </div>
       
@@ -152,7 +154,7 @@
   <div class="modal" id="playerModal" aria-hidden="true">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-label="Video player">
-      <button class="modal-close" data-close aria-label="Close">✕</button>
+      <button class="modal-close" data-close aria-label="Close" data-ga-event="podcast_modal_close_button">✕</button>
       <div class="player-wrap" id="playerWrap"></div>
     </div>
   </div>
@@ -483,9 +485,15 @@
     document.addEventListener("click", (e) => {
       // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
-      if (card?.dataset.video) openPlayer(card.dataset.video);
+      if (card?.dataset.video) {
+        openPlayer(card.dataset.video);
+        window.JCSAnalytics?.trackEvent("podcast_video_open", { video_id: card.dataset.video });
+      }
 
-      if (e.target.matches("[data-close]")) closePlayer();
+      if (e.target.matches("[data-close]")) {
+        closePlayer();
+        window.JCSAnalytics?.trackEvent("podcast_video_close_click");
+      }
 
       const scrollBtn = e.target.closest("[data-row][data-dir]");
       if (scrollBtn) {
@@ -498,7 +506,10 @@
 
     document.addEventListener("keydown", (e) => {
       // Allow "Esc" to close the modal video.
-      if (e.key === "Escape" && modal.classList.contains("open")) closePlayer();
+      if (e.key === "Escape" && modal.classList.contains("open")) {
+        closePlayer();
+        window.JCSAnalytics?.trackEvent("podcast_video_close_escape");
+      }
     });
 
     bindSwipeScrolling();
@@ -510,6 +521,7 @@
     loadPlaylistInto("row-science", "status-science", PLAYLIST_SCIENCE, COUNT_SCIENCE);
     loadPlaylistInto("row-entrepreneurship", "status-entrepreneurship", PLAYLIST_ENTREPRENEURSHIP, COUNT_ENTREPRENEURSHIP);
     loadPlaylistInto("row-clips", "status-clips", PLAYLIST_CLIPS, COUNT_CLIPS);
+    window.JCSAnalytics?.trackPageView("page_view_podcast", "podcast");
   </script>
 </body>
 </html>

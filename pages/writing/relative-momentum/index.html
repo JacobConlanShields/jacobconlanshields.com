@@ -398,6 +398,7 @@
 
   gtag('config', 'G-X00G23WVDJ');
 </script>
+<script defer src="/assets/analytics.js"></script>
 </head>
 
 <body>
@@ -422,15 +423,15 @@
     </p>
 
     <div class="buy-row">
-      <a class="btn"
+      <a class="btn" data-ga-event="relative_momentum_buy_amazon"
          href="https://a.co/d/fbTRmg4"
          target="_blank" rel="noopener noreferrer">
         Buy on Amazon
       </a>
       <div class="viewer-controls" role="group" aria-label="Page navigation">
-        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages" data-tooltip="Previous">◀</button>
-        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages" data-tooltip="Next">▶</button>
-        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer" data-tooltip="Full screen">⛶</button>
+        <button class="icon-btn" type="button" id="prev-button" aria-label="Previous pages" data-ga-event="relative_momentum_prev_page" data-tooltip="Previous">◀</button>
+        <button class="icon-btn" type="button" id="next-button" aria-label="Next pages" data-ga-event="relative_momentum_next_page" data-tooltip="Next">▶</button>
+        <button class="icon-btn" type="button" id="fullscreen-button" aria-label="Open full screen viewer" data-ga-event="relative_momentum_open_fullscreen" data-tooltip="Full screen">⛶</button>
       </div>
     </div>
 
@@ -451,9 +452,9 @@
         <div class="fullscreen-header">
           <h2>Relative Momentum — Full Screen</h2>
           <div class="fullscreen-actions" role="group" aria-label="Full screen page navigation">
-            <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages" data-tooltip="Previous">◀</button>
-            <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages" data-tooltip="Next">▶</button>
-            <button class="modal-close" type="button" data-close="fullscreen" aria-label="Close full screen">✕</button>
+            <button class="icon-btn" type="button" id="fullscreen-prev" aria-label="Previous pages" data-ga-event="relative_momentum_fullscreen_prev_page" data-tooltip="Previous">◀</button>
+            <button class="icon-btn" type="button" id="fullscreen-next" aria-label="Next pages" data-ga-event="relative_momentum_fullscreen_next_page" data-tooltip="Next">▶</button>
+            <button class="modal-close" type="button" data-close="fullscreen" aria-label="Close full screen" data-ga-event="relative_momentum_close_fullscreen">✕</button>
           </div>
         </div>
         <section class="viewer fullscreen-viewer" aria-label="Full screen Relative Momentum ebook viewer">
@@ -469,7 +470,7 @@
     <div class="modal zoom-modal" id="zoom-modal" aria-hidden="true">
       <div class="modal-backdrop" data-close="zoom"></div>
       <div class="modal-card" role="dialog" aria-modal="true" aria-label="Zoomed page">
-        <button class="modal-close" type="button" data-close="zoom" aria-label="Close zoom">✕</button>
+        <button class="modal-close" type="button" data-close="zoom" aria-label="Close zoom" data-ga-event="relative_momentum_close_zoom">✕</button>
         <img class="zoom-image" id="zoom-image" alt="Zoomed page" />
       </div>
     </div>
@@ -497,6 +498,8 @@
     const mobileQuery = window.matchMedia("(max-width: 899px)");
     const viewer = document.querySelector(".viewer");
     const fullscreenViewer = document.querySelector(".fullscreen-viewer");
+
+    window.JCSAnalytics?.trackPageView("page_view_relative_momentum", "relative_momentum");
     let currentPage = 1;
     let lastWheelTime = 0;
     let lastDirection = "forward";
@@ -775,6 +778,7 @@
       zoomImage.src = `${IMAGE_BASE}page-${formatPageNumber(page)}.jpg`;
       zoomImage.alt = `Relative Momentum page ${page}`;
       zoomModal.classList.add("open");
+      window.JCSAnalytics?.trackEvent("relative_momentum_open_zoom");
       zoomModal.setAttribute("aria-hidden", "false");
     };
 

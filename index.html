@@ -20,19 +20,20 @@
 
   gtag('config', 'G-X00G23WVDJ');
 </script>
+<script defer src="/assets/analytics.js"></script>
 </head>
 
 <body>
   <main>
     <!-- Primary navigation links to top-level sections. -->
     <p class="nav">
-      <a href="/pages/projects/">Projects</a>
+      <a href="/pages/projects/" data-ga-event="nav_home_to_projects">Projects</a>
       <span class="dot">•</span>
-      <a href="/pages/writing/">Writing</a>
+      <a href="/pages/writing/" data-ga-event="nav_home_to_writing">Writing</a>
       <span class="dot">•</span>
-      <a href="/pages/podcast/">Quality Values Podcast</a>
+      <a href="/pages/podcast/" data-ga-event="nav_home_to_podcast">Quality Values Podcast</a>
       <span class="dot">•</span>
-      <a href="/contact/">Contact</a>
+      <a href="/contact/" data-ga-event="nav_home_to_contact">Contact</a>
     </p>
 
     <!-- Simple homepage messaging to keep the site intentionally lightweight. -->
@@ -45,5 +46,8 @@
       Check out the stuff I make!
     </p>
   </main>
+  <script>
+    window.JCSAnalytics?.trackPageView("page_view_home", "home");
+  </script>
 </body>
 </html>

@@ -20,6 +20,12 @@ Below is a detailed description of every tracked file in the repository, as an e
 - Renders the top-level navigation buttons to Projects, Writing, Podcast, and Contact.
 - Uses the global stylesheet at `/assets/styles.css`.
 - Provides a brief introduction about the site being intentionally simple.
+- Includes GA4 page-view and click micro-event instrumentation via `/assets/analytics.js`.
+
+### `assets/analytics.js`
+- Shared GA4 helper used across pages.
+- Sends named custom page-view events (`page_view_home`, `page_view_projects`, etc.) and declarative click events via `data-ga-event` attributes.
+- Keeps instrumentation centralized so engagement tracking can be expanded without changing GA bootstrap setup.
 
 ### `assets/styles.css`
 - The global stylesheet for the website.
@@ -36,6 +42,7 @@ Below is a detailed description of every tracked file in the repository, as an e
 - Provides a mailto link for direct contact and a lightweight form that opens the user’s email client with a prefilled message.
 - Contains inline CSS for page-specific layout and readability.
 - Includes a small JavaScript snippet that builds the `mailto:` URL from form input.
+- Tracks contact form submissions with a GA4 event (`contact_form_submission`) plus per-link/per-button engagement events.
 
 ### `functions/yt.js`
 - A Cloudflare Pages Function (or Worker-style handler) that proxies YouTube playlist feeds.
@@ -56,11 +63,13 @@ Below is a detailed description of every tracked file in the repository, as an e
   - Populates a vertical clips column.
   - Opens a modal player with an embedded YouTube video when a card is clicked.
 - Defines all playlist IDs, fetch limits, and the proxy URL near the top of the script.
+- Tracks video opens, modal close actions, and row-control interactions with unique GA4 events.
 
 ### `pages/writing/index.html`
 - The Writing landing page.
 - Links to the Relative Momentum ebook viewer and external reading platforms (Amazon and Substack).
 - Uses the global stylesheet for navigation and layout.
+- Tracks Substack, ebook CTA, and modal engagement with unique GA4 event names.
 
 ### `pages/writing/relative-momentum/index.html`
 - The Relative Momentum ebook viewer.
@@ -70,6 +79,7 @@ Below is a detailed description of every tracked file in the repository, as an e
   - Tracks the current page spread.
   - Preloads adjacent pages for smoother transitions.
   - Opens a lightbox with a high-quality image when a page is clicked.
+  - Sends dedicated GA4 engagement events for reader navigation and modal actions.
 
 ## Hosting on Cloudflare (Cloudflare Pages + Functions)
 This site is designed to work as a static Cloudflare Pages project. The optional YouTube feed proxy can run as a Pages Function at `/functions/yt.js`.

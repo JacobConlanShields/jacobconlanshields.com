@@ -45,6 +45,10 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `assets/styles.css`
 - Purpose: theme, layout, cards, buttons, modal player, podcast layout, and ebook viewer.
 
+### Analytics helper
+- `assets/analytics.js`
+- Purpose: shared GA4 event helper for custom page-view naming and declarative micro-events via `data-ga-event` attributes.
+
 ### Contact
 - `contact/index.html`
 - Purpose: displays email and a mailto-based form. The JavaScript builds a `mailto:` URL so no backend is required.
