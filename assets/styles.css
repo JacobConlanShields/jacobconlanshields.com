@@ -232,7 +232,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   padding: 6px 2px 10px;
 
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   scroll-snap-type: x mandatory;
   scroll-padding-left: 2px;
   scroll-padding-right: 2px;
@@ -281,7 +281,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   padding: 2px;
 
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   scroll-snap-type: y mandatory;
   scrollbar-width: thin;
   overscroll-behavior-y: none;
@@ -607,7 +607,15 @@ textarea:focus{
     overflow-y: visible;
     overscroll-behavior-y: none;
     max-width: 100%;
-    padding-bottom: 12px;
+    padding-bottom: 4px;
+  }
+
+  .podcast-page .podcast-topgrid{
+    margin-bottom: 4px;
+  }
+
+  .podcast-page .row-block:last-child{
+    margin-bottom: 4px;
   }
 
   .podcast-page .podcast-title,
@@ -666,10 +674,13 @@ textarea:focus{
 
   .clips-rail{
     flex-direction: row;
+    height: auto;
+    max-height: none;
+    min-height: 0;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x proximity;
-    padding: 6px 2px 10px;
+    padding: 6px 2px 4px;
     scroll-padding-right: 10px;
     width: 100%;
     overscroll-behavior-x: contain;
