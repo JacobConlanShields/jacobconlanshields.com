@@ -39,8 +39,11 @@ class ScrollShockAbsorber {
       m: shared?.spring?.mass || 1,
       J_MAX: 3600,
       maxOverscrollPx: 72,
-      reboundAmount: shared?.constraints?.bounceEnergyLoss ? Math.max(0.03, shared.constraints.bounceEnergyLoss * 0.1) : 0.05,
-      boundaryEpsilon: 1,
+      reboundAmountTop: shared?.constraints?.bounceEnergyLoss ? Math.max(0.03, shared.constraints.bounceEnergyLoss * 0.1) : 0.05,
+      // Bottom gets a gentler release kick to avoid the long-standing double-bounce artifact.
+      reboundAmountBottom: 0,
+      boundaryEpsilonTop: 1,
+      boundaryEpsilonBottom: 3,
       inputGain: shared?.constraints?.rubberBandCoefficient ? 0.2 + shared.constraints.rubberBandCoefficient : 0.38,
       settleThresholdX: 0.2,
       settleThresholdV: 3,
@@ -51,10 +54,17 @@ class ScrollShockAbsorber {
 
     this.options = { ...defaults, ...options };
 
+    // Backward compatibility for older integrations passing `reboundAmount`.
+    if (Number.isFinite(options.reboundAmount)) {
+      this.options.reboundAmountTop = options.reboundAmount;
+      this.options.reboundAmountBottom = options.reboundAmount;
+    }
+
     // Reduced motion: smaller visual travel and heavier damping.
     if (reduceMotion) {
       this.options.maxOverscrollPx = Math.min(this.options.maxOverscrollPx, 20);
-      this.options.reboundAmount = 0;
+      this.options.reboundAmountTop = 0;
+      this.options.reboundAmountBottom = 0;
       this.options.c0 *= 1.35;
       this.options.J_MAX *= 0.65;
     }
@@ -165,10 +175,11 @@ class ScrollShockAbsorber {
   }
 
   getBoundarySignForDelta(deltaY) {
-    const { boundaryEpsilon } = this.options;
-    const atTop = this.scrollRoot.scrollTop <= boundaryEpsilon;
+    const { boundaryEpsilonTop, boundaryEpsilonBottom } = this.options;
+    const atTop = this.scrollRoot.scrollTop <= boundaryEpsilonTop;
     const maxTop = this.scrollRoot.scrollHeight - this.scrollRoot.clientHeight;
-    const atBottom = this.scrollRoot.scrollTop >= (maxTop - boundaryEpsilon);
+    if (maxTop <= 0) return 0;
+    const atBottom = this.scrollRoot.scrollTop >= (maxTop - boundaryEpsilonBottom);
 
     if (atTop && deltaY < 0) return 1;   // pull down from top
     if (atBottom && deltaY > 0) return -1; // push up from bottom
@@ -194,7 +205,7 @@ class ScrollShockAbsorber {
       // Optional micro rebound: apply at most once per excursion, gated by size and cooldown.
       const canRebound = (
         !s.reboundInjected &&
-        o.reboundAmount > 0 &&
+        (o.reboundAmountTop > 0 || o.reboundAmountBottom > 0) &&
         Math.abs(s.x) > o.reboundMinExcursionPx &&
         (ts - s.lastReleaseTs) > o.reboundCooldownMs
       );
@@ -202,7 +213,8 @@ class ScrollShockAbsorber {
       if (canRebound) {
         // Scale kick with release velocity but clamp to avoid rapid double/triple bounce artifacts.
         const releaseSpeed = Math.min(140, Math.abs(s.v));
-        const kick = Math.max(12, releaseSpeed * 0.24) * o.reboundAmount;
+        const reboundAmount = s.lastBoundarySign < 0 ? o.reboundAmountBottom : o.reboundAmountTop;
+        const kick = Math.max(12, releaseSpeed * 0.24) * reboundAmount;
         s.v += -Math.sign(s.x || 1) * kick;
         s.reboundInjected = true;
         s.lastReleaseTs = ts;

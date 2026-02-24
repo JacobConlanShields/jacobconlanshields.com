@@ -76,8 +76,8 @@
     )).join('');
 
     // Tuning notes:
-    // - "Soft stop": lower k0/k1, higher c0/c1, lower reboundAmount.
-    // - "Slight rebound": modest reboundAmount + slightly lower c0.
+    // - "Soft stop": lower k0/k1, higher c0/c1, lower reboundAmountTop.
+    // - "Slight rebound": modest reboundAmountTop + slightly lower c0.
     // - J_MAX controls jerk limiting. Smaller values feel smoother/less snappy.
     const spring = window.SitePhysics.PHYSICS.spring;
     const params = {
@@ -88,7 +88,8 @@
       m: spring.mass,
       J_MAX: 3200,
       maxOverscrollPx: 68,
-      reboundAmount: 0.04
+      reboundAmountTop: 0.04,
+      reboundAmountBottom: 0
     };
 
     document.getElementById('tuning').textContent =
