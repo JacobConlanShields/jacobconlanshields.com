@@ -54,8 +54,13 @@ Below is a detailed description of every tracked file in the repository, as an e
 
 ### `pages/projects/index.html`
 - The Projects landing page.
-- Lists the main projects and provides navigation back to the homepage.
-- Simple, static HTML with no external CSS references.
+- Lists the main non-digital projects and provides navigation back to the homepage.
+- Uses the global stylesheet and shared navigation pattern.
+
+### `pages/digital-builds/index.html`
+- A live "hidden" portfolio page for digital work that is not linked from global navigation yet.
+- Collects digital projects currently in the repo: Scroll Shock Absorber Demo, Podcast Fetch System, and the Relative Momentum Ebook Reader.
+- Uses the global stylesheet and shared navigation pattern.
 
 ### `pages/podcast/index.html`
 - The Quality Values Podcast page.
