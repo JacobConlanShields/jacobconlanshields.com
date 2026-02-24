@@ -241,6 +241,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   width: 100%;
   scrollbar-width: thin;
   overscroll-behavior-x: contain;
+  touch-action: pan-x;
 }
 
 
@@ -285,6 +286,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   scroll-snap-type: y mandatory;
   scrollbar-width: thin;
   overscroll-behavior-y: none;
+  touch-action: pan-y;
 }
 
 .clips-rail::-webkit-scrollbar{ width: 10px; }
@@ -594,9 +596,10 @@ textarea:focus{
   .podcast-page{
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
     overflow-y: visible;
     overscroll-behavior-y: none;
+    width: 100%;
     max-width: 100%;
     padding-bottom: 12px;
   }
@@ -615,12 +618,31 @@ textarea:focus{
   .podcast-page .row-head{
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+    align-items: center;
+    column-gap: 8px;
   }
 
   .podcast-page .row-title{
     min-width: 0;
+    margin: 0;
     white-space: normal;
+  }
+
+  .podcast-page .row-controls{
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+
+  .podcast-page .row-controls .icon-btn{
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+  }
+
+  .podcast-page .lede{
+    max-width: 100%;
   }
 
   .podcast-page .row{
@@ -656,6 +678,7 @@ textarea:focus{
     scroll-padding-right: 10px;
     width: 100%;
     overscroll-behavior-x: contain;
+    touch-action: pan-x;
   }
 
   .podcast-page .podcast-topgrid,
