@@ -157,6 +157,7 @@
     </div>
   </div>
 
+  <script src="/assets/physics.js"></script>
   <script>
     // Playlist IDs (Quality Values).
     // Each playlist maps to a visual section above.
@@ -386,7 +387,7 @@
     }
 
     // Scrolling helpers (x for horizontal rows, y for clips)
-    function smoothStepScroll(el, axis, dir, fallbackStep) {
+    function smoothStepScroll(el, axis, dir, fallbackStep, initialVelocity = 0) {
       const firstCard = el.querySelector(".card");
       const style = getComputedStyle(el);
       const gap = Number.parseFloat(style.gap || "0") || 0;
@@ -407,7 +408,11 @@
             ? 0
             : Math.min(maxTop, targetTop);
 
-        el.scrollTo({ top: nextTop, behavior: "smooth" });
+        window.SitePhysics.animateScrollTo(el, {
+          axis: "y",
+          target: nextTop,
+          initialVelocity,
+        });
         return;
       }
 
@@ -420,7 +425,11 @@
           ? 0
           : Math.min(maxLeft, targetLeft);
 
-      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+      window.SitePhysics.animateScrollTo(el, {
+        axis: "x",
+        target: nextLeft,
+        initialVelocity,
+      });
     }
 
     function scrollRow(el, dir, axis) {
@@ -450,6 +459,7 @@
       swipeState.set(rail, {
         x: touch.clientX,
         y: touch.clientY,
+        at: performance.now(),
       });
     }
 
@@ -461,11 +471,15 @@
 
       const deltaX = touch.clientX - start.x;
       const deltaY = touch.clientY - start.y;
-      const horizontalSwipe = Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY);
+      const elapsedMs = Math.max(16, performance.now() - (start.at || performance.now()));
+      const velocityX = (deltaX / elapsedMs) * 1000;
+      const horizontalSwipe = window.SitePhysics.shouldCaptureHorizontal(deltaX, deltaY, {
+        minGesturePx: 40,
+      });
 
       if (horizontalSwipe) {
         const dir = deltaX < 0 ? 1 : -1;
-        smoothStepScroll(rail, "x", dir, Math.round(rail.clientWidth * 0.86));
+        smoothStepScroll(rail, "x", dir, Math.round(rail.clientWidth * 0.86), velocityX);
       }
 
       swipeState.delete(rail);
