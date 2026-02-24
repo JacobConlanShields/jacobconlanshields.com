@@ -4,6 +4,29 @@ Personal website to display arrays of talent
 ## Overview
 This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, an ebook viewer, and a scroll-boundary physics demo). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
 
+
+## Physics-first UX standard
+The site now follows a shared physics interaction system in `assets/physics.js` and avoids arbitrary time-based easing for interactive motion.
+
+### Canonical physics constants
+- `maxVelocity`, `frictionPerSecond`, and `stopVelocity` for momentum/inertia limits.
+- `spring.stiffness`, `spring.damping`, `spring.mass`, and `spring.settleDistance` for near-critically damped spring motion.
+- `boundary.rubberBand` and `boundary.bounceDamping` for constraint behavior and energy loss near boundaries.
+- `swipe.axisLockRatio` and `swipe.minDistance` for intent detection (don’t steal vertical scroll unless horizontal intent is clear).
+
+### Rules for contributors
+- Use `window.SitePhysics.createScrollSpringController(...)` for carousel/rail motion instead of `scrollTo({ behavior: "smooth" })`.
+- Use `window.SitePhysics.createSwipeIntentTracker()` for swipe gestures so vertical page scroll is preserved.
+- Prefer rAF-based force integration for interactive motion (position + velocity continuity).
+- Avoid introducing one-off easing curves for drag/scroll/gesture interactions.
+- Respect `prefers-reduced-motion`: simplify to immediate motion or minimal animation instead of forcing spring effects.
+
+### Applied examples
+- Podcast carousels and clips rail now use spring + damping + snap-to-card behavior.
+- Writing page’s Substack carousel controls now use the same spring controller.
+- Relative Momentum viewer wheel/swipe thresholds are standardized through shared physics intent helpers.
+- Scroll Shock absorber consumes shared physics defaults where relevant.
+
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
 - **CSS**: Global styles, layout rules, and component styles.

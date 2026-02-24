@@ -27,21 +27,22 @@ class ScrollShockAbsorber {
       throw new Error('ScrollShockAbsorber requires a content element (first child by default).');
     }
 
+    const sharedPhysics = window.SitePhysics?.CONFIG;
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const defaults = {
       // Base spring/damper terms. Increase k for firmer stop; increase c for less rebound.
       k0: 180,
       k1: 14,
-      c0: 34,
+      c0: sharedPhysics?.spring?.damping || 34,
       c1: 0.06,
       m: 1,
       J_MAX: 3600,
-      maxOverscrollPx: 72,
+      maxOverscrollPx: (sharedPhysics?.boundary?.rubberBand ? 72 * (1 + sharedPhysics.boundary.rubberBand) : 72),
       reboundAmount: 0.05,
       boundaryEpsilon: 1,
       inputGain: 0.38,
       settleThresholdX: 0.2,
-      settleThresholdV: 3,
+      settleThresholdV: Math.max(3, (sharedPhysics?.stopVelocity || 8) * 0.4),
       releaseDelayMs: 90,
       reboundCooldownMs: 220,
       reboundMinExcursionPx: 6

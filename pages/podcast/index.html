@@ -157,7 +157,10 @@
     </div>
   </div>
 
+  <script src="/assets/physics.js"></script>
   <script>
+    const physics = window.SitePhysics;
+
     // Playlist IDs (Quality Values).
     // Each playlist maps to a visual section above.
     const PLAYLIST_FULL            = "PLcDYjJATsN-Nn0Fs5HLuIq5EIzDcA9tgg";
@@ -385,98 +388,72 @@
       playerWrap.innerHTML = "";
     }
 
-    // Scrolling helpers (x for horizontal rows, y for clips)
-    function smoothStepScroll(el, axis, dir, fallbackStep) {
+    const railControllers = new WeakMap();
+    const swipeTrackers = new WeakMap();
+
+    function resolveAxisForRow(el, preferredAxis) {
+      if (!el) return "x";
+      if (preferredAxis === "y" && clipsMobileQuery.matches) return "x";
+      return preferredAxis;
+    }
+
+    function getRailController(el, axis = "x") {
+      if (!el) return null;
+      const cached = railControllers.get(el);
+      if (cached) {
+        cached.setAxis(axis);
+        return cached;
+      }
+      const controller = physics.createScrollSpringController(el, { axis });
+      railControllers.set(el, controller);
+      return controller;
+    }
+
+    function measureRailStep(el, axis, fallbackStep) {
       const firstCard = el.querySelector(".card");
       const style = getComputedStyle(el);
       const gap = Number.parseFloat(style.gap || "0") || 0;
-
-      let step = fallbackStep;
-      if (firstCard) {
-        const box = firstCard.getBoundingClientRect();
-        step = axis === "y" ? (box.height + gap) : (box.width + gap);
-      }
-
-      if (axis === "y") {
-        const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
-        const targetTop = Math.max(0, el.scrollTop + (dir * step));
-        const threshold = Math.max(10, step * 0.35);
-        const nextTop = dir > 0 && (maxTop - targetTop) < threshold
-          ? maxTop
-          : dir < 0 && targetTop < threshold
-            ? 0
-            : Math.min(maxTop, targetTop);
-
-        el.scrollTo({ top: nextTop, behavior: "smooth" });
-        return;
-      }
-
-      const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
-      const targetLeft = Math.max(0, el.scrollLeft + (dir * step));
-      const threshold = Math.max(10, step * 0.35);
-      const nextLeft = dir > 0 && (maxLeft - targetLeft) < threshold
-        ? maxLeft
-        : dir < 0 && targetLeft < threshold
-          ? 0
-          : Math.min(maxLeft, targetLeft);
-
-      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+      if (!firstCard) return fallbackStep;
+      const box = firstCard.getBoundingClientRect();
+      return axis === "y" ? box.height + gap : box.width + gap;
     }
 
-    function scrollRow(el, dir, axis) {
+    function scrollRow(el, dir, preferredAxis) {
       if (!el) return;
-
-      if (axis === "y") {
-        const isMobile = window.matchMedia("(max-width: 900px)").matches;
-        if (isMobile) {
-          smoothStepScroll(el, "x", dir, 220);
-          return;
-        }
-
-        smoothStepScroll(el, "y", dir, 220);
-        return;
-      }
-
-      smoothStepScroll(el, "x", dir, Math.round(el.clientWidth * 0.88));
-    }
-
-    const swipeState = new WeakMap();
-
-    function handleSwipeStart(event) {
-      const rail = event.currentTarget;
-      const touch = event.touches?.[0];
-      if (!rail || !touch) return;
-
-      swipeState.set(rail, {
-        x: touch.clientX,
-        y: touch.clientY,
-      });
-    }
-
-    function handleSwipeEnd(event) {
-      const rail = event.currentTarget;
-      const start = swipeState.get(rail);
-      const touch = event.changedTouches?.[0];
-      if (!rail || !start || !touch) return;
-
-      const deltaX = touch.clientX - start.x;
-      const deltaY = touch.clientY - start.y;
-      const horizontalSwipe = Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY);
-
-      if (horizontalSwipe) {
-        const dir = deltaX < 0 ? 1 : -1;
-        smoothStepScroll(rail, "x", dir, Math.round(rail.clientWidth * 0.86));
-      }
-
-      swipeState.delete(rail);
+      const axis = resolveAxisForRow(el, preferredAxis);
+      const fallbackStep = axis === "x" ? Math.round(el.clientWidth * 0.82) : 220;
+      const step = measureRailStep(el, axis, fallbackStep);
+      const controller = getRailController(el, axis);
+      controller.nudge(dir * step, dir * 120);
+      controller.snapToNearest(step);
     }
 
     function bindSwipeScrolling() {
       const rails = document.querySelectorAll('.row, .clips-rail');
       rails.forEach((rail) => {
-        rail.addEventListener('touchstart', handleSwipeStart, { passive: true });
-        rail.addEventListener('touchend', handleSwipeEnd, { passive: true });
-        rail.addEventListener('touchcancel', () => swipeState.delete(rail), { passive: true });
+        const tracker = physics.createSwipeIntentTracker();
+        swipeTrackers.set(rail, tracker);
+
+        rail.addEventListener('touchstart', (event) => {
+          const touch = event.touches?.[0];
+          if (!touch) return;
+          tracker.start({ x: touch.clientX, y: touch.clientY });
+        }, { passive: true });
+
+        rail.addEventListener('touchend', (event) => {
+          const touch = event.changedTouches?.[0];
+          if (!touch) return;
+          const intent = tracker.end({ x: touch.clientX, y: touch.clientY });
+          if (!intent.capture) return;
+          const axis = resolveAxisForRow(rail, "x");
+          const step = measureRailStep(rail, axis, Math.round(rail.clientWidth * 0.82));
+          const dir = intent.distance < 0 ? 1 : -1;
+          const controller = getRailController(rail, axis);
+          controller.nudge(dir * step, -intent.velocity * 0.12);
+          controller.snapToNearest(step);
+        }, { passive: true });
+
+        rail.addEventListener('touchcancel', () => tracker.reset(), { passive: true });
       });
     }
 

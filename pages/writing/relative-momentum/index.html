@@ -66,6 +66,11 @@
       margin: 0;
     }
 
+    :root {
+      --page-turn-duration: 520ms;
+      --page-turn-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
     .loading-indicator {
       font-size: 0.95rem;
       opacity: 0.8;
@@ -77,7 +82,7 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
       align-items: center;
-      transition: opacity 220ms ease, transform 220ms ease;
+      transition: opacity 220ms var(--page-turn-ease), transform 220ms var(--page-turn-ease);
       position: relative;
       z-index: 1;
       margin-top: 0;
@@ -128,17 +133,17 @@
         rgba(0, 0, 0, 0.12) 100%
       );
       opacity: 0;
-      transition: opacity 220ms ease;
+      transition: opacity 220ms var(--page-turn-ease);
       pointer-events: none;
       mix-blend-mode: screen;
     }
 
     .spread.turning[data-direction="forward"] .page-sheet {
-      animation: pageTurnForward 520ms ease;
+      animation: pageTurnForward var(--page-turn-duration) var(--page-turn-ease);
     }
 
     .spread.turning[data-direction="backward"] .page-sheet {
-      animation: pageTurnBackward 520ms ease;
+      animation: pageTurnBackward var(--page-turn-duration) var(--page-turn-ease);
     }
 
     @keyframes pageTurnForward {
@@ -180,7 +185,7 @@
     .spread.turning[data-direction="forward"] .page-shade,
     .spread.turning[data-direction="backward"] .page-shade {
       opacity: 1;
-      animation: pageShade 520ms ease;
+      animation: pageShade var(--page-turn-duration) var(--page-turn-ease);
     }
 
     @keyframes pageShade {
@@ -192,6 +197,24 @@
       }
       100% {
         opacity: 0.1;
+      }
+    }
+
+
+    @media (prefers-reduced-motion: reduce) {
+      .spread,
+      .page-shade {
+        transition: none;
+      }
+
+      .spread.turning {
+        opacity: 1;
+        transform: none;
+      }
+
+      .spread.turning .page-sheet,
+      .spread.turning .page-shade {
+        animation: none;
       }
     }
 
@@ -477,7 +500,9 @@
     </div>
   </main>
 
+  <script src="/assets/physics.js"></script>
   <script>
+    const physics = window.SitePhysics;
     const TOTAL_PAGES = 112;
     const IMAGE_BASE = "https://pub-7efa5866e0ab41af9e691f0820376dfc.r2.dev/pages/";
 
@@ -500,10 +525,9 @@
     const viewer = document.querySelector(".viewer");
     const fullscreenViewer = document.querySelector(".fullscreen-viewer");
     let currentPage = 1;
-    let lastWheelTime = 0;
     let lastDirection = "forward";
-    let touchStartX = 0;
-    let touchStartY = 0;
+    let wheelVelocity = 0;
+    const spreadSwipeIntent = physics.createSwipeIntentTracker();
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
@@ -626,7 +650,8 @@
         });
       }
 
-      window.setTimeout(() => targetSpread.classList.remove("turning"), 420);
+      const removeTurning = () => targetSpread.classList.remove("turning");
+      window.setTimeout(removeTurning, physics.prefersReducedMotion() ? 0 : 540);
       preloadNext(page);
     };
 
@@ -692,52 +717,41 @@
       if (isMobile()) {
         return;
       }
-      const now = Date.now();
-      const timeDelta = Math.max(16, now - lastWheelTime);
-      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
-        : event.deltaY;
-      if (Math.abs(delta) < 10) {
+      const dominant = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      if (Math.abs(dominant) < 8) {
         return;
       }
       event.preventDefault();
-      const velocity = Math.abs(delta) / timeDelta;
-      const multiplier = velocity > 3.5 ? 2 : 1;
-      const step = currentStep();
-      const jump = step * multiplier;
-      lastWheelTime = now;
-      if (delta > 0) {
+      wheelVelocity = physics.clamp((wheelVelocity * 0.45) + dominant, -900, 900);
+      const normalized = Math.abs(wheelVelocity) / 260;
+      const jump = physics.clamp(Math.round(normalized), 1, 2) * currentStep();
+
+      if (wheelVelocity > 0) {
         lastDirection = "forward";
         goToPage(clampPage(currentPage + jump));
       } else {
         lastDirection = "backward";
         goToPage(clampPage(currentPage - jump));
       }
+      wheelVelocity *= 0.5;
     };
 
     spread.addEventListener("wheel", handleWheel, { passive: false });
     fullscreenSpread.addEventListener("wheel", handleWheel, { passive: false });
 
-
     const handleTouchStart = (event) => {
       const touch = event.touches?.[0];
       if (!touch) return;
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
+      spreadSwipeIntent.start({ x: touch.clientX, y: touch.clientY });
     };
 
     const handleTouchEnd = (event) => {
       const touch = event.changedTouches?.[0];
       if (!touch) return;
+      const intent = spreadSwipeIntent.end({ x: touch.clientX, y: touch.clientY });
+      if (!intent.capture) return;
 
-      const deltaX = touch.clientX - touchStartX;
-      const deltaY = touch.clientY - touchStartY;
-
-      if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY)) {
-        return;
-      }
-
-      if (deltaX < 0) {
+      if (intent.distance < 0) {
         goNext();
       } else {
         goPrev();
@@ -747,6 +761,7 @@
     [spread, fullscreenSpread].forEach((targetSpread) => {
       targetSpread.addEventListener("touchstart", handleTouchStart, { passive: true });
       targetSpread.addEventListener("touchend", handleTouchEnd, { passive: true });
+      targetSpread.addEventListener("touchcancel", () => spreadSwipeIntent.reset(), { passive: true });
     });
 
     window.addEventListener("hashchange", () => {

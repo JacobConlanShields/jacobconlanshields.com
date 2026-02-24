@@ -102,3 +102,14 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Do all navigation links work?
 - If the podcast page was touched, do video cards still load and open the modal?
 - If the contact form was touched, does it still open a mail client?
+
+## Physics-first UX (required)
+- The project standard is now centralized in `assets/physics.js` (`window.SitePhysics`).
+- Reuse shared primitives for interaction work:
+  - `createScrollSpringController` for momentum + spring settling.
+  - `createSwipeIntentTracker` for intent lock (capture horizontal only when dx dominates).
+  - Shared `CONFIG` for friction, damping, stiffness, mass, max velocity, rubber-band, and thresholds.
+- Do not add new `scrollTo(..., { behavior: "smooth" })` / `scroll-behavior: smooth` interactions for carousels, rails, or swipe surfaces.
+- If snapping is required, use spring settling (`snapToNearest`) rather than abrupt jumps.
+- Always include `prefers-reduced-motion` fallback for new animation work (reduced or non-animated alternative).
+- Keep motion subtle: near-critically damped defaults, quick settling, no floaty bounce.
