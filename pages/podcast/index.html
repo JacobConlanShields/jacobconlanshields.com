@@ -130,9 +130,9 @@
       <aside class="top-right">
         <div class="row-head row-head--clips">
           <h2 class="row-title">Clips</h2>
-          <div class="row-controls">
-            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y">▲</button>
-            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y">▼</button>
+          <div class="row-controls" id="clips-controls">
+            <button class="icon-btn" type="button" aria-label="Scroll up" data-row="row-clips" data-dir="-1" data-axis="y" data-desktop-icon="▲" data-mobile-icon="◀" data-desktop-label="Scroll up" data-mobile-label="Scroll left">▲</button>
+            <button class="icon-btn" type="button" aria-label="Scroll down" data-row="row-clips" data-dir="1" data-axis="y" data-desktop-icon="▼" data-mobile-icon="▶" data-desktop-label="Scroll down" data-mobile-label="Scroll right">▼</button>
           </div>
         </div>
       
@@ -480,6 +480,19 @@
       });
     }
 
+    const clipsMobileQuery = window.matchMedia("(max-width: 900px)");
+
+    function syncClipsControlIcons() {
+      const isMobile = clipsMobileQuery.matches;
+      const clipsButtons = document.querySelectorAll('#clips-controls [data-row="row-clips"]');
+      clipsButtons.forEach((btn) => {
+        const icon = isMobile ? btn.dataset.mobileIcon : btn.dataset.desktopIcon;
+        const label = isMobile ? btn.dataset.mobileLabel : btn.dataset.desktopLabel;
+        if (icon) btn.textContent = icon;
+        if (label) btn.setAttribute('aria-label', label);
+      });
+    }
+
     document.addEventListener("click", (e) => {
       // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
@@ -502,6 +515,8 @@
     });
 
     bindSwipeScrolling();
+    syncClipsControlIcons();
+    clipsMobileQuery.addEventListener("change", syncClipsControlIcons);
 
     // Load playlists (order matters, matches page order)
     loadPlaylistInto("row-full", "status-full", PLAYLIST_FULL, COUNT_FULL);
