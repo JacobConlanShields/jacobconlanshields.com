@@ -2,7 +2,7 @@
 Personal website to display arrays of talent
 
 ## Overview
-This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, and an ebook viewer). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
+This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, an ebook viewer, and a scroll-boundary physics demo). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
 
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
@@ -30,6 +30,16 @@ Below is a detailed description of every tracked file in the repository, as an e
   - The modal video player.
   - The Relative Momentum ebook viewer (two-page spread + lightbox).
 - Includes responsive behavior for screens below 900px, switching the clips column to a horizontal row and stacking layouts.
+
+### `assets/scroll-shock-absorber.js`
+- Reusable `ScrollShockAbsorber` module for a dedicated scroll container.
+- Preserves native momentum scrolling until boundaries are reached, then applies a jerk-limited spring-damper overscroll response via `transform: translateY(...)`.
+- Exposes tunable physics options (`k0`, `k1`, `c0`, `c1`, `m`, `J_MAX`, `maxOverscrollPx`, `reboundAmount`) and `init()` / `destroy()` lifecycle methods.
+
+### `pages/scroll-shock/index.html`
+- Minimal demo page with long content to exercise top and bottom boundaries.
+- Demonstrates integration on a dedicated `#scrollRoot` container with `overflow:auto` and `-webkit-overflow-scrolling: touch`.
+- Documents tuning guidance for “soft stop” versus “slight rebound” feel.
 
 ### `contact/index.html`
 - The contact page.
