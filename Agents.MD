@@ -51,7 +51,11 @@ There are **no automated tests** at the moment. Manual validation is expected.
 
 ### Projects
 - `pages/projects/index.html`
-- Purpose: lists key projects with short descriptions.
+- Purpose: lists core non-digital projects with short descriptions.
+
+### Digital Builds
+- `pages/digital-builds/index.html`
+- Purpose: hidden but live page for digital portfolio builds that are not yet linked from site navigation.
 
 ### Writing
 - `pages/writing/index.html`
