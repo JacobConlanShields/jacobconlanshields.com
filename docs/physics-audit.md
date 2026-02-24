@@ -25,11 +25,6 @@ Repo-wide search covered CSS and JS interaction code paths, including scroll beh
    - Why non-physical: disconnected thresholds and timing not aligned to shared interaction standards.
    - Change: moved wheel threshold to shared physics config; replaced swipe intent check with shared horizontal-intent utility + velocity floor; made turn reset respect reduced-motion preference.
 
-5. `assets/scroll-shock-absorber.js` + `pages/scroll-shock/index.html`
-   - Found isolated physics constants separate from the rest of site motion behavior.
-   - Why non-physical (system-level): interactions used different “world constants” across features.
-   - Change: hooked absorber defaults and demo tuning to shared physics baseline (`SitePhysics.PHYSICS`) while preserving absorber-specific terms.
-
 ## New standard implemented
 
 - Added shared physics module: `assets/physics.js`
@@ -49,14 +44,3 @@ Repo-wide search covered CSS and JS interaction code paths, including scroll beh
 
 - Extend `SitePhysics.animateScrollTo` usage to any future modal/drawer entrance motion before adding CSS easing transitions.
 - If route transitions are introduced later, use the same spring constants and reduced-motion fallback.
-
-## ScrollShockAbsorber deep re-audit (follow-up)
-
-- Root issue observed: bottom boundary could still exhibit a secondary "double-bounce" due to near-boundary sign churn and symmetric rebound handling.
-- Refactor applied:
-  - Added edge hysteresis/locking (`edgeHoldPx`, `edgeReleasePx`) to stabilize boundary capture.
-  - Added separate top/bottom rebound and epsilon controls so bottom edge can settle without a secondary kick.
-  - Improved input-to-velocity injection with explicit clamping to avoid impulse spikes from noisy touch cadence.
-- Resulting behavior target:
-  - Top: subtle elastic release.
-  - Bottom: quick, damped settle without glitchy second bounce.

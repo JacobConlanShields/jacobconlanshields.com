@@ -2,7 +2,7 @@
 Personal website to display arrays of talent
 
 ## Overview
-This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, an ebook viewer, and a scroll-boundary physics demo). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
+This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, and an ebook viewer). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
 
 
 ## Physics-first UX standard
@@ -43,18 +43,7 @@ Below is a detailed description of every tracked file in the repository, as an e
 ### `assets/physics.js`
 - Shared physics interaction standard for the entire site.
 - Exposes canonical constants (`PHYSICS`) and utilities (`animateScrollTo`, `shouldCaptureHorizontal`, `rubberBand`, `clamp`, `prefersReducedMotion`).
-- Used by podcast rows, writing carousel, ebook gesture logic, and scroll-shock tuning so motion behavior stays consistent.
-
-### `assets/scroll-shock-absorber.js`
-- Reusable `ScrollShockAbsorber` module for a dedicated scroll container.
-- Preserves native momentum scrolling until boundaries are reached, then applies a jerk-limited spring-damper overscroll response via `transform: translateY(...)`.
-- Uses shared `SitePhysics.PHYSICS` values as a baseline so overscroll tuning aligns with global interaction feel.
-- Exposes tunable physics options (`k0`, `k1`, `c0`, `c1`, `m`, `J_MAX`, `maxOverscrollPx`, `reboundAmountTop`, `reboundAmountBottom`, `boundaryEpsilonTop`, `boundaryEpsilonBottom`, `edgeHoldPx`, `edgeReleasePx`) and `init()` / `destroy()` lifecycle methods.
-
-### `pages/scroll-shock/index.html`
-- Minimal demo page with long content to exercise top and bottom boundaries.
-- Demonstrates integration on a dedicated `#scrollRoot` container with `overflow:auto` and `-webkit-overflow-scrolling: touch`.
-- Documents tuning guidance for “soft stop” versus “slight rebound” feel.
+- Used by podcast rows, writing carousel, and ebook gesture logic so motion behavior stays consistent.
 
 ### `contact/index.html`
 - The contact page.
