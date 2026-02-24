@@ -42,7 +42,9 @@ class ScrollShockAbsorber {
       inputGain: 0.38,
       settleThresholdX: 0.2,
       settleThresholdV: 3,
-      releaseDelayMs: 70
+      releaseDelayMs: 90,
+      reboundCooldownMs: 220,
+      reboundMinExcursionPx: 6
     };
 
     this.options = { ...defaults, ...options };
@@ -61,7 +63,9 @@ class ScrollShockAbsorber {
       aPrev: 0,
       inputActive: false,
       lastInputTs: 0,
-      reboundInjected: false
+      reboundInjected: false,
+      lastBoundarySign: 0,
+      lastReleaseTs: 0
     };
 
     this.touchState = {
@@ -144,7 +148,15 @@ class ScrollShockAbsorber {
 
     this.state.inputActive = true;
     this.state.lastInputTs = performance.now();
-    this.state.reboundInjected = false;
+
+    // Treat one continuous pull/push as a single boundary excursion.
+    // Reset rebound state only when entering from neutral or switching edges.
+    const enteringNewExcursion = Math.abs(this.state.x) < 0.35 || this.state.lastBoundarySign !== boundarySign;
+    if (enteringNewExcursion) {
+      this.state.reboundInjected = false;
+    }
+    this.state.lastBoundarySign = boundarySign;
+
     this.applyTransform(this.state.x);
     this.ensureAnimating();
     return true;
@@ -176,9 +188,22 @@ class ScrollShockAbsorber {
 
     if (s.inputActive && ts - s.lastInputTs > o.releaseDelayMs) {
       s.inputActive = false;
-      if (!s.reboundInjected && o.reboundAmount > 0) {
-        s.v += -Math.sign(s.x || 1) * o.reboundAmount * 140;
+
+      // Optional micro rebound: apply at most once per excursion, gated by size and cooldown.
+      const canRebound = (
+        !s.reboundInjected &&
+        o.reboundAmount > 0 &&
+        Math.abs(s.x) > o.reboundMinExcursionPx &&
+        (ts - s.lastReleaseTs) > o.reboundCooldownMs
+      );
+
+      if (canRebound) {
+        // Scale kick with release velocity but clamp to avoid rapid double/triple bounce artifacts.
+        const releaseSpeed = Math.min(140, Math.abs(s.v));
+        const kick = Math.max(12, releaseSpeed * 0.24) * o.reboundAmount;
+        s.v += -Math.sign(s.x || 1) * kick;
         s.reboundInjected = true;
+        s.lastReleaseTs = ts;
       }
     }
 
@@ -201,6 +226,7 @@ class ScrollShockAbsorber {
       s.x = 0;
       s.v = 0;
       s.aPrev = 0;
+      s.lastBoundarySign = 0;
       this.applyTransform(0);
       this.rafId = null;
       return;
