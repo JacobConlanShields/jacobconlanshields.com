@@ -617,22 +617,28 @@ textarea:focus{
     word-break: break-word;
   }
 
+  .podcast-page .row-title,
+  .podcast-page .lede{
+    width: 100%;
+  }
+
   .podcast-page .row-head{
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 8px;
   }
 
   .podcast-page .row-title{
     min-width: 0;
-    flex: 1 1 100%;
+    margin: 0;
     white-space: normal;
   }
 
   .podcast-page .row-controls{
-    display: flex;
+    display: inline-flex;
     flex: 0 0 auto;
+    justify-self: end;
     margin-left: 0;
   }
 
