@@ -57,6 +57,11 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `pages/writing/index.html`
 - Purpose: links to the Relative Momentum ebook and external writing platforms.
 
+### Scroll physics demo
+- `pages/scroll-shock/index.html`
+- `assets/scroll-shock-absorber.js`
+- Purpose: demonstrates a dedicated scroll container with boundary overscroll absorption (jerk-limited spring-damper behavior).
+
 ### Relative Momentum ebook viewer
 - `pages/writing/relative-momentum/index.html`
 - Purpose: two-page spread with keyboard/mouse navigation and a high-resolution lightbox.
