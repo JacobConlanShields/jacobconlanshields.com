@@ -587,8 +587,17 @@ textarea:focus{
   }
 
   .podcast-page,
-  .podcast-page .top-left{
+  .podcast-page .top-left,
+  .podcast-page .top-right,
+  .podcast-page .podcast-topgrid,
+  .podcast-page .row-block,
+  .podcast-page .row-head,
+  .podcast-page .row,
+  .podcast-page .clips-viewport,
+  .podcast-page .clips-rail{
     min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   .podcast-page{
@@ -613,14 +622,21 @@ textarea:focus{
   }
 
   .podcast-page .row-head{
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .podcast-page .row-title{
+    flex: 1 1 220px;
     min-width: 0;
     white-space: normal;
+  }
+
+  .podcast-page .row-controls{
+    flex: 0 0 auto;
+    margin-left: auto;
   }
 
   .podcast-page .row{
@@ -658,17 +674,17 @@ textarea:focus{
     overscroll-behavior-x: contain;
   }
 
-  .podcast-page .podcast-topgrid,
-  .podcast-page .row-block,
-  .podcast-page .row,
-  .podcast-page .clips-viewport,
-  .podcast-page .clips-rail{
-    max-width: 100%;
-  }
-
   .clips-rail .card{
     width: min(52vw, 220px);
     scroll-snap-align: start;
+  }
+
+  @media (max-width: 560px){
+    .podcast-page .row-controls{
+      width: 100%;
+      margin-left: 0;
+      justify-content: flex-start;
+    }
   }
 
   .preview-head,
