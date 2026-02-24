@@ -133,7 +133,9 @@
     </div>
   </div>
 
+  <script src="/assets/physics.js"></script>
   <script>
+    const physics = window.SitePhysics;
     const substackModal = document.getElementById("substackModal");
     const openSubstack = document.getElementById("openSubstack");
     const substackTrack = document.getElementById("substackTrack");
@@ -238,14 +240,19 @@
       }
     });
 
+    const substackPhysics = substackTrack
+      ? physics.createScrollSpringController(substackTrack, { axis: "x" })
+      : null;
+
     document.querySelectorAll("[data-carousel='substack']").forEach((button) => {
       button.addEventListener("click", () => {
         const direction = Number(button.dataset.dir || 1);
         const card = substackTrack?.querySelector(".substack-entry");
-        if (!card || !substackTrack) return;
+        if (!card || !substackTrack || !substackPhysics) return;
         const gap = 12;
         const offset = card.getBoundingClientRect().width + gap;
-        substackTrack.scrollBy({ left: offset * direction, behavior: "smooth" });
+        substackPhysics.nudge(offset * direction, 120 * direction);
+        substackPhysics.snapToNearest(offset);
       });
     });
 
