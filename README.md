@@ -2,7 +2,7 @@
 Personal website to display arrays of talent
 
 ## Overview
-This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, and an ebook viewer). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
+This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, an ebook viewer, and a video-flowchart whiteboard prototype). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
 
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
@@ -45,7 +45,13 @@ Below is a detailed description of every tracked file in the repository, as an e
 ### `pages/projects/index.html`
 - The Projects landing page.
 - Lists the main projects and provides navigation back to the homepage.
-- Simple, static HTML with no external CSS references.
+- Uses `/assets/styles.css` and now includes a link to the YouTube Flowchart Whiteboard prototype.
+
+
+### `pages/projects/video-flowchart/index.html`
+- Interactive wireframe-style whiteboard for building video flowcharts from YouTube playlists.
+- Lets users load a playlist into a draggable video bank, drop videos onto a whiteboard, add editable text boxes, and draw directional arrows between nodes.
+- Uses the same feed-proxy strategy as the podcast page to fetch YouTube playlist XML in a browser-safe way.
 
 ### `pages/podcast/index.html`
 - The Quality Values Podcast page.

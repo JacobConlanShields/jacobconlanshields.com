@@ -950,3 +950,149 @@ textarea:focus{
   height: auto;
   object-fit: contain;
 }
+
+/* =========================
+   Video flowchart whiteboard
+   ========================= */
+
+.flowchart-layout{
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.flowchart-sidebar,
+.whiteboard-shell{
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 12px;
+}
+
+.flowchart-title{
+  margin-bottom: 8px;
+}
+
+.flowchart-controls,
+.flowchart-toolbar{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.flowchart-controls button,
+.flowchart-toolbar button{
+  flex: 1;
+}
+
+.video-bank{
+  display: grid;
+  gap: 8px;
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.bank-video{
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+}
+
+.bank-video img{
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.bank-video span{
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.flowchart-board{
+  position: relative;
+  min-height: 640px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.2) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-color: #212121;
+}
+
+.flowchart-links{
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.flow-node{
+  position: absolute;
+  width: 280px;
+  border: 2px solid #8a45ff;
+  border-radius: 12px;
+  background: #cdb8eb;
+  color: #2d1852;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3);
+}
+
+.flow-node header{
+  font-weight: 700;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(45,24,82,.25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-node iframe{
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+
+.flow-node--text{
+  width: 220px;
+  background: #b7e5c8;
+  border-color: #0f6f2f;
+  color: #073517;
+}
+
+.text-node-content{
+  min-height: 110px;
+  padding: 10px;
+  outline: none;
+}
+
+.node-selected{
+  outline: 3px solid #fff;
+}
+
+#connectModeBtn.is-active{
+  background: #8a45ff;
+  border-color: #8a45ff;
+}
+
+@media (max-width: 900px){
+  .flowchart-layout{
+    grid-template-columns: 1fr;
+  }
+
+  .video-bank{
+    max-height: 320px;
+  }
+
+  .flowchart-board{
+    min-height: 520px;
+  }
+}

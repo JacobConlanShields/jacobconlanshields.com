@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="https://pub-aad15324564c43c49955b96d781f71eb.r2.dev/JCS%20Logo%20Black%20Background.png" />
+  <title>YouTube Flowchart Whiteboard — Jacob Shields</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main>
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/video-flowchart/">Video Flowchart</a>
+    </p>
+
+    <h1>YouTube Video Flowchart Whiteboard</h1>
+    <p>Import a playlist into a video bank, drag videos to the whiteboard, add text boxes, and connect nodes with directional arrows.</p>
+
+    <section class="flowchart-layout" aria-label="Video flowchart app">
+      <aside class="flowchart-sidebar">
+        <h2 class="flowchart-title">Video bank</h2>
+        <label for="playlistUrl">YouTube playlist URL</label>
+        <input id="playlistUrl" type="text" placeholder="https://www.youtube.com/playlist?list=..." />
+        <div class="flowchart-controls">
+          <button id="loadPlaylistBtn" type="button">Load playlist</button>
+          <button id="loadSampleBtn" type="button">Load sample</button>
+        </div>
+        <p id="bankStatus" class="status" role="status" aria-live="polite"></p>
+        <div id="videoBank" class="video-bank" aria-label="Video bank list"></div>
+      </aside>
+
+      <section class="whiteboard-shell">
+        <div class="flowchart-toolbar">
+          <button id="addTextNodeBtn" type="button">Add text box</button>
+          <button id="connectModeBtn" type="button">Connect nodes</button>
+          <button id="clearBoardBtn" type="button">Clear board</button>
+        </div>
+
+        <div id="whiteboard" class="flowchart-board" aria-label="Flowchart whiteboard" tabindex="0">
+          <svg class="flowchart-links" id="linksLayer" aria-hidden="true">
+            <defs>
+              <marker id="arrowHead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                <path d="M0,0 L10,4 L0,8 z" fill="#0f6f2f"></path>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const WORKER_PROXY = "https://yt-feed-proxy.jacobconlanshields.workers.dev/?url=";
+      const LOCAL_PROXY = `${window.location.origin}/yt?url=`;
+      const PROXIES = [LOCAL_PROXY, WORKER_PROXY];
+      const FEED = (playlistId) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+
+      const playlistUrlInput = document.getElementById("playlistUrl");
+      const loadPlaylistBtn = document.getElementById("loadPlaylistBtn");
+      const loadSampleBtn = document.getElementById("loadSampleBtn");
+      const videoBank = document.getElementById("videoBank");
+      const bankStatus = document.getElementById("bankStatus");
+      const whiteboard = document.getElementById("whiteboard");
+      const linksLayer = document.getElementById("linksLayer");
+      const addTextNodeBtn = document.getElementById("addTextNodeBtn");
+      const connectModeBtn = document.getElementById("connectModeBtn");
+      const clearBoardBtn = document.getElementById("clearBoardBtn");
+
+      let nodeId = 0;
+      const nodes = new Map();
+      const links = [];
+      let connectMode = false;
+      let pendingSource = null;
+
+      function extractPlaylistId(value) {
+        try {
+          const url = new URL(value.trim());
+          return url.searchParams.get("list") || "";
+        } catch {
+          return "";
+        }
+      }
+
+      function parseFeed(xmlText) {
+        const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+        const entries = Array.from(doc.getElementsByTagName("entry"));
+        return entries.map((entry) => ({
+          videoId: entry.getElementsByTagName("yt:videoId")[0]?.textContent?.trim() || "",
+          title: entry.getElementsByTagName("title")[0]?.textContent?.trim() || ""
+        })).filter((item) => item.videoId);
+      }
+
+      async function fetchFeedViaProxy(feedUrl) {
+        let lastErr = null;
+        for (const proxyBase of PROXIES) {
+          try {
+            const response = await fetch(proxyBase + encodeURIComponent(feedUrl));
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.text();
+          } catch (err) {
+            lastErr = err;
+          }
+        }
+        throw lastErr || new Error("Unable to fetch playlist feed");
+      }
+
+      function renderVideoBank(items) {
+        videoBank.innerHTML = "";
+        items.forEach((item) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "bank-video";
+          button.draggable = true;
+          button.dataset.videoId = item.videoId;
+          button.dataset.title = item.title;
+          button.innerHTML = `
+            <img src="https://i.ytimg.com/vi/${item.videoId}/mqdefault.jpg" alt="${item.title}" loading="lazy" />
+            <span>${item.title}</span>
+          `;
+
+          button.addEventListener("dragstart", (event) => {
+            event.dataTransfer.setData("application/json", JSON.stringify(item));
+            event.dataTransfer.effectAllowed = "copy";
+          });
+
+          videoBank.appendChild(button);
+        });
+      }
+
+      function setBoardSize() {
+        linksLayer.setAttribute("width", whiteboard.clientWidth);
+        linksLayer.setAttribute("height", whiteboard.clientHeight);
+      }
+
+      function centerOf(id) {
+        const node = nodes.get(id);
+        if (!node) return { x: 0, y: 0 };
+        return { x: node.x + node.el.offsetWidth / 2, y: node.y + node.el.offsetHeight / 2 };
+      }
+
+      function drawLinks() {
+        linksLayer.querySelectorAll("line").forEach((line) => line.remove());
+        links.forEach((link) => {
+          const from = centerOf(link.from);
+          const to = centerOf(link.to);
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", from.x);
+          line.setAttribute("y1", from.y);
+          line.setAttribute("x2", to.x);
+          line.setAttribute("y2", to.y);
+          line.setAttribute("stroke", "#0f6f2f");
+          line.setAttribute("stroke-width", "3");
+          line.setAttribute("marker-end", "url(#arrowHead)");
+          linksLayer.appendChild(line);
+        });
+      }
+
+      function makeNodeDraggable(el, id) {
+        let dragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        el.addEventListener("pointerdown", (event) => {
+          if (event.target.closest("iframe")) return;
+          if (connectMode) {
+            handleConnectClick(id, el);
+            return;
+          }
+
+          dragging = true;
+          const node = nodes.get(id);
+          offsetX = event.clientX - node.x;
+          offsetY = event.clientY - node.y;
+          el.setPointerCapture(event.pointerId);
+        });
+
+        el.addEventListener("pointermove", (event) => {
+          if (!dragging) return;
+          const boardRect = whiteboard.getBoundingClientRect();
+          const node = nodes.get(id);
+          node.x = Math.max(10, Math.min(boardRect.width - el.offsetWidth - 10, event.clientX - boardRect.left - offsetX));
+          node.y = Math.max(10, Math.min(boardRect.height - el.offsetHeight - 10, event.clientY - boardRect.top - offsetY));
+          el.style.transform = `translate(${node.x}px, ${node.y}px)`;
+          drawLinks();
+        });
+
+        el.addEventListener("pointerup", () => {
+          dragging = false;
+        });
+      }
+
+      function handleConnectClick(id, el) {
+        if (!pendingSource) {
+          pendingSource = id;
+          el.classList.add("node-selected");
+          return;
+        }
+
+        if (pendingSource !== id) {
+          links.push({ from: pendingSource, to: id });
+          drawLinks();
+        }
+
+        const sourceEl = nodes.get(pendingSource)?.el;
+        if (sourceEl) sourceEl.classList.remove("node-selected");
+        pendingSource = null;
+      }
+
+      function addNode(kind, payload, x = 40, y = 40) {
+        nodeId += 1;
+        const id = `node-${nodeId}`;
+        const node = document.createElement("article");
+        node.className = `flow-node flow-node--${kind}`;
+        node.dataset.id = id;
+
+        if (kind === "video") {
+          node.innerHTML = `
+            <header>${payload.title}</header>
+            <iframe src="https://www.youtube.com/embed/${payload.videoId}" title="${payload.title}" allowfullscreen loading="lazy"></iframe>
+          `;
+        } else {
+          node.innerHTML = `
+            <header>Text box</header>
+            <div class="text-node-content" contenteditable="true">Add text here...</div>
+          `;
+        }
+
+        node.style.transform = `translate(${x}px, ${y}px)`;
+        whiteboard.appendChild(node);
+        nodes.set(id, { el: node, x, y, kind });
+        makeNodeDraggable(node, id);
+      }
+
+      whiteboard.addEventListener("dragover", (event) => {
+        event.preventDefault();
+      });
+
+      whiteboard.addEventListener("drop", (event) => {
+        event.preventDefault();
+        const raw = event.dataTransfer.getData("application/json");
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        const rect = whiteboard.getBoundingClientRect();
+        addNode("video", data, event.clientX - rect.left - 150, event.clientY - rect.top - 90);
+      });
+
+      loadPlaylistBtn.addEventListener("click", async () => {
+        const playlistId = extractPlaylistId(playlistUrlInput.value);
+        if (!playlistId) {
+          bankStatus.textContent = "Enter a valid YouTube playlist URL.";
+          return;
+        }
+
+        bankStatus.textContent = "Loading playlist…";
+
+        try {
+          const xml = await fetchFeedViaProxy(FEED(playlistId));
+          const items = parseFeed(xml).slice(0, 30);
+          renderVideoBank(items);
+          bankStatus.textContent = `${items.length} videos ready to drag.`;
+        } catch {
+          bankStatus.textContent = "Unable to load playlist right now.";
+        }
+      });
+
+      loadSampleBtn.addEventListener("click", () => {
+        const sample = [
+          { videoId: "dQw4w9WgXcQ", title: "Sample intro video" },
+          { videoId: "9bZkp7q19f0", title: "Sample branching video" },
+          { videoId: "3JZ_D3ELwOQ", title: "Sample action video" }
+        ];
+        renderVideoBank(sample);
+        bankStatus.textContent = "Sample bank loaded.";
+      });
+
+      addTextNodeBtn.addEventListener("click", () => addNode("text", {}, 80, 80));
+
+      connectModeBtn.addEventListener("click", () => {
+        connectMode = !connectMode;
+        connectModeBtn.classList.toggle("is-active", connectMode);
+        connectModeBtn.textContent = connectMode ? "Exit connect mode" : "Connect nodes";
+        if (!connectMode && pendingSource) {
+          const sourceEl = nodes.get(pendingSource)?.el;
+          if (sourceEl) sourceEl.classList.remove("node-selected");
+          pendingSource = null;
+        }
+      });
+
+      clearBoardBtn.addEventListener("click", () => {
+        Array.from(whiteboard.querySelectorAll(".flow-node")).forEach((node) => node.remove());
+        nodes.clear();
+        links.length = 0;
+        drawLinks();
+      });
+
+      window.addEventListener("resize", () => {
+        setBoardSize();
+        drawLinks();
+      });
+
+      setBoardSize();
+      drawLinks();
+    })();
+  </script>
+</body>
+</html>
