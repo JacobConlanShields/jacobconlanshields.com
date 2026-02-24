@@ -614,13 +614,24 @@ textarea:focus{
 
   .podcast-page .row-head{
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
+  }
+
+  .podcast-page .row-controls{
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .podcast-page .row-title{
     min-width: 0;
     white-space: normal;
+  }
+
+  .podcast-page .lede{
+    max-width: 100%;
   }
 
   .podcast-page .row{
