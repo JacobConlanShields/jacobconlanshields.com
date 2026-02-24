@@ -596,9 +596,9 @@ textarea:focus{
   .podcast-page{
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-x: hidden;
-    overflow-y: visible;
+    overflow: visible;
     overscroll-behavior-y: none;
+    width: 100%;
     max-width: 100%;
     padding-bottom: 12px;
   }
@@ -615,14 +615,21 @@ textarea:focus{
   }
 
   .podcast-page .row-head{
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .podcast-page .row-title{
     min-width: 0;
     white-space: normal;
+  }
+
+  .podcast-page .row-controls{
+    display: flex;
+    flex: 0 0 auto;
   }
 
   .podcast-page .row{

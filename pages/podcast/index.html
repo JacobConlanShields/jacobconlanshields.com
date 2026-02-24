@@ -440,50 +440,10 @@
       smoothStepScroll(el, "x", dir, Math.round(el.clientWidth * 0.88));
     }
 
-    const touchTapState = {
-      startX: 0,
-      startY: 0,
-      moved: false,
-      active: false,
-    };
-
-    document.addEventListener("touchstart", (event) => {
-      if (!event.target.closest(".row, .clips-rail")) return;
-      const touch = event.touches?.[0];
-      if (!touch) return;
-
-      touchTapState.startX = touch.clientX;
-      touchTapState.startY = touch.clientY;
-      touchTapState.moved = false;
-      touchTapState.active = true;
-    }, { passive: true });
-
-    document.addEventListener("touchmove", (event) => {
-      if (!touchTapState.active) return;
-      const touch = event.touches?.[0];
-      if (!touch) return;
-
-      const movedX = Math.abs(touch.clientX - touchTapState.startX);
-      const movedY = Math.abs(touch.clientY - touchTapState.startY);
-      if (movedX > 10 || movedY > 10) {
-        touchTapState.moved = true;
-      }
-    }, { passive: true });
-
-    document.addEventListener("touchend", () => {
-      touchTapState.active = false;
-    }, { passive: true });
-
     document.addEventListener("click", (e) => {
       // Event delegation keeps the HTML clean (no inline onclick).
       const card = e.target.closest(".card");
-      if (card?.dataset.video) {
-        if (touchTapState.moved) {
-          touchTapState.moved = false;
-          return;
-        }
-        openPlayer(card.dataset.video);
-      }
+      if (card?.dataset.video) openPlayer(card.dataset.video);
 
       if (e.target.matches("[data-close]")) closePlayer();
 
