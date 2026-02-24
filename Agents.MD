@@ -57,6 +57,11 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `pages/writing/index.html`
 - Purpose: links to the Relative Momentum ebook and external writing platforms.
 
+### YouTube flowchart wireframe
+- `pages/projects/video-flowchart/index.html`
+- Purpose: prototype for building a flowchart from YouTube playlist videos with draggable nodes (videos + text) and arrow connections on a dotted whiteboard canvas.
+- Notes: fetches YouTube playlist XML through `/yt` first, then falls back to the Worker proxy, mirroring the podcast proxy strategy.
+
 ### Relative Momentum ebook viewer
 - `pages/writing/relative-momentum/index.html`
 - Purpose: two-page spread with keyboard/mouse navigation and a high-resolution lightbox.
