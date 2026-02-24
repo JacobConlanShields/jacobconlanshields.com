@@ -584,6 +584,7 @@ textarea:focus{
 
   .podcast-topgrid{
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .podcast-page,
@@ -661,8 +662,9 @@ textarea:focus{
   .top-right{
     width: 100%;
     justify-self: stretch;
-    align-self: auto;
+    align-self: start;
     display: block;
+    min-height: auto;
   }
 
   .clips-viewport{
