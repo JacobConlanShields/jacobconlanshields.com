@@ -7,7 +7,7 @@ This repository is a static personal website with a small amount of JavaScript f
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
 - **CSS**: Global styles, layout rules, and component styles.
-- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation) and an optional serverless proxy function.
+- **JavaScript**: Client-side behavior (playlist fetching, modal player, ebook navigation), boundary scroll physics demo, and an optional serverless proxy function.
 
 ## File-by-file reference (every tracked file)
 Below is a detailed description of every tracked file in the repository, as an example for future documentation.
@@ -20,6 +20,12 @@ Below is a detailed description of every tracked file in the repository, as an e
 - Renders the top-level navigation buttons to Projects, Writing, Podcast, and Contact.
 - Uses the global stylesheet at `/assets/styles.css`.
 - Provides a brief introduction about the site being intentionally simple.
+
+### `assets/scroll-shock-absorber.js`
+- Reusable `ScrollShockAbsorber` class for a dedicated overflow container.
+- Captures wheel/touch only at top and bottom boundaries, preserving native momentum scrolling in the middle.
+- Applies overscroll compression using a jerk-limited spring-damper model on translated content (`transform: translateY(...)`).
+- Exposes tunable options: `k0`, `k1`, `c0`, `c1`, `m`, `J_MAX`, `maxOverscrollPx`, and `reboundAmount`.
 
 ### `assets/styles.css`
 - The global stylesheet for the website.
@@ -46,6 +52,11 @@ Below is a detailed description of every tracked file in the repository, as an e
 - The Projects landing page.
 - Lists the main projects and provides navigation back to the homepage.
 - Simple, static HTML with no external CSS references.
+
+### `pages/scroll-shock-demo/index.html`
+- Demo page for the scroll shock absorber effect with long content in a dedicated `#scrollRoot` container.
+- Demonstrates integration of `ScrollShockAbsorber`, including tuning notes for soft stop vs slight rebound behavior.
+- Uses `requestAnimationFrame`-driven physics and mobile-friendly touch handling.
 
 ### `pages/podcast/index.html`
 - The Quality Values Podcast page.
@@ -120,3 +131,24 @@ If you want to test the Cloudflare Pages Function locally:
 
 > Note: If you use Option A (Python server), `/functions/yt.js` will not be executed. Use Option B if you want to validate the proxy behavior.
 >
+
+## Scroll shock absorber integration guide
+To use the boundary absorber on any page:
+1. Create a dedicated scroll container (example: `<div id="scrollRoot" style="overflow:auto; -webkit-overflow-scrolling: touch;">`).
+2. Wrap scrollable content in an inner element that can be translated.
+3. Include `/assets/scroll-shock-absorber.js` and instantiate:
+   ```html
+   <script src="/assets/scroll-shock-absorber.js"></script>
+   <script>
+     const absorber = new ScrollShockAbsorber(document.getElementById('scrollRoot'), {
+       content: document.getElementById('yourInnerContent'),
+       k0: 220, k1: 8, c0: 35, c1: 0.07,
+       m: 1, J_MAX: 12000, maxOverscrollPx: 88, reboundAmount: 0.1
+     });
+   </script>
+   ```
+
+### Manual test notes
+- **iOS Safari**: verify touch drag at top/bottom compresses smoothly with no hard snap; check reduced motion behavior in iOS accessibility settings.
+- **Chrome Android**: verify momentum remains native mid-list, boundary pull compresses, and release settles to rest without jitter.
+- **Desktop wheel/trackpad**: verify wheel and precision trackpad overscroll are absorbed progressively, with no layout thrash and smooth 60fps feel.

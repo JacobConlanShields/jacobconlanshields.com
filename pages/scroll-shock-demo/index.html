@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scroll Shock Absorber Demo</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <style>
+    .shock-layout {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    #scrollRoot {
+      height: 68vh;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      border: 1px solid #2f2f2f;
+      border-radius: 14px;
+      background: #0e0e0e;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    #scrollRoot .shock-content {
+      padding: 1rem 1.1rem 2.2rem;
+      transform: translate3d(0, 0, 0);
+      contain: paint;
+    }
+
+    .shock-card {
+      border: 1px solid #2d2d2d;
+      background: #151515;
+      border-radius: 12px;
+      padding: 0.95rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .tuning {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.84rem;
+      line-height: 1.6;
+      color: #d3d3d3;
+      background: #121212;
+      border: 1px solid #2d2d2d;
+      border-radius: 12px;
+      padding: 0.75rem 0.95rem;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <main class="shock-layout">
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/scroll-shock-demo/">Scroll Shock Demo</a>
+    </p>
+
+    <h1>Scroll Shock Absorber</h1>
+    <p>
+      This demo preserves native scrolling momentum in the middle of content and only captures
+      wheel/touch input at top/bottom boundaries. Boundary energy is absorbed by a
+      jerk-limited spring-damper model.
+    </p>
+
+    <div class="tuning">
+      Tune profile: <strong>soft stop</strong> → lower <code>k0</code>/<code>k1</code>, higher <code>c0</code>/<code>c1</code>.
+      <br />
+      Tune profile: <strong>slight rebound</strong> → increase <code>reboundAmount</code> (keep small, e.g. 0.05 - 0.2).
+    </div>
+
+    <div id="scrollRoot" aria-label="Shock absorber scroll container">
+      <div class="shock-content" id="shockContent"></div>
+    </div>
+  </main>
+
+  <script src="/assets/scroll-shock-absorber.js"></script>
+  <script>
+    const content = document.getElementById('shockContent');
+
+    const intro = document.createElement('div');
+    intro.className = 'shock-card';
+    intro.innerHTML = `
+      <h2>How it works</h2>
+      <p>
+        The absorber applies translation (transform) during overscroll. It does not fight
+        native <code>scrollTop</code> when inside bounds.
+      </p>
+      <p>
+        Physics per frame:<br>
+        <code>x' = v</code><br>
+        <code>v' = a</code><br>
+        <code>a = (-k_eff * x - c_eff * v) / m</code><br>
+        <code>k_eff = k0 + k1 * |x|</code>,
+        <code>c_eff = c0 + c1 * |v|</code>,
+        and acceleration is jerk-limited by <code>J_MAX</code>.
+      </p>
+    `;
+    content.appendChild(intro);
+
+    for (let i = 1; i <= 36; i += 1) {
+      const card = document.createElement('article');
+      card.className = 'shock-card';
+      card.innerHTML = `
+        <h3>Long content block ${i}</h3>
+        <p>
+          Scroll naturally through this container. At boundaries, attempts to overscroll are
+          progressively resisted so high-velocity input compresses with control instead of a
+          hard bounce.
+        </p>
+      `;
+      content.appendChild(card);
+    }
+
+    // Reusable module instance. Integration pattern:
+    // 1) Create a dedicated scroll container (overflow:auto).
+    // 2) Wrap content in an inner element you can translate.
+    // 3) Pass tunable physics params.
+    const absorber = new ScrollShockAbsorber(document.getElementById('scrollRoot'), {
+      content,
+      k0: 220,
+      k1: 8,
+      c0: 35,
+      c1: 0.07,
+      m: 1,
+      J_MAX: 12000,
+      maxOverscrollPx: 88,
+      reboundAmount: 0.1,
+    });
+
+    // Exposed for debugging/tuning in DevTools.
+    window.absorber = absorber;
+  </script>
+</body>
+</html>
