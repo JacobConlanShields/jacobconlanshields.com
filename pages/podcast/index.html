@@ -391,6 +391,7 @@
       const firstCard = el.querySelector(".card");
       const style = getComputedStyle(el);
       const gap = Number.parseFloat(style.gap || "0") || 0;
+      const endInset = axis === "y" && el.classList.contains("clips-rail") ? 8 : 0;
 
       let step = fallbackStep;
       if (firstCard) {
@@ -400,13 +401,14 @@
 
       if (axis === "y") {
         const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+        const maxTopWithInset = Math.max(0, maxTop - endInset);
         const targetTop = Math.max(0, el.scrollTop + (dir * step));
         const threshold = Math.max(10, step * 0.35);
-        const nextTop = dir > 0 && (maxTop - targetTop) < threshold
-          ? maxTop
+        const nextTop = dir > 0 && (maxTopWithInset - targetTop) < threshold
+          ? maxTopWithInset
           : dir < 0 && targetTop < threshold
             ? 0
-            : Math.min(maxTop, targetTop);
+            : Math.min(maxTopWithInset, targetTop);
 
         window.SitePhysics.animateScrollTo(el, {
           axis: "y",

@@ -229,7 +229,7 @@ button:hover{ background: rgba(255,255,255,.06); }
   overflow-x: auto;
   overflow-y: hidden;
   gap: var(--row-gap);
-  padding: 6px 2px 10px;
+  padding: 6px 2px 8px;
 
   -webkit-overflow-scrolling: touch;
   scroll-behavior: auto;
@@ -669,7 +669,7 @@ textarea:focus{
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x proximity;
-    padding: 6px 2px 10px;
+    padding: 6px 2px 8px;
     scroll-padding-right: 10px;
     width: 100%;
     overscroll-behavior-x: contain;
