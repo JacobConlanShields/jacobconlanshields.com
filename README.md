@@ -17,7 +17,7 @@ Below is a detailed description of every tracked file in the repository, as an e
 
 ### `index.html`
 - The homepage for the site.
-- Renders the top-level navigation buttons to Projects, Writing, Podcast, and Contact.
+- Renders the top-level navigation buttons to Projects, Spincline, Writing, Podcast, and Contact.
 - Uses the global stylesheet at `/assets/styles.css`.
 - Provides a brief introduction about the site being intentionally simple.
 
@@ -46,6 +46,17 @@ Below is a detailed description of every tracked file in the repository, as an e
 - The Projects landing page.
 - Lists the main projects and provides navigation back to the homepage.
 - Simple, static HTML with no external CSS references.
+
+
+
+### `pages/spincline/index.html`
+- Dedicated Spincline page with a mixed media gallery for photos and videos.
+- Implements horizontal scrolling via arrow controls and wheel-to-horizontal conversion for quicker browsing.
+- Pulls static assets from `/media/spincline/` so uploads are Cloudflare Pages friendly.
+
+### `media/spincline/README.md`
+- Documents the Cloudflare Pages media folder for Spincline content.
+- Defines where to place photos (`photos/`) and videos (`videos/`) for the gallery.
 
 ### `pages/podcast/index.html`
 - The Quality Values Podcast page.

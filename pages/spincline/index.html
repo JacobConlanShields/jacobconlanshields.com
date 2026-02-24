@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="https://pub-aad15324564c43c49955b96d781f71eb.r2.dev/JCS%20Logo%20Black%20Background.png" />
+  <title>Spincline — Jacob Conlon Shields</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X00G23WVDJ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-X00G23WVDJ');
+  </script>
+</head>
+<body>
+  <main>
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/spincline/">Spincline</a>
+      <span class="dot">•</span>
+      <a href="/pages/writing/">Writing</a>
+      <span class="dot">•</span>
+      <a href="/pages/podcast/">Podcast</a>
+      <span class="dot">•</span>
+      <a href="/contact/">Contact</a>
+    </p>
+    <hr>
+
+    <h1>Spincline</h1>
+    <p>A visual build log for the Spincline device. Add media files to <code>/media/spincline/</code> and they will be served directly by Cloudflare Pages.</p>
+
+    <section class="gallery-block" aria-labelledby="spincline-photos-title">
+      <div class="gallery-head">
+        <h2 id="spincline-photos-title" class="gallery-title">Photo Gallery</h2>
+        <div class="gallery-controls">
+          <button class="icon-btn" type="button" data-scroll-target="spincline-photos" data-scroll-dir="-1" aria-label="Scroll photos left">←</button>
+          <button class="icon-btn" type="button" data-scroll-target="spincline-photos" data-scroll-dir="1" aria-label="Scroll photos right">→</button>
+        </div>
+      </div>
+      <div class="gallery-track" id="spincline-photos" tabindex="0" aria-label="Spincline photos">
+        <article class="gallery-card">
+          <img src="/media/spincline/photos/frame-front.jpg" alt="Spincline frame front view" loading="lazy" />
+          <p class="gallery-caption">Frame front view</p>
+        </article>
+        <article class="gallery-card">
+          <img src="/media/spincline/photos/frame-side.jpg" alt="Spincline frame side profile" loading="lazy" />
+          <p class="gallery-caption">Side profile</p>
+        </article>
+        <article class="gallery-card">
+          <img src="/media/spincline/photos/base-prototype.jpg" alt="Spincline base prototype" loading="lazy" />
+          <p class="gallery-caption">Base prototype</p>
+        </article>
+        <article class="gallery-card">
+          <img src="/media/spincline/photos/rotation-test.jpg" alt="Spincline rotation test" loading="lazy" />
+          <p class="gallery-caption">Rotation test</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="gallery-block" aria-labelledby="spincline-videos-title">
+      <div class="gallery-head">
+        <h2 id="spincline-videos-title" class="gallery-title">Video Gallery</h2>
+        <div class="gallery-controls">
+          <button class="icon-btn" type="button" data-scroll-target="spincline-videos" data-scroll-dir="-1" aria-label="Scroll videos left">←</button>
+          <button class="icon-btn" type="button" data-scroll-target="spincline-videos" data-scroll-dir="1" aria-label="Scroll videos right">→</button>
+        </div>
+      </div>
+      <div class="gallery-track" id="spincline-videos" tabindex="0" aria-label="Spincline videos">
+        <article class="gallery-card gallery-card--video">
+          <video controls preload="metadata">
+            <source src="/media/spincline/videos/setup-demo.mp4" type="video/mp4" />
+          </video>
+          <p class="gallery-caption">Setup demo</p>
+        </article>
+        <article class="gallery-card gallery-card--video">
+          <video controls preload="metadata">
+            <source src="/media/spincline/videos/rotation-walkthrough.mp4" type="video/mp4" />
+          </video>
+          <p class="gallery-caption">Rotation walkthrough</p>
+        </article>
+        <article class="gallery-card gallery-card--video">
+          <video controls preload="metadata">
+            <source src="/media/spincline/videos/user-session-01.mp4" type="video/mp4" />
+          </video>
+          <p class="gallery-caption">User session 01</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function(){
+      const STEP_RATIO = 0.85;
+
+      document.querySelectorAll('[data-scroll-target]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const track = document.getElementById(btn.dataset.scrollTarget);
+          const dir = Number(btn.dataset.scrollDir || 1);
+          if (!track) return;
+          track.scrollBy({ left: dir * track.clientWidth * STEP_RATIO, behavior: 'smooth' });
+        });
+      });
+
+      document.querySelectorAll('.gallery-track').forEach((track) => {
+        track.addEventListener('wheel', (event) => {
+          if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+          event.preventDefault();
+          track.scrollBy({ left: event.deltaY, behavior: 'auto' });
+        }, { passive: false });
+      });
+    })();
+  </script>
+</body>
+</html>
