@@ -61,11 +61,6 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `pages/writing/index.html`
 - Purpose: links to the Relative Momentum ebook and external writing platforms.
 
-### Scroll physics demo
-- `pages/scroll-shock/index.html`
-- `assets/scroll-shock-absorber.js`
-- Purpose: demonstrates a dedicated scroll container with boundary overscroll absorption (jerk-limited spring-damper behavior).
-
 ### Relative Momentum ebook viewer
 - `pages/writing/relative-momentum/index.html`
 - Purpose: two-page spread with keyboard/mouse navigation and a high-resolution lightbox.
@@ -93,6 +88,15 @@ There are **no automated tests** at the moment. Manual validation is expected.
   4. Science & Sustainability
   5. Entrepreneurship Episodes
   6. Clips (right column)
+
+
+## Physics-first UX (project-wide rule)
+- Treat motion like a physical system: momentum, damping, spring restoring forces, friction, and boundary constraints.
+- Shared interaction primitives live in `assets/physics.js`; contributors should reuse these utilities instead of introducing one-off easing/timing constants.
+- Avoid `scroll-behavior: smooth` or arbitrary duration-based transitions for user-driven interactions (scroll/swipe/drag/carousel controls).
+- Gesture intent must preserve user control: do not capture horizontal movement unless horizontal displacement clearly dominates vertical displacement.
+- Always implement `prefers-reduced-motion` fallback for any new motion behavior.
+- Keep defaults near critically damped (quick settling, minimal overshoot).
 
 ## Editing guidelines (to avoid breaking the site)
 - Keep HTML **semantic and minimal**; avoid introducing frameworks or build steps.

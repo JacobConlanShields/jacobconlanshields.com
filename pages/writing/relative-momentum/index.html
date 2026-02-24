@@ -195,6 +195,26 @@
       }
     }
 
+
+    @media (prefers-reduced-motion: reduce) {
+      .spread,
+      .page-shade {
+        transition: none !important;
+      }
+
+      .spread.turning[data-direction="forward"] .page-sheet,
+      .spread.turning[data-direction="backward"] .page-sheet,
+      .spread.turning[data-direction="forward"] .page-shade,
+      .spread.turning[data-direction="backward"] .page-shade {
+        animation: none !important;
+      }
+
+      .spread.turning {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
     .page-frame img {
       width: 100%;
       height: auto;
@@ -391,7 +411,8 @@
   </style>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-X00G23WVDJ"></script>
-<script>
+<script src="/assets/physics.js"></script>
+  <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
@@ -504,6 +525,7 @@
     let lastDirection = "forward";
     let touchStartX = 0;
     let touchStartY = 0;
+    let touchStartAt = 0;
 
     const clampPage = (page) => Math.min(Math.max(page, 1), TOTAL_PAGES);
 
@@ -626,7 +648,8 @@
         });
       }
 
-      window.setTimeout(() => targetSpread.classList.remove("turning"), 420);
+      const turningDurationMs = window.SitePhysics.prefersReducedMotion() ? 0 : 420;
+      window.setTimeout(() => targetSpread.classList.remove("turning"), turningDurationMs);
       preloadNext(page);
     };
 
@@ -702,7 +725,7 @@
       }
       event.preventDefault();
       const velocity = Math.abs(delta) / timeDelta;
-      const multiplier = velocity > 3.5 ? 2 : 1;
+      const multiplier = velocity > window.SitePhysics.PHYSICS.paging.wheelVelocityThreshold ? 2 : 1;
       const step = currentStep();
       const jump = step * multiplier;
       lastWheelTime = now;
@@ -724,6 +747,7 @@
       if (!touch) return;
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
+      touchStartAt = performance.now();
     };
 
     const handleTouchEnd = (event) => {
@@ -733,7 +757,10 @@
       const deltaX = touch.clientX - touchStartX;
       const deltaY = touch.clientY - touchStartY;
 
-      if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY)) {
+      const elapsed = Math.max(16, performance.now() - touchStartAt);
+      const velocityX = Math.abs((deltaX / elapsed) * 1000);
+      const horizontalIntent = window.SitePhysics.shouldCaptureHorizontal(deltaX, deltaY, { minGesturePx: 42 });
+      if (!horizontalIntent || velocityX < 120) {
         return;
       }
 
