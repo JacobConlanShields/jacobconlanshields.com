@@ -64,6 +64,7 @@
     </section>
   </main>
 
+  <script src="/assets/physics.js"></script>
   <script src="/assets/scroll-shock-absorber.js"></script>
   <script>
     const content = document.getElementById('scrollContent');
@@ -75,18 +76,24 @@
     )).join('');
 
     // Tuning notes:
-    // - "Soft stop": lower k0/k1, higher c0/c1, lower reboundAmount.
-    // - "Slight rebound": modest reboundAmount + slightly lower c0.
+    // - "Soft stop": lower k0/k1, higher c0/c1, lower reboundAmountTop.
+    // - "Slight rebound": modest reboundAmountTop + slightly lower c0.
     // - J_MAX controls jerk limiting. Smaller values feel smoother/less snappy.
+    const spring = window.SitePhysics.PHYSICS.spring;
     const params = {
-      k0: 165,
+      k0: Math.round(spring.stiffness * 0.75),
       k1: 12,
-      c0: 33,
+      c0: Math.round(spring.damping * 1.18),
       c1: 0.09,
-      m: 1,
+      m: spring.mass,
       J_MAX: 3200,
       maxOverscrollPx: 68,
-      reboundAmount: 0.04
+      reboundAmountTop: 0.04,
+      reboundAmountBottom: 0,
+      boundaryEpsilonTop: 1,
+      boundaryEpsilonBottom: 3,
+      edgeHoldPx: 10,
+      edgeReleasePx: 20
     };
 
     document.getElementById('tuning').textContent =
@@ -96,8 +103,9 @@ ${JSON.stringify(params, null, 2)}
 Integration:
 1) Use a dedicated container (#scrollRoot) with overflow:auto + -webkit-overflow-scrolling: touch.
 2) Keep content in one child wrapper (.scroll-content) so transform translateY can be applied.
-3) const absorber = new ScrollShockAbsorber(scrollRoot, params); absorber.init();
-4) On teardown: absorber.destroy();`;
+3) Bottom-edge stability is controlled by boundaryEpsilonBottom + edgeHoldPx/edgeReleasePx.
+4) const absorber = new ScrollShockAbsorber(scrollRoot, params); absorber.init();
+5) On teardown: absorber.destroy();`;
 
     const absorber = new ScrollShockAbsorber(document.getElementById('scrollRoot'), {
       ...params,
