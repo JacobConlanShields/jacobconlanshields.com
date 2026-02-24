@@ -1,22 +1,22 @@
 /**
  * ScrollShockAbsorber
  *
- * Adds a controlled, critically-damped-ish overscroll response to a dedicated
- * scroll container. Native momentum scrolling is left untouched except when the
- * user tries to push past the top/bottom boundary.
+ * Dedicated boundary overscroll absorber for a scroll container.
+ * Native scrolling remains untouched in-range; at top/bottom boundaries,
+ * impulses are converted into a damped spring response on content translateY.
  *
  * Physics model:
  *   x' = v
  *   v' = a
  *   a  = (-k*x - c*v) / m
  *
- * With non-linear terms:
- *   k_eff = k0 + k1*|x|
- *   c_eff = c0 + c1*|v|
- *
- * Jerk limiting clamps the change in acceleration per second:
- *   a <- clamp(a_raw, a_prev - J_MAX*dt, a_prev + J_MAX*dt)
+ * Where:
+ * - k is adaptive stiffness (firms up with larger excursion)
+ * - c is near-critically damped using damping ratio + velocity term
+ * - jerk limiting smooths acceleration changes frame-to-frame
  */
+const shared = window.SitePhysics?.PHYSICS || null;
+
 class ScrollShockAbsorber {
   constructor(scrollRoot, options = {}) {
     if (!scrollRoot) throw new Error('ScrollShockAbsorber requires a scrollRoot element.');
@@ -28,51 +28,59 @@ class ScrollShockAbsorber {
     }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const springBase = Math.max(120, shared?.spring?.stiffness || 220);
+
     const defaults = {
-      // Base spring/damper terms. Increase k for firmer stop; increase c for less rebound.
-      k0: 180,
-      k1: 14,
-      c0: 34,
-      c1: 0.06,
-      m: 1,
-      J_MAX: 3600,
-      maxOverscrollPx: 72,
-      reboundAmount: 0.05,
-      boundaryEpsilon: 1,
-      inputGain: 0.38,
+      mass: shared?.spring?.mass || 1,
+      stiffness: Math.round(springBase * 0.78),
+      stiffnessByDisplacement: 1.9,
+      dampingRatio: 0.96,
+      dampingByVelocity: 0.018,
+      jerkLimit: 3200,
+      maxOverscrollPx: 66,
+      inputGain: 0.34,
+      inputVelocityGain: 30,
+      responseCurve: 0.015,
       settleThresholdX: 0.2,
       settleThresholdV: 3,
-      releaseDelayMs: 90,
-      reboundCooldownMs: 220,
-      reboundMinExcursionPx: 6
+      boundaryEpsilonTop: 1,
+      boundaryEpsilonBottom: 3,
+      edgeLockThresholdPx: 0.5,
     };
 
-    this.options = { ...defaults, ...options };
+    // Legacy compatibility (older tuning object keys).
+    const legacy = {
+      mass: Number.isFinite(options.m) ? options.m : undefined,
+      stiffness: Number.isFinite(options.k0) ? options.k0 : undefined,
+      stiffnessByDisplacement: Number.isFinite(options.k1) ? options.k1 : undefined,
+      dampingByVelocity: Number.isFinite(options.c1) ? options.c1 : undefined,
+      jerkLimit: Number.isFinite(options.J_MAX) ? options.J_MAX : undefined,
+    };
 
-    // Reduced motion: smaller visual travel and heavier damping.
+    this.options = { ...defaults, ...legacy, ...options };
+
+    // If legacy c0 was supplied, derive damping ratio from critical damping at base stiffness.
+    if (Number.isFinite(options.c0)) {
+      const critical = 2 * Math.sqrt(this.options.stiffness * this.options.mass);
+      this.options.dampingRatio = this.clamp(options.c0 / critical, 0.6, 1.35);
+    }
+
     if (reduceMotion) {
-      this.options.maxOverscrollPx = Math.min(this.options.maxOverscrollPx, 20);
-      this.options.reboundAmount = 0;
-      this.options.c0 *= 1.35;
-      this.options.J_MAX *= 0.65;
+      this.options.maxOverscrollPx = Math.min(this.options.maxOverscrollPx, 16);
+      this.options.dampingRatio = Math.max(this.options.dampingRatio, 1.12);
+      this.options.inputGain *= 0.85;
     }
 
     this.state = {
       x: 0,
       v: 0,
       aPrev: 0,
+      edgeSign: 0,
       inputActive: false,
       lastInputTs: 0,
-      reboundInjected: false,
-      lastBoundarySign: 0,
-      lastReleaseTs: 0
     };
 
-    this.touchState = {
-      active: false,
-      lastY: 0
-    };
-
+    this.touchState = { active: false, lastY: 0 };
     this.rafId = null;
     this.lastFrameTs = 0;
 
@@ -120,7 +128,7 @@ class ScrollShockAbsorber {
     const dy = y - this.touchState.lastY;
     this.touchState.lastY = y;
 
-    // Finger down means content should move down (negative scroll delta).
+    // Finger down should move content down => negative synthetic scroll delta.
     const syntheticDeltaY = -dy;
     if (!this.tryAbsorbInput(syntheticDeltaY)) return;
     e.preventDefault();
@@ -131,45 +139,46 @@ class ScrollShockAbsorber {
   }
 
   tryAbsorbInput(deltaY) {
-    const boundarySign = this.getBoundarySignForDelta(deltaY);
-    if (!boundarySign) return false;
+    const edgeSign = this.getBoundarySignForDelta(deltaY);
+    if (!edgeSign) return false;
 
+    const o = this.options;
+    const s = this.state;
     const absDelta = Math.abs(deltaY);
-    const { x, v } = this.state;
-    const { inputGain, maxOverscrollPx } = this.options;
 
-    // Stronger damping at high incoming velocity and larger displacement.
-    const adaptiveResistance = 1 + 0.028 * Math.abs(v) + 0.02 * Math.abs(x) + 0.0016 * absDelta * absDelta;
-    const absorbed = (absDelta * inputGain) / adaptiveResistance;
+    const normalized = absDelta / (1 + absDelta * o.responseCurve);
+    const excursionRatio = Math.min(1, Math.abs(s.x) / Math.max(1, o.maxOverscrollPx));
+    const attenuation = 1 - (excursionRatio * 0.55);
+    const absorbed = normalized * o.inputGain * attenuation;
 
-    const signedImpulse = boundarySign * absorbed;
-    this.state.x = this.clamp(this.state.x + signedImpulse, -maxOverscrollPx, maxOverscrollPx);
-    this.state.v += signedImpulse * 34;
+    s.edgeSign = edgeSign;
+    s.x = this.clamp(s.x + (edgeSign * absorbed), -o.maxOverscrollPx, o.maxOverscrollPx);
+    s.v += edgeSign * absorbed * o.inputVelocityGain;
+    s.inputActive = true;
+    s.lastInputTs = performance.now();
 
-    this.state.inputActive = true;
-    this.state.lastInputTs = performance.now();
-
-    // Treat one continuous pull/push as a single boundary excursion.
-    // Reset rebound state only when entering from neutral or switching edges.
-    const enteringNewExcursion = Math.abs(this.state.x) < 0.35 || this.state.lastBoundarySign !== boundarySign;
-    if (enteringNewExcursion) {
-      this.state.reboundInjected = false;
-    }
-    this.state.lastBoundarySign = boundarySign;
-
-    this.applyTransform(this.state.x);
+    this.applyTransform(s.x);
     this.ensureAnimating();
     return true;
   }
 
   getBoundarySignForDelta(deltaY) {
-    const { boundaryEpsilon } = this.options;
-    const atTop = this.scrollRoot.scrollTop <= boundaryEpsilon;
+    const { boundaryEpsilonTop, boundaryEpsilonBottom, edgeLockThresholdPx } = this.options;
     const maxTop = this.scrollRoot.scrollHeight - this.scrollRoot.clientHeight;
-    const atBottom = this.scrollRoot.scrollTop >= (maxTop - boundaryEpsilon);
+    if (maxTop <= 0) return 0;
 
-    if (atTop && deltaY < 0) return 1;   // pull down from top
-    if (atBottom && deltaY > 0) return -1; // push up from bottom
+    // While still displaced, keep edge lock so we don't ping-pong boundaries.
+    if (Math.abs(this.state.x) > edgeLockThresholdPx && this.state.edgeSign) {
+      if (this.state.edgeSign > 0 && deltaY < 0) return 1;
+      if (this.state.edgeSign < 0 && deltaY > 0) return -1;
+      return 0;
+    }
+
+    const atTop = this.scrollRoot.scrollTop <= boundaryEpsilonTop;
+    const atBottom = this.scrollRoot.scrollTop >= (maxTop - boundaryEpsilonBottom);
+
+    if (atTop && deltaY < 0) return 1;
+    if (atBottom && deltaY > 0) return -1;
     return 0;
   }
 
@@ -180,53 +189,42 @@ class ScrollShockAbsorber {
   }
 
   tick(ts) {
-    const dt = Math.min((ts - this.lastFrameTs) / 1000, 0.032);
+    const maxDtS = (shared?.time?.maxDtMs || 34) / 1000;
+    const dt = Math.min((ts - this.lastFrameTs) / 1000, maxDtS);
     this.lastFrameTs = ts;
 
     const s = this.state;
     const o = this.options;
 
-    if (s.inputActive && ts - s.lastInputTs > o.releaseDelayMs) {
+    if (s.inputActive && ts - s.lastInputTs > 70) {
       s.inputActive = false;
-
-      // Optional micro rebound: apply at most once per excursion, gated by size and cooldown.
-      const canRebound = (
-        !s.reboundInjected &&
-        o.reboundAmount > 0 &&
-        Math.abs(s.x) > o.reboundMinExcursionPx &&
-        (ts - s.lastReleaseTs) > o.reboundCooldownMs
-      );
-
-      if (canRebound) {
-        // Scale kick with release velocity but clamp to avoid rapid double/triple bounce artifacts.
-        const releaseSpeed = Math.min(140, Math.abs(s.v));
-        const kick = Math.max(12, releaseSpeed * 0.24) * o.reboundAmount;
-        s.v += -Math.sign(s.x || 1) * kick;
-        s.reboundInjected = true;
-        s.lastReleaseTs = ts;
-      }
     }
 
-    const kEff = o.k0 + o.k1 * Math.abs(s.x);
-    const cEff = o.c0 + o.c1 * Math.abs(s.v);
-    const rawA = (-kEff * s.x - cEff * s.v) / o.m;
+    const k = o.stiffness + (o.stiffnessByDisplacement * Math.abs(s.x));
+    const criticalDamping = 2 * Math.sqrt(k * o.mass);
+    const c = (criticalDamping * o.dampingRatio) + (o.dampingByVelocity * Math.abs(s.v));
+    const rawA = (-k * s.x - c * s.v) / o.mass;
 
-    const maxDeltaA = o.J_MAX * dt;
-    const limitedA = this.clamp(rawA, s.aPrev - maxDeltaA, s.aPrev + maxDeltaA);
-    s.aPrev = limitedA;
+    const maxDeltaA = o.jerkLimit * dt;
+    const a = this.clamp(rawA, s.aPrev - maxDeltaA, s.aPrev + maxDeltaA);
+    s.aPrev = a;
 
-    s.v += limitedA * dt;
+    // Semi-implicit Euler keeps this stable under stiff damping.
+    s.v += a * dt;
     s.x += s.v * dt;
     s.x = this.clamp(s.x, -o.maxOverscrollPx, o.maxOverscrollPx);
 
     this.applyTransform(s.x);
 
-    const settled = Math.abs(s.x) < o.settleThresholdX && Math.abs(s.v) < o.settleThresholdV && !s.inputActive;
+    const settled = !s.inputActive
+      && Math.abs(s.x) < o.settleThresholdX
+      && Math.abs(s.v) < o.settleThresholdV;
+
     if (settled) {
       s.x = 0;
       s.v = 0;
       s.aPrev = 0;
-      s.lastBoundarySign = 0;
+      s.edgeSign = 0;
       this.applyTransform(0);
       this.rafId = null;
       return;
@@ -236,7 +234,6 @@ class ScrollShockAbsorber {
   }
 
   applyTransform(x) {
-    // Transform only: no read-after-write layout work in the animation loop.
     this.content.style.transform = `translateY(${x.toFixed(3)}px)`;
   }
 

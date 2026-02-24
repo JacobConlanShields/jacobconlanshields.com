@@ -4,6 +4,15 @@ Personal website to display arrays of talent
 ## Overview
 This repository is a static personal website with a small amount of JavaScript for dynamic content (YouTube feed parsing, a modal video player, an ebook viewer, and a scroll-boundary physics demo). It is intended to be hosted on Cloudflare Pages, optionally using Cloudflare Pages Functions for the YouTube feed proxy. The site is built from plain HTML, CSS, and JavaScript—no build step required.
 
+
+## Physics-first UX standard
+- This project uses a shared physics layer in `assets/physics.js` for interaction motion.
+- Prefer force-based interaction models (spring + damping + friction + constraints) over fixed-duration easing for user-driven movement (scroll, swipe, drag, carousels).
+- Use `requestAnimationFrame` integrators for interactive motion, and keep motion continuous in both position and velocity whenever possible.
+- Avoid introducing new one-off timing/easing magic numbers if a shared physics primitive can be used.
+- Input intent rule: do not capture horizontal gestures unless horizontal displacement dominates vertical (`SitePhysics.shouldCaptureHorizontal`).
+- Always provide reduced-motion fallback. With `prefers-reduced-motion: reduce`, jump directly to end states instead of forcing animated physics.
+
 ## Languages used
 - **HTML**: Structure and content for each page of the site.
 - **CSS**: Global styles, layout rules, and component styles.
@@ -31,10 +40,17 @@ Below is a detailed description of every tracked file in the repository, as an e
   - The Relative Momentum ebook viewer (two-page spread + lightbox).
 - Includes responsive behavior for screens below 900px, switching the clips column to a horizontal row and stacking layouts.
 
+### `assets/physics.js`
+- Shared physics interaction standard for the entire site.
+- Exposes canonical constants (`PHYSICS`) and utilities (`animateScrollTo`, `shouldCaptureHorizontal`, `rubberBand`, `clamp`, `prefersReducedMotion`).
+- Used by podcast rows, writing carousel, ebook gesture logic, and scroll-shock tuning so motion behavior stays consistent.
+
 ### `assets/scroll-shock-absorber.js`
 - Reusable `ScrollShockAbsorber` module for a dedicated scroll container.
 - Preserves native momentum scrolling until boundaries are reached, then applies a jerk-limited spring-damper overscroll response via `transform: translateY(...)`.
-- Exposes tunable physics options (`k0`, `k1`, `c0`, `c1`, `m`, `J_MAX`, `maxOverscrollPx`, `reboundAmount`) and `init()` / `destroy()` lifecycle methods.
+- Uses shared `SitePhysics.PHYSICS` values as a baseline so overscroll tuning aligns with global interaction feel.
+- Current model is near-critically damped with adaptive stiffness, jerk-limited integration, and edge-locking to avoid top/bottom ping-pong artifacts.
+- Exposes tunable physics options (`stiffness`, `stiffnessByDisplacement`, `dampingRatio`, `dampingByVelocity`, `mass`, `jerkLimit`, `maxOverscrollPx`) and `init()` / `destroy()` lifecycle methods.
 
 ### `pages/scroll-shock/index.html`
 - Minimal demo page with long content to exercise top and bottom boundaries.
@@ -130,3 +146,11 @@ If you want to test the Cloudflare Pages Function locally:
 
 > Note: If you use Option A (Python server), `/functions/yt.js` will not be executed. Use Option B if you want to validate the proxy behavior.
 >
+
+## Contribution rules for motion and interaction
+- Use `assets/physics.js` primitives before writing ad-hoc animation logic.
+- For snapping behavior, prefer spring-settled movement (`animateScrollTo`) over `behavior: smooth`.
+- For boundaries, use clamp/rubber-band/bounce concepts rather than instant hard stops when appropriate.
+- For touch gestures, protect vertical intent and only capture horizontal gestures when `dx` dominates `dy`.
+- For micro-interactions (hover/press), keep motion subtle and quick-settling; avoid floaty/bouncy defaults unless deliberately justified.
+- For modals/page transitions, ensure reduced-motion mode provides a minimal non-animated alternative.

@@ -52,8 +52,8 @@
 
     <h1>Scroll Shock Absorber</h1>
     <p>
-      This demo uses a dedicated scroll container and a jerk-limited spring-damper to absorb overscroll energy at page boundaries.
-      Native momentum scrolling remains untouched while in-range.
+      This demo uses a dedicated scroll container and a near-critically damped spring-damper to absorb overscroll energy at boundaries.
+      Native momentum scrolling remains untouched while in-range, while edge impulses are transformed into constrained, quickly-settling motion.
     </p>
 
     <section class="demo-panel" aria-label="Shock absorber demo panel">
@@ -64,6 +64,7 @@
     </section>
   </main>
 
+  <script src="/assets/physics.js"></script>
   <script src="/assets/scroll-shock-absorber.js"></script>
   <script>
     const content = document.getElementById('scrollContent');
@@ -75,18 +76,22 @@
     )).join('');
 
     // Tuning notes:
-    // - "Soft stop": lower k0/k1, higher c0/c1, lower reboundAmount.
-    // - "Slight rebound": modest reboundAmount + slightly lower c0.
-    // - J_MAX controls jerk limiting. Smaller values feel smoother/less snappy.
+    // - "Softer edge": lower stiffness and slightly lower dampingRatio.
+    // - "Tighter edge": higher stiffness and dampingRatio near 1.0.
+    // - jerkLimit controls acceleration smoothness under sudden input.
+    const spring = window.SitePhysics.PHYSICS.spring;
     const params = {
-      k0: 165,
-      k1: 12,
-      c0: 33,
-      c1: 0.09,
-      m: 1,
-      J_MAX: 3200,
-      maxOverscrollPx: 68,
-      reboundAmount: 0.04
+      mass: spring.mass,
+      stiffness: Math.round(spring.stiffness * 0.78),
+      stiffnessByDisplacement: 1.9,
+      dampingRatio: 0.96,
+      dampingByVelocity: 0.018,
+      jerkLimit: 3200,
+      inputGain: 0.34,
+      inputVelocityGain: 30,
+      maxOverscrollPx: 66,
+      boundaryEpsilonTop: 1,
+      boundaryEpsilonBottom: 3
     };
 
     document.getElementById('tuning').textContent =
@@ -96,8 +101,9 @@ ${JSON.stringify(params, null, 2)}
 Integration:
 1) Use a dedicated container (#scrollRoot) with overflow:auto + -webkit-overflow-scrolling: touch.
 2) Keep content in one child wrapper (.scroll-content) so transform translateY can be applied.
-3) const absorber = new ScrollShockAbsorber(scrollRoot, params); absorber.init();
-4) On teardown: absorber.destroy();`;
+3) Input capture happens only at boundaries; in-range native momentum is untouched.
+4) const absorber = new ScrollShockAbsorber(scrollRoot, params); absorber.init();
+5) On teardown: absorber.destroy();`;
 
     const absorber = new ScrollShockAbsorber(document.getElementById('scrollRoot'), {
       ...params,

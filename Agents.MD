@@ -90,6 +90,16 @@ There are **no automated tests** at the moment. Manual validation is expected.
   5. Entrepreneurship Episodes
   6. Clips (right column)
 
+
+## Physics-first UX (project-wide rule)
+- Treat motion like a physical system: momentum, damping, spring restoring forces, friction, and boundary constraints.
+- Shared interaction primitives live in `assets/physics.js`; contributors should reuse these utilities instead of introducing one-off easing/timing constants.
+- Avoid `scroll-behavior: smooth` or arbitrary duration-based transitions for user-driven interactions (scroll/swipe/drag/carousel controls).
+- Gesture intent must preserve user control: do not capture horizontal movement unless horizontal displacement clearly dominates vertical displacement.
+- Always implement `prefers-reduced-motion` fallback for any new motion behavior.
+- Keep defaults near critically damped (quick settling, minimal overshoot).
+- ScrollShockAbsorber should use the shared, force-first parameter set (`stiffness`, `dampingRatio`, `mass`, `jerkLimit`) and avoid ad-hoc rebound hacks that can cause double-bounce artifacts.
+
 ## Editing guidelines (to avoid breaking the site)
 - Keep HTML **semantic and minimal**; avoid introducing frameworks or build steps.
 - When adding new pages, follow the existing structure under `/pages/...` and reuse `/assets/styles.css`.
