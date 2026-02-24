@@ -18,6 +18,8 @@
     constraints: {
       rubberBandCoefficient: 0.18,
       bounceEnergyLoss: 0.42,
+      repeatBounceDamping: 0.35,
+      edgeResetDistancePx: 10,
     },
     intent: {
       minGesturePx: 10,
@@ -65,6 +67,10 @@
       target: clamp(opts.target ?? element[getter], 0, maxScroll),
       lastTs: performance.now(),
       id: 0,
+      edgeBounce: {
+        top: false,
+        bottom: false,
+      },
     };
 
     const prior = activeAnimations.get(element);
@@ -88,14 +94,33 @@
       state.pos += state.vel * dt;
 
       if (state.pos < 0 || state.pos > maxScroll) {
-        const outside = state.pos < 0 ? state.pos : state.pos - maxScroll;
-        const base = state.pos < 0 ? 0 : maxScroll;
-        state.pos = base + rubberBand(outside, size);
-        state.vel *= -PHYSICS.constraints.bounceEnergyLoss;
+        const isTop = state.pos < 0;
+        const outside = isTop ? state.pos : state.pos - maxScroll;
+        const base = isTop ? 0 : maxScroll;
+        const key = isTop ? 'top' : 'bottom';
+        const movingFurtherOutside = isTop ? state.vel < 0 : state.vel > 0;
+
+        if (!state.edgeBounce[key]) {
+          state.pos = base + rubberBand(outside, size);
+          state.vel *= -PHYSICS.constraints.bounceEnergyLoss;
+          state.edgeBounce[key] = true;
+        } else {
+          // After the first bounce, suppress rapid secondary micro-bounces.
+          state.pos = base;
+          if (movingFurtherOutside) state.vel = 0;
+          state.vel *= PHYSICS.constraints.repeatBounceDamping;
+        }
       }
 
       const clamped = clamp(state.pos, 0, maxScroll);
       element[getter] = clamped;
+
+      if (clamped > PHYSICS.constraints.edgeResetDistancePx) {
+        state.edgeBounce.top = false;
+      }
+      if ((maxScroll - clamped) > PHYSICS.constraints.edgeResetDistancePx) {
+        state.edgeBounce.bottom = false;
+      }
 
       const settled = Math.abs(state.target - clamped) <= PHYSICS.spring.settleDistancePx
         && Math.abs(state.vel) <= Math.max(PHYSICS.spring.settleVelocityPxPerSec, PHYSICS.inertia.minVelocityPxPerSec);

@@ -45,3 +45,9 @@ Repo-wide search covered CSS and JS interaction code paths, including scroll beh
 
 - Extend `SitePhysics.animateScrollTo` usage to any future modal/drawer entrance motion before adding CSS easing transitions.
 - If route transitions are introduced later, use the same spring constants and reduced-motion fallback.
+
+
+## Boundary bounce simplification update
+
+- Updated shared `animateScrollTo` boundary handling to enforce a single damped bounce per edge encounter, then suppress rapid secondary rebounds until content moves away from that edge.
+- Added `repeatBounceDamping` and `edgeResetDistancePx` in shared physics constraints to reduce bottom-edge visual jitter/"double-bounce" perception in rails and carousels.
