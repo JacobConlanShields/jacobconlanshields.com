@@ -622,10 +622,10 @@ textarea:focus{
   }
 
   .podcast-page .row-head{
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 8px;
   }
 
   .podcast-page .row-title{
@@ -636,7 +636,8 @@ textarea:focus{
 
   .podcast-page .row-controls{
     flex: 0 0 auto;
-    margin-left: auto;
+    margin-left: 0;
+    justify-self: end;
   }
 
   .podcast-page .row{
@@ -677,14 +678,6 @@ textarea:focus{
   .clips-rail .card{
     width: min(52vw, 220px);
     scroll-snap-align: start;
-  }
-
-  @media (max-width: 560px){
-    .podcast-page .row-controls{
-      width: 100%;
-      margin-left: 0;
-      justify-content: flex-start;
-    }
   }
 
   .preview-head,
