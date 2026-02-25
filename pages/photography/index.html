@@ -20,10 +20,9 @@
 
     function renderTile(item) {
       const ratio = item.aspect_ratio && Number(item.aspect_ratio) > 0 ? Number(item.aspect_ratio) : 1.5;
-      const mediaStyle = `aspect-ratio:${ratio};`;
       const tile = document.createElement("article");
       tile.className = "masonry-tile";
-      tile.innerHTML = `<div class="masonry-media" style="${mediaStyle}"><img src="${item.url}" alt="${item.title || "Photography image"}" loading="lazy"></div><div class="masonry-caption"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || ""}</p></div>`;
+      tile.innerHTML = `<div class="masonry-media" style="aspect-ratio:${ratio};"><img src="${item.url}" alt="${item.title || "Photography image"}" loading="lazy"></div><div class="masonry-caption"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || ""}</p></div>`;
       return tile;
     }
 
@@ -38,15 +37,17 @@
 
     fetch("/api/media?collection=photography")
       .then((resp) => resp.json())
-      .then((items) => {
+      .then((payload) => {
+        const items = payload.items || [];
         grid.innerHTML = "";
         items.forEach((item) => {
           const tile = renderTile(item);
           const img = tile.querySelector("img");
           img.addEventListener("load", () => resizeTile(tile));
           grid.appendChild(tile);
-          resizeTile(tile);
+          requestAnimationFrame(() => resizeTile(tile));
         });
+        requestAnimationFrame(relayout);
         status.textContent = items.length ? "" : "No photos yet.";
       })
       .catch(() => { status.textContent = "Unable to load photos right now."; });
