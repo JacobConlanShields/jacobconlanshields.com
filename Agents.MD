@@ -122,3 +122,9 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
 - Admin uploads support both standard image upload and resumable multipart video uploads.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
+
+## 2026 upload reliability notes
+- `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload.
+- Image uploads use presigned R2 PUT URLs (`/api/admin/image/init` + `/api/admin/image/complete`) so large image uploads avoid function body limits.
+- When uploads fail, UI errors now include failing step (init/put/complete), host, HTTP status when available, and a likely-cause hint.
+- If a PUT request fails without an HTTP status, treat R2 bucket CORS as the first thing to verify.

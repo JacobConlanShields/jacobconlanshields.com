@@ -25,6 +25,11 @@
       <button id="upload-all" type="button">Upload all files</button>
     </div>
     <div class="small-note" id="batch-status">No files selected yet.</div>
+    <div class="small-note" id="cors-help" hidden>
+      <strong>Fix CORS:</strong> If upload PUT requests to R2 fail with “TypeError: Failed to fetch”, your R2 bucket CORS is likely missing.
+      Add this to each bucket for origin <code>https://jacobconlanshields.com</code>:<br>
+      <code>[{"AllowedOrigins":["https://jacobconlanshields.com"],"AllowedMethods":["GET","HEAD","PUT","POST","DELETE"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]</code>
+    </div>
 
     <div class="admin-grid" id="queue"></div>
   </main>
@@ -35,6 +40,7 @@
     const collectionInput = document.getElementById('collection');
     const batchStatus = document.getElementById('batch-status');
     const uploadAllBtn = document.getElementById('upload-all');
+    const corsHelp = document.getElementById('cors-help');
 
     const PUBLIC_LINKS = {
       spincline_design_build: '/spincline#design-build',
@@ -42,6 +48,9 @@
       spincline_in_action: '/spincline#in-action',
       photography: '/photography',
     };
+
+    const selectedItems = [];
+    let heicConverterPromise = null;
 
     function api(path, opts = {}) {
       return fetch(path, { ...opts, credentials: 'same-origin' });
@@ -67,22 +76,65 @@
       return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     }
 
-    function clearPreviewUrls() {
-      queue.querySelectorAll('.upload-preview').forEach((img) => {
-        if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
-      });
+    function cleanupItem(item) {
+      if (item?.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+        item.previewUrl = null;
+      }
     }
 
-    function fileCard(file) {
+    function clearPreviewUrls() {
+      selectedItems.forEach(cleanupItem);
+      selectedItems.length = 0;
+      corsHelp.hidden = true;
+    }
+
+    function isHeic(file) {
+      const lower = (file.name || '').toLowerCase();
+      return file.type === 'image/heic' || file.type === 'image/heif' || lower.endsWith('.heic') || lower.endsWith('.heif');
+    }
+
+    function jpgNameFrom(fileName = 'upload.heic') {
+      return fileName.replace(/\.(heic|heif)$/i, '') + '.jpg';
+    }
+
+    async function loadHeicConverter() {
+      if (!heicConverterPromise) {
+        heicConverterPromise = import('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm');
+      }
+      return heicConverterPromise;
+    }
+
+    async function convertHeicToJpeg(file) {
+      const mod = await loadHeicConverter();
+      const heic2any = mod.default || mod;
+      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      const blob = Array.isArray(converted) ? converted[0] : converted;
+      if (!(blob instanceof Blob)) throw new Error('HEIC conversion did not return a Blob');
+      return new File([blob], jpgNameFrom(file.name), { type: 'image/jpeg' });
+    }
+
+    function fileCard(item) {
+      const file = item.uploadFile;
       const wrap = document.createElement('section');
       wrap.className = 'upload-file';
-      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
-      const imagePreview = file.type.startsWith('image/')
-        ? `<img class="upload-preview" data-object-url="${previewUrl}" src="${previewUrl}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
+      const typeLabel = item.heicConverted
+        ? `${item.originalFile.type || 'image/heic'} → image/jpeg`
+        : (file.type || 'unknown type');
+      const noteHtml = item.heicConverted
+        ? '<div class="small-note">HEIC isn’t supported by most browsers; converting to JPEG for preview + upload.</div>'
+        : '';
+      const errorHtml = item.conversionError
+        ? `<div class="small-note" style="color:#ff9f9f;">HEIC conversion failed. Export this file as JPG and retry. (${item.conversionError})</div>`
+        : '';
+      const imagePreview = item.previewUrl
+        ? `<img class="upload-preview" src="${item.previewUrl}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
         : '';
       wrap.innerHTML = `
         <h3>${file.name}</h3>
-        <div class="small-note">${file.type || 'unknown type'} · ${friendlySize(file.size)}</div>
+        <div class="small-note">${typeLabel} · ${friendlySize(file.size)}</div>
+        ${noteHtml}
+        ${errorHtml}
         ${imagePreview}
         <div class="upload-meta">
           <label>Title <input type="text" class="title" placeholder="Optional"></label>
@@ -90,24 +142,46 @@
           <label class="location-wrap" hidden>Location <input type="text" class="location" placeholder="Optional"></label>
           ${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}
           <progress max="100" value="0"></progress>
-          <div class="small-note status">Ready.</div>
+          <div class="small-note status">${item.conversionError ? 'Blocked: conversion failed.' : 'Ready.'}</div>
           <div class="small-note result"></div>
-          <button type="button" class="start">Upload</button>
+          <button type="button" class="start" ${item.conversionError ? 'disabled' : ''}>Upload</button>
         </div>`;
-      wrap.querySelector('.start').addEventListener('click', () => uploadFile(file, wrap));
+      wrap.querySelector('.start').addEventListener('click', () => uploadFile(item, wrap));
       return wrap;
     }
 
     function updateBatchSummary() {
-      const count = filesInput.files.length;
+      const count = selectedItems.length;
       batchStatus.textContent = count ? `${count} file(s) selected.` : 'No files selected yet.';
       uploadAllBtn.disabled = count === 0;
     }
 
-    filesInput.addEventListener('change', () => {
+    filesInput.addEventListener('change', async () => {
       clearPreviewUrls();
       queue.innerHTML = '';
-      [...filesInput.files].forEach((f) => queue.appendChild(fileCard(f)));
+      batchStatus.textContent = 'Preparing previews...';
+
+      const fileList = [...filesInput.files];
+      for (const file of fileList) {
+        const item = { originalFile: file, uploadFile: file, previewUrl: null, heicConverted: false, conversionError: '' };
+
+        if (file.type.startsWith('image/') && isHeic(file)) {
+          try {
+            item.heicConverted = true;
+            item.uploadFile = await convertHeicToJpeg(file);
+          } catch (err) {
+            item.conversionError = err.message || 'Unknown conversion error';
+          }
+        }
+
+        if (item.uploadFile.type.startsWith('image/') && !item.conversionError) {
+          item.previewUrl = URL.createObjectURL(item.uploadFile);
+        }
+
+        selectedItems.push(item);
+        queue.appendChild(fileCard(item));
+      }
+
       syncMetadataFields();
       updateBatchSummary();
     });
@@ -120,9 +194,9 @@
       uploadAllBtn.disabled = true;
       batchStatus.textContent = `Uploading ${cards.length} file(s)...`;
       for (const [idx, card] of cards.entries()) {
-        const file = filesInput.files[idx];
-        if (!file) continue;
-        await uploadFile(file, card);
+        const item = selectedItems[idx];
+        if (!item) continue;
+        await uploadFile(item, card);
       }
       batchStatus.textContent = 'Batch upload finished.';
       uploadAllBtn.disabled = false;
@@ -132,9 +206,16 @@
       return new Promise((resolve) => {
         if (!file.type.startsWith('image/')) return resolve({});
         const img = new Image();
-        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, aspect_ratio: img.naturalWidth / img.naturalHeight });
-        img.onerror = () => resolve({});
-        img.src = URL.createObjectURL(file);
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve({ width: img.naturalWidth, height: img.naturalHeight, aspect_ratio: img.naturalWidth / img.naturalHeight });
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve({});
+        };
+        img.src = url;
       });
     }
 
@@ -144,14 +225,40 @@
       const secondaryLine = collection === 'photography'
         ? `Location: ${location || '(none)'}`
         : `Description: ${item.description || '(none)'}`;
-      result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a>`;
+      result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a><br>Saved to D1: yes`;
     }
 
     function selectedCollection() {
       return collectionInput.value;
     }
 
-    async function uploadFile(file, card) {
+    function hostOf(url) {
+      try { return new URL(url, location.origin).host; } catch { return 'unknown-host'; }
+    }
+
+    function formatLikelyCause(failure) {
+      if (failure.step === 'put' && failure.status == null) return 'Likely R2 CORS misconfiguration. See CORS snippet above.';
+      if (failure.status === 401 || failure.status === 403) return 'Likely auth/signature issue.';
+      if (failure.status && failure.status >= 500) return 'Likely server or upstream issue.';
+      return 'Likely network request or request-shape issue.';
+    }
+
+    function makeUploadError({ step, url, status = null, detail = '' }) {
+      const failure = { step, url, host: hostOf(url), status, detail };
+      const statusText = status == null ? 'no HTTP response' : `HTTP ${status}`;
+      failure.message = `Step ${step} failed (${statusText}) on host ${failure.host}. ${formatLikelyCause(failure)} ${detail}`.trim();
+      return failure;
+    }
+
+    function showFailure(card, failure) {
+      const status = card.querySelector('.status');
+      status.textContent = `Upload failed: ${failure.message}`;
+      if (failure.step === 'put' && failure.status == null) corsHelp.hidden = false;
+      console.error('[upload-failure]', failure);
+    }
+
+    async function uploadFile(item, card) {
+      const file = item.uploadFile;
       const collection = selectedCollection();
       const title = card.querySelector('.title').value;
       const location = card.querySelector('.location')?.value || '';
@@ -163,39 +270,86 @@
       const startBtn = card.querySelector('.start');
 
       if (startBtn.disabled) return;
+      if (item.conversionError) {
+        status.textContent = 'Upload blocked: HEIC conversion failed. Export as JPG and retry.';
+        return;
+      }
+
       startBtn.disabled = true;
 
       try {
         if (file.type.startsWith('image/')) {
           const dims = await imageDimensions(file);
-          const fd = new FormData();
-          fd.append('file', file);
-          fd.append('collection', collection);
-          fd.append('title', title);
-          fd.append('description', description);
-          if (dims.width) {
-            fd.append('width', dims.width);
-            fd.append('height', dims.height);
-            fd.append('aspect_ratio', dims.aspect_ratio);
+          status.textContent = 'Initializing image upload...';
+          progress.value = 10;
+
+          let initRes;
+          try {
+            initRes = await api('/api/admin/image/init', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ collection, filename: file.name, contentType: file.type })
+            });
+          } catch (err) {
+            throw makeUploadError({ step: 'init', url: '/api/admin/image/init', detail: err.message || String(err) });
+          }
+          if (!initRes.ok) throw makeUploadError({ step: 'init', url: '/api/admin/image/init', status: initRes.status });
+
+          const init = await initRes.json();
+          if (init.r2Host && init.r2Host.includes('.r2.dev')) {
+            throw makeUploadError({ step: 'put', url: init.putUrl, detail: 'Refusing upload to r2.dev host. Expected cloudflarestorage.com presigned URL.' });
           }
 
-          status.textContent = 'Uploading image...';
-          const res = await api('/api/admin/upload-image', { method: 'POST', body: fd });
+          status.textContent = `Uploading image bytes to ${hostOf(init.putUrl)}...`;
+          progress.value = 55;
+
+          let putRes;
+          try {
+            putRes = await fetch(init.putUrl, {
+              method: 'PUT',
+              headers: { 'content-type': init.contentTypeExpected || file.type || 'application/octet-stream' },
+              body: file,
+            });
+          } catch (err) {
+            throw makeUploadError({ step: 'put', url: init.putUrl, detail: err.message || String(err) });
+          }
+          if (!putRes.ok) throw makeUploadError({ step: 'put', url: init.putUrl, status: putRes.status });
+
+          status.textContent = 'Finalizing image metadata in D1...';
+          progress.value = 85;
+
+          let completeRes;
+          try {
+            completeRes = await api('/api/admin/image/complete', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ key: init.key, collection, title, description, ...dims })
+            });
+          } catch (err) {
+            throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', detail: err.message || String(err) });
+          }
+
+          if (!completeRes.ok) throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', status: completeRes.status });
+          const complete = await completeRes.json();
+
           progress.value = 100;
-          if (!res.ok) throw new Error(`Image upload failed (${res.status})`);
-          const item = await res.json();
           status.textContent = 'Image upload complete.';
-          showResult(card, collection, item, location);
+          showResult(card, collection, complete, location);
           return;
         }
 
         status.textContent = 'Initializing multipart upload...';
-        const initRes = await api('/api/admin/multipart/init', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description })
-        });
-        if (!initRes.ok) throw new Error(`Failed to initialize upload (${initRes.status})`);
+        let initRes;
+        try {
+          initRes = await api('/api/admin/multipart/init', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description })
+          });
+        } catch (err) {
+          throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', detail: err.message || String(err) });
+        }
+        if (!initRes.ok) throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', status: initRes.status });
 
         const init = await initRes.json();
         const savedKey = `multipart:${init.key}`;
@@ -222,22 +376,31 @@
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ key: init.key, uploadId: init.uploadId, partNumber })
           });
-          if (!signRes.ok) throw new Error(`Failed to sign part ${partNumber} (${signRes.status})`);
+          if (!signRes.ok) throw makeUploadError({ step: 'sign-part', url: '/api/admin/multipart/sign-part', status: signRes.status });
           const signed = await signRes.json();
 
           const start = (partNumber - 1) * chunkSize;
           const end = Math.min(start + chunkSize, file.size);
           const blob = file.slice(start, end);
-          const putRes = await fetch(signed.url, { method: 'PUT', body: blob });
-          if (!putRes.ok) throw new Error(`Part ${partNumber} upload failed (${putRes.status})`);
+          let putRes;
+          try {
+            putRes = await fetch(signed.url, { method: 'PUT', body: blob });
+          } catch (err) {
+            throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, detail: err.message || String(err) });
+          }
+
+          if (!putRes.ok) throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, status: putRes.status });
 
           const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
-          if (!etag) throw new Error(`Part ${partNumber} returned empty ETag`);
+          if (!etag) {
+            throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, detail: 'ETag missing. Ensure R2 CORS ExposeHeaders includes ETag.' });
+          }
 
           uploaded[partNumber] = etag;
           localStorage.setItem(savedKey, JSON.stringify(uploaded));
           uploadedBytes += blob.size;
           progress.value = Math.min(99, Math.round((uploadedBytes / file.size) * 100));
+          status.textContent = `Uploaded ${Object.keys(uploaded).length}/${totalParts} parts...`;
         }
 
         const concurrency = 3;
@@ -245,7 +408,6 @@
         while (parts.length) {
           const batch = parts.splice(0, concurrency);
           await Promise.all(batch.map(uploadPart));
-          status.textContent = `Uploaded ${Object.keys(uploaded).length}/${totalParts} parts...`;
         }
 
         let posterKey = null;
@@ -272,21 +434,22 @@
           })
         });
 
-        if (!completeRes.ok) throw new Error(`Complete call failed (${completeRes.status})`);
+        if (!completeRes.ok) throw makeUploadError({ step: 'complete', url: '/api/admin/multipart/complete', status: completeRes.status });
 
-        const item = await completeRes.json();
+        const result = await completeRes.json();
         localStorage.removeItem(savedKey);
         progress.value = 100;
         status.textContent = 'Video upload complete.';
-        showResult(card, collection, item, location);
-      } catch (err) {
-        status.textContent = `Upload failed: ${err.message}`;
+        showResult(card, collection, result, location);
+      } catch (failure) {
+        showFailure(card, failure?.step ? failure : { message: failure?.message || String(failure), step: 'unknown', status: null, url: 'unknown' });
       } finally {
         startBtn.disabled = false;
       }
     }
 
     updateBatchSummary();
+    window.addEventListener('beforeunload', clearPreviewUrls);
   </script>
 </body>
 </html>

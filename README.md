@@ -173,7 +173,9 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 - Public:
   - `GET /api/media?collection=<collection>`
 - Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
-  - `POST /api/admin/upload-image`
+  - `POST /api/admin/image/init`
+  - `POST /api/admin/image/complete`
+  - `POST /api/admin/upload-image` (legacy fallback endpoint)
   - `POST /api/admin/upload-poster`
   - `POST /api/admin/multipart/init`
   - `POST /api/admin/multipart/sign-part`
@@ -212,17 +214,31 @@ Configure in Cloudflare Pages project settings:
 ### Tonight upload checklist
 1. Sign in through Cloudflare Access and open `/admin/upload`.
 2. Pick the destination collection and select one or more files.
-3. Click **Upload all files** (or upload per file).
-4. Confirm each card shows success + created item URL.
-5. Verify on `/spincline` or `/photography` that new items render from `/api/media`.
+3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload.
+4. Click **Upload all files** (or upload per file).
+5. Confirm each card shows success + created item URL.
+6. Verify on `/spincline` or `/photography` that new items render from `/api/media`.
 
-### R2 CORS settings for direct multipart uploads
-Set CORS on buckets to allow browser PUTs to presigned URLs:
-- Allowed origins: your site origin(s) (prod + preview)
-- Allowed methods: `PUT, GET, HEAD`
-- Allowed headers: `*` (or at least `content-type`, `x-amz-*`)
-- Expose headers: `ETag`
-- Max age: e.g. `3600`
+### R2 CORS settings for direct uploads (required)
+If you see `TypeError: Failed to fetch` during R2 PUT requests, check bucket CORS first.
+
+Apply this CORS policy to **both buckets** (`SPINCLINE_BUCKET` and `PHOTO_BUCKET`):
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://jacobconlanshields.com"],
+    "AllowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Notes:
+- `ExposeHeaders: ETag` is required for browser JS multipart uploads to read each part ETag.
+- Presigned upload URLs should target `*.r2.cloudflarestorage.com` (never `r2.dev`).
 
 ### Media encoding guidance
 For best browser playback compatibility, encode uploaded videos as MP4 (H.264 video + AAC audio).
