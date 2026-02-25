@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Photography</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="photo-page">
+    <p class="nav"><a href="/">← Back to home</a></p>
+    <h1>Photography</h1>
+    <div id="photo-grid" class="photo-grid"></div>
+  </main>
+  <script>
+    const grid = document.getElementById('photo-grid');
+
+    function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function debounce(fn, delay=140){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), delay); }; }
+
+    function applySpan(tile) {
+      const rowUnit = parseInt(getComputedStyle(grid).getPropertyValue('grid-auto-rows'), 10);
+      const rowGap = parseInt(getComputedStyle(grid).getPropertyValue('gap'), 10);
+      const span = Math.ceil((tile.getBoundingClientRect().height + rowGap) / (rowUnit + rowGap));
+      tile.style.gridRowEnd = `span ${span}`;
+    }
+
+    function layoutAll() {
+      grid.querySelectorAll('.photo-tile').forEach(applySpan);
+    }
+
+    async function load() {
+      const resp = await fetch('/api/media?collection=photography');
+      const data = await resp.json();
+      grid.innerHTML = (data.items || []).map((item) => `
+        <article class="photo-tile card">
+          <div class="photo-media" style="aspect-ratio:${item.aspect_ratio || 4/3}">
+            <img src="${item.url}" alt="${escapeHtml(item.title || 'Photograph')}" loading="lazy" />
+          </div>
+          <div class="media-copy"><h3>${escapeHtml(item.title || '')}</h3><p>${escapeHtml(item.description || '')}</p></div>
+        </article>
+      `).join('');
+
+      grid.querySelectorAll('img').forEach((img) => {
+        if (img.complete) applySpan(img.closest('.photo-tile'));
+        img.addEventListener('load', () => applySpan(img.closest('.photo-tile')));
+      });
+      requestAnimationFrame(layoutAll);
+    }
+
+    window.addEventListener('resize', debounce(layoutAll));
+    load();
+  </script>
+</body>
+</html>

@@ -135,3 +135,88 @@ If you want to test the Cloudflare Pages Function locally:
 
 > Note: If you use Option A (Python server), `/functions/yt.js` will not be executed. Use Option B if you want to validate the proxy behavior.
 >
+
+## Media system (R2 + D1 + Pages Functions)
+
+This repo now includes a durable media pipeline for Spincline and Photography content.
+
+### New pages
+- `/spincline/` – three API-driven carousels:
+  - `spincline_design_build` → `design-and-build/`
+  - `spincline_finished_products` → `finished-products/`
+  - `spincline_in_action` (videos) → `in-action/`
+- `/photography/` – masonry/tetris grid driven by D1 metadata with CSS Grid row-span measurement.
+- `/admin/upload/` – hidden admin uploader for images and resumable multipart videos.
+
+### Public media base URLs
+- `SPINCLINE_MEDIA_BASE = https://pub-a0784713bd834a079424dc14cf218eea.r2.dev`
+- `PHOTO_MEDIA_BASE = https://pub-980fbe5c774b4339805365b9656ec9fe.r2.dev`
+
+### D1 schema
+Run `db/schema.sql` against your D1 database:
+
+```bash
+wrangler d1 execute <DB_NAME> --file=./db/schema.sql
+```
+
+Tables:
+- `media_items` (source of truth for title/description/order/aspect ratio/public visibility)
+- `multipart_uploads` (tracks resumable multipart lifecycle)
+
+### Required bindings and environment variables
+Use Pages Functions bindings (or Wrangler local vars):
+
+- D1:
+  - `DB`
+- R2 bucket bindings (for simple uploads/deletes):
+  - `SPINCLINE_BUCKET`
+  - `PHOTO_BUCKET`
+- R2 bucket names (string vars for S3 multipart API calls):
+  - `SPINCLINE_BUCKET_NAME`
+  - `PHOTO_BUCKET_NAME`
+- Secrets:
+  - `R2_ACCOUNT_ID`
+  - `R2_ACCESS_KEY_ID`
+  - `R2_SECRET_ACCESS_KEY`
+  - `ADMIN_TOKEN`
+
+### API routes
+Public:
+- `GET /api/media?collection=<collection>`
+
+Admin (require `X-Admin-Token` header):
+- `POST /api/admin/upload-image`
+- `POST /api/admin/multipart/init`
+- `POST /api/admin/multipart/sign-part`
+- `GET /api/admin/multipart/status?key=<key>`
+- `POST /api/admin/multipart/complete`
+- `POST /api/admin/multipart/abort`
+- `PATCH /api/admin/item`
+- `DELETE /api/admin/item?id=<id>`
+
+### Cloudflare Access + admin security
+`/admin/*` is hidden but must also be protected with Cloudflare Access policy (email/identity-based gate).
+
+In addition to Access, every admin API call enforces server-side token auth:
+- Header: `X-Admin-Token: <ADMIN_TOKEN>`
+- Do not hardcode tokens in client bundles.
+
+### R2 CORS settings for direct multipart uploads
+Set bucket CORS to allow browser `PUT` to presigned URLs:
+- Allowed origins: your Pages domains (production + preview)
+- Allowed methods: `PUT, GET, HEAD`
+- Allowed headers: `*`
+- Expose headers: `ETag`
+- Max age: e.g. `3600`
+
+### Video recommendation
+For widest inline playback compatibility, upload MP4 encoded with:
+- Video: H.264
+- Audio: AAC
+
+### Local dev for functions + pages
+Use Wrangler so `/functions` API routes work locally:
+
+```bash
+wrangler pages dev .
+```

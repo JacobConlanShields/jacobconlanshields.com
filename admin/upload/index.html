@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Upload</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="admin-page">
+    <p class="nav"><a href="/">← Back to home</a></p>
+    <h1>Admin Upload</h1>
+    <p class="muted">Protect this route with Cloudflare Access and provide X-Admin-Token for API calls.</p>
+
+    <label>Admin token <input id="admin-token" type="password" placeholder="Paste token" /></label>
+    <label>Destination
+      <select id="collection">
+        <option value="spincline_design_build">Spincline: Design & Build</option>
+        <option value="spincline_finished_products">Spincline: Finished Products</option>
+        <option value="spincline_in_action">Spincline: In Action (Video)</option>
+        <option value="photography">Photography</option>
+      </select>
+    </label>
+    <label>Files <input id="files" type="file" multiple /></label>
+    <button id="add-files">Prepare files</button>
+
+    <section id="queue"></section>
+  </main>
+
+  <script>
+    const queueEl = document.getElementById('queue');
+    const fileInput = document.getElementById('files');
+    const collectionEl = document.getElementById('collection');
+    const tokenEl = document.getElementById('admin-token');
+    const resumePrefix = 'multipart-state:';
+
+    document.getElementById('add-files').addEventListener('click', () => {
+      [...fileInput.files].forEach((file) => queueEl.appendChild(renderRow(file, collectionEl.value)));
+      fileInput.value = '';
+    });
+
+    function headers() {
+      return { 'x-admin-token': tokenEl.value.trim() };
+    }
+
+    function renderRow(file, collection) {
+      const row = document.createElement('article');
+      row.className = 'upload-row card';
+      row.innerHTML = `
+        <div class="upload-preview"></div>
+        <label>Title <input class="meta-title" /></label>
+        <label>Description <textarea class="meta-desc"></textarea></label>
+        <label class="poster-wrap" hidden>Poster image <input class="poster-input" type="file" accept="image/*" /></label>
+        <progress max="100" value="0"></progress>
+        <div class="upload-actions">
+          <button class="upload-start">Upload</button>
+          <button class="upload-save" type="button">Save metadata</button>
+          <button class="upload-hide" type="button">Hide</button>
+          <button class="upload-delete" type="button">Delete</button>
+        </div>
+        <p class="status">Ready: ${file.name}</p>`;
+
+      const preview = row.querySelector('.upload-preview');
+      if (file.type.startsWith('image/')) preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="preview">`;
+      else if (file.type.startsWith('video/')) preview.innerHTML = `<video controls src="${URL.createObjectURL(file)}"></video>`;
+
+      if (collection === 'spincline_in_action') row.querySelector('.poster-wrap').hidden = false;
+
+      row.querySelector('.upload-start').addEventListener('click', async () => {
+        const title = row.querySelector('.meta-title').value;
+        const description = row.querySelector('.meta-desc').value;
+        const progress = row.querySelector('progress');
+        const status = row.querySelector('.status');
+        const isVideo = collection === 'spincline_in_action' || file.type.startsWith('video/');
+        status.textContent = 'Uploading…';
+
+        try {
+          let item;
+          if (isVideo) item = await uploadVideoMultipart({ file, collection, title, description, progress, row });
+          else item = await uploadImage({ file, collection, title, description, progress });
+          row.dataset.itemId = item.id || '';
+          status.textContent = 'Uploaded ✔';
+        } catch (e) {
+          status.textContent = `Upload failed: ${e.message}`;
+        }
+      });
+
+      row.querySelector('.upload-save').addEventListener('click', async () => {
+        if (!row.dataset.itemId) return;
+        await fetch('/api/admin/item', { method:'PATCH', headers: { 'content-type':'application/json', ...headers() }, body: JSON.stringify({ id: row.dataset.itemId, title: row.querySelector('.meta-title').value, description: row.querySelector('.meta-desc').value }) });
+      });
+
+      row.querySelector('.upload-hide').addEventListener('click', async () => {
+        if (!row.dataset.itemId) return;
+        await fetch('/api/admin/item', { method:'PATCH', headers: { 'content-type':'application/json', ...headers() }, body: JSON.stringify({ id: row.dataset.itemId, is_public: 0 }) });
+      });
+
+      row.querySelector('.upload-delete').addEventListener('click', async () => {
+        if (!row.dataset.itemId) return;
+        await fetch(`/api/admin/item?id=${row.dataset.itemId}`, { method:'DELETE', headers: headers() });
+        row.remove();
+      });
+
+      return row;
+    }
+
+    async function imageDims(file){
+      const src = URL.createObjectURL(file);
+      const img = await new Promise((resolve,reject)=>{ const i=new Image(); i.onload=()=>resolve(i); i.onerror=reject; i.src=src;});
+      return { width: img.naturalWidth, height: img.naturalHeight, aspect_ratio: img.naturalWidth / img.naturalHeight };
+    }
+
+    async function uploadImage({ file, collection, title, description, progress }) {
+      const dims = await imageDims(file);
+      const fd = new FormData();
+      fd.set('file', file);
+      fd.set('collection', collection);
+      fd.set('title', title);
+      fd.set('description', description);
+      Object.entries(dims).forEach(([k,v]) => fd.set(k, String(v)));
+      const resp = await fetch('/api/admin/upload-image', { method: 'POST', headers: headers(), body: fd });
+      progress.value = 100;
+      if (!resp.ok) throw new Error(await resp.text());
+      return resp.json();
+    }
+
+    async function uploadVideoMultipart({ file, collection, title, description, progress, row }) {
+      const initResp = await fetch('/api/admin/multipart/init', {
+        method:'POST', headers:{ 'content-type':'application/json', ...headers() },
+        body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description })
+      });
+      const init = await initResp.json();
+      if (!initResp.ok) throw new Error(init.error || 'init failed');
+
+      const stateKey = `${resumePrefix}${init.key}`;
+      const statusResp = await fetch(`/api/admin/multipart/status?key=${encodeURIComponent(init.key)}`, { headers: headers() });
+      const statusData = statusResp.ok ? await statusResp.json() : { uploadedParts: [] };
+      const uploaded = new Map((statusData.uploadedParts || []).map((p) => [p.partNumber, p.etag]));
+
+      const chunks = [];
+      for (let offset = 0, pn = 1; offset < file.size; offset += init.partSize, pn += 1) {
+        chunks.push({ partNumber: pn, blob: file.slice(offset, offset + init.partSize) });
+      }
+
+      let completedBytes = chunks.filter((c)=>uploaded.has(c.partNumber)).reduce((a,c)=>a+c.blob.size,0);
+      progress.value = Math.round((completedBytes / file.size) * 100);
+
+      const pending = chunks.filter((c) => !uploaded.has(c.partNumber));
+      const concurrency = 4;
+      let index = 0;
+      async function worker() {
+        while (index < pending.length) {
+          const current = pending[index++];
+          const signResp = await fetch('/api/admin/multipart/sign-part', {
+            method:'POST', headers:{ 'content-type':'application/json', ...headers() },
+            body: JSON.stringify({ key: init.key, uploadId: init.uploadId, partNumber: current.partNumber })
+          });
+          const signed = await signResp.json();
+          const putResp = await fetch(signed.url, { method: 'PUT', body: current.blob });
+          const etag = (putResp.headers.get('etag') || '').replaceAll('"', '');
+          uploaded.set(current.partNumber, etag);
+          completedBytes += current.blob.size;
+          progress.value = Math.round((completedBytes / file.size) * 100);
+          localStorage.setItem(stateKey, JSON.stringify({ key:init.key, uploadId:init.uploadId, uploaded:[...uploaded.entries()] }));
+        }
+      }
+
+      await Promise.all(Array.from({ length: Math.min(concurrency, pending.length || 1) }, worker));
+
+      let posterKey = null;
+      const posterFile = row.querySelector('.poster-input')?.files?.[0];
+      if (posterFile) {
+        const posterFd = new FormData();
+        posterFd.set('file', posterFile);
+        posterFd.set('collection', collection);
+        posterFd.set('title', `${title} poster`);
+        const pd = await imageDims(posterFile);
+        Object.entries(pd).forEach(([k,v])=>posterFd.set(k, String(v)));
+        const posterResp = await fetch('/api/admin/upload-image', { method:'POST', headers: headers(), body: posterFd });
+        const posterData = await posterResp.json();
+        posterKey = posterData.key;
+      }
+
+      const completeResp = await fetch('/api/admin/multipart/complete', {
+        method:'POST', headers:{ 'content-type':'application/json', ...headers() },
+        body: JSON.stringify({ key:init.key, uploadId:init.uploadId, parts:[...uploaded.entries()].map(([partNumber,etag])=>({partNumber,etag})), title, description, posterKey })
+      });
+      localStorage.removeItem(stateKey);
+      if (!completeResp.ok) throw new Error(await completeResp.text());
+      return completeResp.json();
+    }
+  </script>
+</body>
+</html>
