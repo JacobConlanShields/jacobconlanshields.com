@@ -158,7 +158,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 ### API routes (Pages Functions)
 - Public:
   - `GET /api/media?collection=<collection>`
-- Admin (requires `X-Admin-Token`):
+- Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
   - `POST /api/admin/upload-image`
   - `POST /api/admin/upload-poster`
   - `POST /api/admin/multipart/init`
@@ -186,15 +186,21 @@ Configure in Cloudflare Pages project settings:
   - `SPINCLINE_BUCKET`
   - `PHOTO_BUCKET`
 - Secrets:
-  - `ADMIN_TOKEN`
   - `R2_ACCOUNT_ID`
   - `R2_ACCESS_KEY_ID`
   - `R2_SECRET_ACCESS_KEY`
 
 ### Security hardening for `/admin/*`
-1. Protect `/pages/admin/*` route with **Cloudflare Access** policy (email/IdP allowlist).
-2. Keep API-side token verification enabled (`X-Admin-Token` == `ADMIN_TOKEN`).
+1. Protect `/admin/*` and `/api/admin/*` with **Cloudflare Access** policy (Google/email allowlist).
+2. Pages Functions do not require `X-Admin-Token`; edge access control is the source of truth.
 3. Never commit secrets into source code or client bundles.
+
+### Tonight upload checklist
+1. Sign in through Cloudflare Access and open `/admin/upload`.
+2. Pick the destination collection and select one or more files.
+3. Click **Upload all files** (or upload per file).
+4. Confirm each card shows success + created item URL.
+5. Verify on `/spincline` or `/photography` that new items render from `/api/media`.
 
 ### R2 CORS settings for direct multipart uploads
 Set CORS on buckets to allow browser PUTs to presigned URLs:

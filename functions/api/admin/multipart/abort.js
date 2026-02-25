@@ -1,9 +1,8 @@
-import { badRequest, handleOptions, json, nowIso, requireAdmin, signR2Request, withCors } from "../../../_lib/media.js";
+import { badRequest, handleOptions, json, nowIso, signR2Request, withCors } from "../../../_lib/media.js";
 
 export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
-  try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
   const { key, uploadId } = await request.json();
   if (!key || !uploadId) return withCors(badRequest("Missing key/uploadId"));

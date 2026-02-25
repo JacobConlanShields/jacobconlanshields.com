@@ -1,9 +1,8 @@
-import { badRequest, handleOptions, json, requireAdmin, signR2Request, withCors } from "../../../_lib/media.js";
+import { badRequest, handleOptions, json, signR2Request, withCors } from "../../../_lib/media.js";
 
 export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "GET") return withCors(badRequest("Method not allowed", 405));
-  try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
   const url = new URL(request.url);
   const key = url.searchParams.get("key");

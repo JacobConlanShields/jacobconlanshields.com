@@ -1,9 +1,8 @@
-import { badRequest, handleOptions, json, mediaUrl, nowIso, requireAdmin, sha256Hex, signR2Request, uuid, withCors } from "../../../_lib/media.js";
+import { badRequest, handleOptions, json, mediaUrl, nowIso, sha256Hex, signR2Request, uuid, withCors } from "../../../_lib/media.js";
 
 export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
-  try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
   const { key, uploadId, parts, title = "", description = "", width = null, height = null, aspect_ratio = null, posterKey = null } = await request.json();
   if (!key || !uploadId || !Array.isArray(parts) || !parts.length) return withCors(badRequest("Missing key/uploadId/parts"));
