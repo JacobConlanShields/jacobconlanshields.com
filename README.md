@@ -137,12 +137,20 @@ If you want to test the Cloudflare Pages Function locally:
 >
 
 ## Media system (Spincline + Photography)
+
+### Admin routes (Cloudflare Access protected)
+- `/admin/`: admin hub page for internal tools.
+- `/admin/upload/`: media upload console for images and resumable multipart video uploads.
+- `/admin/hidden-pages/`: private index of routes not linked in the public top navigation.
+- These routes are intended to be protected by Cloudflare Access (Google login) in production.
+
 This repo now includes a durable media system using Cloudflare Pages Functions + D1 + R2.
 
 ### New pages
 - `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
 - `/pages/photography/`: API-driven masonry/tetris grid using CSS grid + JS row-span measurement.
-- `/pages/admin/upload/`: admin upload console for images and resumable multipart video uploads.
+- `/admin/upload/`: admin upload console for images and resumable multipart video uploads.
+- `/admin/hidden-pages/`: admin index of hidden routes.
 
 ### Data model (D1)
 Schema file: `db/schema.sql`.
@@ -192,7 +200,7 @@ Configure in Cloudflare Pages project settings:
   - `R2_SECRET_ACCESS_KEY`
 
 ### Security hardening for `/admin/*`
-1. Protect `/pages/admin/*` route with **Cloudflare Access** policy (email/IdP allowlist).
+1. Protect `/admin/*` routes with **Cloudflare Access** policy (email/IdP allowlist).
 2. Keep API-side token verification enabled (`X-Admin-Token` == `ADMIN_TOKEN`).
 3. Never commit secrets into source code or client bundles.
 
