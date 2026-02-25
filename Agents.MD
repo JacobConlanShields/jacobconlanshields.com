@@ -108,11 +108,14 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - If the contact form was touched, does it still open a mail client?
 
 ## 2026 update: media platform additions
-- New media pages are now live under:
+- Media pages are live under:
   - `/pages/spincline/`
   - `/pages/photography/`
   - `/pages/admin/upload/` (hidden admin UI)
-- Cloudflare Pages Functions now include media APIs under `/functions/api/**`.
-- Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
-- Admin uploads support both standard image upload and resumable multipart video uploads.
-- `/admin/*` should be protected with Cloudflare Access, and API calls must include `X-Admin-Token`.
+- Cloudflare Pages Functions include media APIs under `/functions/api/**`.
+- D1 (`db/schema.sql`) is the source of truth for media metadata; R2 stores raw files.
+- Upload architecture is direct-to-R2 from the browser:
+  - Images: presigned single PUT (`/api/admin/image/init` + `/api/admin/image/complete`)
+  - Videos: resumable multipart with part signing + completion (`/api/admin/multipart/*`)
+- `/admin/*` and `/api/admin/*` must be protected by Cloudflare Access.
+- `X-Admin-Token` is optional defense-in-depth only when `ADMIN_TOKEN` exists server-side.

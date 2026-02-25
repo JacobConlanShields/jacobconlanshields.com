@@ -1,11 +1,15 @@
 const SPINCLINE_MEDIA_BASE = "https://pub-a0784713bd834a079424dc14cf218eea.r2.dev";
 const PHOTO_MEDIA_BASE = "https://pub-980fbe5c774b4339805365b9656ec9fe.r2.dev";
 
+export const SPINCLINE_BUCKET_NAME = "spincline";
+export const PHOTO_BUCKET_NAME = "jcs-photography";
+export const MULTIPART_PART_SIZE = 33554432;
+
 export const COLLECTION_CONFIG = {
-  spincline_design_build: { r2Base: "SPINCLINE", prefix: "design-and-build/", mediaType: "image" },
-  spincline_finished_products: { r2Base: "SPINCLINE", prefix: "finished-products/", mediaType: "image" },
-  spincline_in_action: { r2Base: "SPINCLINE", prefix: "in-action/", mediaType: "video" },
-  photography: { r2Base: "PHOTO", prefix: "", mediaType: "image" },
+  spincline_design_build: { r2Base: "SPINCLINE", prefix: "design-and-build/" },
+  spincline_finished_products: { r2Base: "SPINCLINE", prefix: "finished-products/" },
+  spincline_in_action: { r2Base: "SPINCLINE", prefix: "in-action/" },
+  photography: { r2Base: "PHOTO", prefix: "" },
 };
 
 const encoder = new TextEncoder();
@@ -24,6 +28,12 @@ export function getCollectionConfig(collection) {
   return COLLECTION_CONFIG[collection] || null;
 }
 
+export function getBucketName(r2Base, env) {
+  if (r2Base === "SPINCLINE") return env.SPINCLINE_BUCKET_NAME || SPINCLINE_BUCKET_NAME;
+  if (r2Base === "PHOTO") return env.PHOTO_BUCKET_NAME || PHOTO_BUCKET_NAME;
+  return null;
+}
+
 export function publicBaseFor(r2Base) {
   return r2Base === "SPINCLINE" ? SPINCLINE_MEDIA_BASE : PHOTO_MEDIA_BASE;
 }
@@ -40,9 +50,16 @@ export function uuid() {
   return crypto.randomUUID();
 }
 
+export function extFromName(name = "", fallback = "bin") {
+  const i = name.lastIndexOf(".");
+  if (i < 0 || i === name.length - 1) return fallback;
+  return name.slice(i + 1).toLowerCase();
+}
+
 export async function requireAdmin(request, env) {
+  if (!env.ADMIN_TOKEN) return;
   const token = request.headers.get("x-admin-token");
-  if (!token || !env.ADMIN_TOKEN || token !== env.ADMIN_TOKEN) {
+  if (!token || token !== env.ADMIN_TOKEN) {
     throw new Error("Unauthorized");
   }
 }
@@ -170,4 +187,12 @@ export async function signR2Request({
 export function xmlValue(xml, tag) {
   const match = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
   return match ? match[1] : null;
+}
+
+export function s3AuthHeaders(signed, payloadHash = "UNSIGNED-PAYLOAD") {
+  return {
+    authorization: signed.authorization,
+    "x-amz-date": signed.amzDate,
+    "x-amz-content-sha256": payloadHash,
+  };
 }

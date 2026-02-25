@@ -1,21 +1,58 @@
-import { badRequest, handleOptions, json, mediaUrl, nowIso, requireAdmin, sha256Hex, signR2Request, uuid, withCors } from "../../../_lib/media.js";
+import {
+  badRequest,
+  getBucketName,
+  getCollectionConfig,
+  handleOptions,
+  json,
+  mediaUrl,
+  nowIso,
+  requireAdmin,
+  s3AuthHeaders,
+  sha256Hex,
+  signR2Request,
+  uuid,
+  withCors,
+} from "../../../_lib/media.js";
 
 export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
   try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
-  const { key, uploadId, parts, title = "", description = "", width = null, height = null, aspect_ratio = null, posterKey = null } = await request.json();
-  if (!key || !uploadId || !Array.isArray(parts) || !parts.length) return withCors(badRequest("Missing key/uploadId/parts"));
+  const {
+    collection,
+    r2Base,
+    key,
+    uploadId,
+    parts,
+    title = "",
+    description = "",
+    width = null,
+    height = null,
+    aspect_ratio = null,
+    poster_r2_key = null,
+  } = await request.json();
 
-  const record = await env.DB.prepare("SELECT collection, r2_base FROM multipart_uploads WHERE key = ? AND upload_id = ?").bind(key, uploadId).first();
+  if (!collection || !r2Base || !key || !uploadId || !Array.isArray(parts) || !parts.length) {
+    return withCors(badRequest("Missing collection/r2Base/key/uploadId/parts"));
+  }
+
+  const cfg = getCollectionConfig(collection);
+  if (!cfg) return withCors(badRequest("Invalid collection"));
+  if (cfg.r2Base !== r2Base) return withCors(badRequest("r2Base does not match collection"));
+
+  const record = await env.DB.prepare(
+    "SELECT key FROM multipart_uploads WHERE key = ? AND upload_id = ? AND r2_base = ? AND status = 'initiated'",
+  ).bind(key, uploadId, r2Base).first();
   if (!record) return withCors(badRequest("Upload record not found", 404));
 
-  const bucketName = record.r2_base === "SPINCLINE" ? env.SPINCLINE_BUCKET.name : env.PHOTO_BUCKET.name;
-  const xmlBody = `<CompleteMultipartUpload>${parts.sort((a, b) => a.partNumber - b.partNumber)
-    .map((p) => `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>\"${String(p.etag).replace(/\"/g, "")}\"</ETag></Part>`).join("")}</CompleteMultipartUpload>`;
-  const payloadHash = await sha256Hex(xmlBody);
+  const bucketName = getBucketName(r2Base, env);
+  const xmlBody = `<CompleteMultipartUpload>${parts
+    .sort((a, b) => a.partNumber - b.partNumber)
+    .map((p) => `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>\"${String(p.etag).replace(/\"/g, "")}\"</ETag></Part>`)
+    .join("")}</CompleteMultipartUpload>`;
 
+  const payloadHash = await sha256Hex(xmlBody);
   const req = await signR2Request({
     method: "POST",
     bucket: bucketName,
@@ -28,7 +65,7 @@ export async function onRequest({ request, env }) {
 
   const resp = await fetch(req.url, {
     method: "POST",
-    headers: { authorization: req.authorization, "x-amz-date": req.amzDate, "x-amz-content-sha256": payloadHash, "content-type": "application/xml" },
+    headers: { ...s3AuthHeaders(req, payloadHash), "content-type": "application/xml" },
     body: xmlBody,
   });
 
@@ -37,10 +74,29 @@ export async function onRequest({ request, env }) {
 
   const id = uuid();
   const createdAt = nowIso();
-  await env.DB.prepare(`INSERT INTO media_items (id, collection, media_type, r2_base, r2_key, title, description, width, height, aspect_ratio, poster_r2_key, created_at)
+  await env.DB.prepare(`INSERT INTO media_items
+    (id, collection, media_type, r2_base, r2_key, title, description, width, height, aspect_ratio, poster_r2_key, created_at)
     VALUES (?, ?, 'video', ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, record.collection, record.r2_base, key, title, description, width, height, aspect_ratio, posterKey, createdAt).run();
-  await env.DB.prepare("UPDATE multipart_uploads SET status = 'completed', updated_at = ? WHERE key = ?").bind(nowIso(), key).run();
+    .bind(id, collection, r2Base, key, title, description, width, height, aspect_ratio, poster_r2_key, createdAt)
+    .run();
 
-  return withCors(json({ id, collection: record.collection, media_type: "video", r2_base: record.r2_base, r2_key: key, url: mediaUrl(record.r2_base, key), poster_r2_key: posterKey, title, description, width, height, aspect_ratio, created_at: createdAt }));
+  await env.DB.prepare("UPDATE multipart_uploads SET status = 'completed', updated_at = ? WHERE key = ?")
+    .bind(nowIso(), key)
+    .run();
+
+  return withCors(json({
+    id,
+    collection,
+    media_type: "video",
+    r2_base: r2Base,
+    r2_key: key,
+    title,
+    description,
+    width,
+    height,
+    aspect_ratio,
+    poster_r2_key,
+    created_at: createdAt,
+    url: mediaUrl(r2Base, key),
+  }));
 }

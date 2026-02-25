@@ -137,82 +137,105 @@ If you want to test the Cloudflare Pages Function locally:
 >
 
 ## Media system (Spincline + Photography)
-This repo now includes a durable media system using Cloudflare Pages Functions + D1 + R2.
+This repo includes a D1 + R2 media platform for `/spincline`, `/photography`, and `/admin/upload`.
 
-### New pages
-- `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
-- `/pages/photography/`: API-driven masonry/tetris grid using CSS grid + JS row-span measurement.
-- `/pages/admin/upload/`: admin upload console for images and resumable multipart video uploads.
+### Source of truth
+`media_items` in D1 is the source of truth for:
+- title + description
+- visibility (`is_public`)
+- manual ordering (`sort_index DESC`, then `created_at DESC`)
+- dimensions/aspect ratio metadata
 
-### Data model (D1)
-Schema file: `db/schema.sql`.
+### D1 schema + migration
+- Canonical schema file: `db/schema.sql`
+- Migration snapshot: `db/migrations/0001_media_platform.sql`
 
-- `media_items`: source of truth for title/description/order/aspect ratio/public visibility.
-- `multipart_uploads`: tracks resumable multipart uploads (`initiated`, `completed`, `aborted`).
-
-Apply locally with Wrangler D1 tooling (example):
+Apply locally:
 ```bash
 wrangler d1 execute <DB_NAME> --file=db/schema.sql
 ```
 
+### Collection mapping
+- `spincline_design_build` → `SPINCLINE` bucket + `design-and-build/`
+- `spincline_finished_products` → `SPINCLINE` bucket + `finished-products/`
+- `spincline_in_action` → `SPINCLINE` bucket + `in-action/`
+- `photography` → `PHOTO` bucket + root prefix (`""`)
+
+`previous-versions/` is intentionally not exposed through any public collection.
+
+### Bucket names + public media bases
+- `SPINCLINE_BUCKET_NAME=spincline`
+- `PHOTO_BUCKET_NAME=jcs-photography`
+- `SPINCLINE_MEDIA_BASE=https://pub-a0784713bd834a079424dc14cf218eea.r2.dev`
+- `PHOTO_MEDIA_BASE=https://pub-980fbe5c774b4339805365b9656ec9fe.r2.dev`
+
+Uploads use the S3-compatible endpoint (`https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com/<bucket>/<key>`); reads use the public `r2.dev` bases above.
+
 ### API routes (Pages Functions)
-- Public:
-  - `GET /api/media?collection=<collection>`
-- Admin (requires `X-Admin-Token`):
-  - `POST /api/admin/upload-image`
-  - `POST /api/admin/upload-poster`
-  - `POST /api/admin/multipart/init`
-  - `POST /api/admin/multipart/sign-part`
-  - `GET /api/admin/multipart/status?key=<key>`
-  - `POST /api/admin/multipart/complete`
-  - `POST /api/admin/multipart/abort`
-  - `PATCH /api/admin/item`
-  - `DELETE /api/admin/item?id=<id>`
+Public:
+- `GET /api/media?collection=<collection>` → returns `{ items: [...] }`
 
-### Collection to bucket/prefix mapping
-- `spincline_design_build` → `SPINCLINE_BUCKET` + `design-and-build/`
-- `spincline_finished_products` → `SPINCLINE_BUCKET` + `finished-products/`
-- `spincline_in_action` → `SPINCLINE_BUCKET` + `in-action/`
-- `photography` → `PHOTO_BUCKET` + root prefix (`""`)
+Admin (expected to be protected by Cloudflare Access):
+- `POST /api/admin/image/init`
+- `POST /api/admin/image/complete`
+- `POST /api/admin/multipart/init`
+- `POST /api/admin/multipart/sign-part`
+- `GET /api/admin/multipart/status?key=<key>&uploadId=<uploadId>&r2Base=<r2Base>`
+- `POST /api/admin/multipart/complete`
+- `POST /api/admin/multipart/abort`
+- `PATCH /api/admin/item`
+- `DELETE /api/admin/item?id=<id>`
+- `POST /api/admin/import` (optional backfill/import helper)
 
-Public base URLs used for playback/rendering:
-- `SPINCLINE_MEDIA_BASE = https://pub-a0784713bd834a079424dc14cf218eea.r2.dev`
-- `PHOTO_MEDIA_BASE = https://pub-980fbe5c774b4339805365b9656ec9fe.r2.dev`
+### Admin auth model
+- Required: Cloudflare Access policy on `/admin/*` and `/api/admin/*`
+- Optional defense-in-depth: if `ADMIN_TOKEN` is set, the API also validates `X-Admin-Token`
+- If `ADMIN_TOKEN` is not set, API requests are allowed (Access remains primary protection)
 
-### Required environment bindings/secrets
-Configure in Cloudflare Pages project settings:
+### Required environment variables / bindings
 - D1 binding: `DB`
-- R2 bindings:
-  - `SPINCLINE_BUCKET`
-  - `PHOTO_BUCKET`
-- Secrets:
-  - `ADMIN_TOKEN`
+- R2/S3 auth secrets:
   - `R2_ACCOUNT_ID`
   - `R2_ACCESS_KEY_ID`
   - `R2_SECRET_ACCESS_KEY`
+- Optional defense-in-depth secret:
+  - `ADMIN_TOKEN`
+- Optional bucket-name overrides (defaults already in code):
+  - `SPINCLINE_BUCKET_NAME` (default `spincline`)
+  - `PHOTO_BUCKET_NAME` (default `jcs-photography`)
 
-### Security hardening for `/admin/*`
-1. Protect `/pages/admin/*` route with **Cloudflare Access** policy (email/IdP allowlist).
-2. Keep API-side token verification enabled (`X-Admin-Token` == `ADMIN_TOKEN`).
-3. Never commit secrets into source code or client bundles.
+### Direct upload behavior
+- Images: browser requests presigned `PUT` from `/api/admin/image/init`, uploads directly to R2, then writes D1 metadata via `/api/admin/image/complete`.
+- Videos: browser uses multipart upload (`init` → `sign-part` → `complete`) with localStorage resume state and uploaded-part reconciliation from `/api/admin/multipart/status`.
+- Poster images for videos are uploaded directly to R2 under a `posters/` sub-prefix in the same collection prefix.
 
-### R2 CORS settings for direct multipart uploads
-Set CORS on buckets to allow browser PUTs to presigned URLs:
-- Allowed origins: your site origin(s) (prod + preview)
-- Allowed methods: `PUT, GET, HEAD`
-- Allowed headers: `*` (or at least `content-type`, `x-amz-*`)
-- Expose headers: `ETag`
-- Max age: e.g. `3600`
+### Required R2 CORS (both buckets)
+```json
+[
+  {
+    "AllowedOrigins": ["https://jacobconlanshields.com"],
+    "AllowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"]
+  }
+]
+```
 
-### Media encoding guidance
-For best browser playback compatibility, encode uploaded videos as MP4 (H.264 video + AAC audio).
+Without `ExposeHeaders: ["ETag"]`, multipart uploads cannot read part ETags in the browser and finalization will fail.
 
-### Local run notes
-- Static-only preview:
+### Local dev steps
+- Static only:
   ```bash
   python -m http.server 8000
   ```
-- Functions + D1 preview:
+- Cloudflare Pages Functions + D1:
   ```bash
   wrangler pages dev .
   ```
+
+### Manual integration checklist
+1. Upload image in `/admin/upload`, verify direct PUT succeeds and appears on `/spincline` or `/photography`.
+2. Upload large video in `/admin/upload`, refresh mid-upload, resume, and complete.
+3. Verify `/api/media` ordering follows `sort_index DESC`, then `created_at DESC`.
+4. Confirm hidden items (`is_public=0`) disappear from public pages.
+
