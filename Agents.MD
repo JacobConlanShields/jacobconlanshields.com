@@ -106,3 +106,13 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Do all navigation links work?
 - If the podcast page was touched, do video cards still load and open the modal?
 - If the contact form was touched, does it still open a mail client?
+
+## Media platform additions (2026 update)
+- Added Cloudflare Pages Function API for D1 + R2 media metadata/content workflow.
+- Added D1 schema at `db/schema.sql` with `media_items` and `multipart_uploads`.
+- Added pages:
+  - `/spincline/` (3 carousels: design/build, finished products, in-action videos)
+  - `/photography/` (masonry-style grid)
+  - `/admin/upload/` (admin upload + metadata tools)
+- Admin endpoints require server-side `X-Admin-Token` validation and should be paired with Cloudflare Access on `/admin/*`.
+- Public pages fetch from `/api/media` and treat D1 as source-of-truth metadata.
