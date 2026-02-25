@@ -1,37 +1,46 @@
 export const hiddenPages = [
   {
-    path: '/pages/digital-builds/',
-    title: 'Digital Builds',
-    description: 'Portfolio page for in-progress digital projects not linked in the public top navigation.',
+    "path": "/pages/digital-builds/",
+    "title": "Digital Builds — Jacob Conlon Shields",
+    "description": "Home • Projects • Writing • Podcast • Contact"
   },
   {
-    path: '/pages/photography/',
-    title: 'Photography (Legacy Route)',
-    description: 'Legacy photography route kept live alongside the canonical /photography/ path.',
+    "path": "/pages/photography/",
+    "title": "Photography",
+    "description": "← Back to home"
   },
   {
-    path: '/pages/spincline/',
-    title: 'Spincline (Legacy Route)',
-    description: 'Legacy Spincline route kept live alongside the canonical /spincline/ path.',
+    "path": "/pages/spincline/",
+    "title": "Spincline",
+    "description": "← Back to home"
   },
   {
-    path: '/pages/writing/relative-momentum/',
-    title: 'Relative Momentum',
-    description: 'Two-page ebook reader route for Relative Momentum that is not exposed in the public top navigation.',
+    "path": "/pages/writing/relative-momentum/",
+    "title": "Relative Momentum — Jacob Conlon Shields",
+    "description": "Home • Projects • Writing • QV Podcast • Contact"
   },
+  {
+    "path": "/photography/",
+    "title": "Photography",
+    "description": "← Back to home"
+  },
+  {
+    "path": "/spincline/",
+    "title": "Spincline",
+    "description": "← Back to home"
+  }
 ];
 
 export const hiddenPagesMeta = {
-  generatedAt: '2026-02-25T08:30:21.750Z',
+  generatedAt: "2026-02-25T09:37:16.744Z",
   source: 'scripts/generate-hidden-pages.mjs',
   publicNavHrefs: [
-    '/',
-    '/contact/',
-    '/pages/podcast/',
-    '/pages/projects/',
-    '/pages/scroll-shock/',
-    '/pages/writing/',
-    '/photography/',
-    '/spincline/',
-  ],
+  "/",
+  "/admin/",
+  "/contact/",
+  "/pages/podcast/",
+  "/pages/projects/",
+  "/pages/scroll-shock/",
+  "/pages/writing/"
+]
 };

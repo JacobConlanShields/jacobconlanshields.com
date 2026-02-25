@@ -100,6 +100,7 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - If you change playlist IDs or the proxy URL, verify the podcast page still loads playlists.
 - Avoid removing the modal player or proxy logic without providing a replacement.
 - Keep navigation links consistent so visitors can move between sections easily.
+- Keep `/admin/hidden-pages/` in sync with navigation visibility: hidden routes must be listed there, and routes revealed in public nav must be removed from that list.
 
 ## Quick checklist before shipping changes
 - Do pages still render with plain HTML/CSS/JS?
@@ -111,6 +112,8 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - New media pages are now live under:
   - `/pages/spincline/`
   - `/pages/photography/`
+  - `/spincline/` (currently hidden from top nav; tracked in `/admin/hidden-pages/`)
+  - `/photography/` (currently hidden from top nav; tracked in `/admin/hidden-pages/`)
 - Admin pages are now live under:
   - `/admin/`
   - `/admin/upload/`
