@@ -38,7 +38,8 @@
 
     fetch("/api/media?collection=photography")
       .then((resp) => resp.json())
-      .then((items) => {
+      .then((payload) => {
+        const items = payload.items || [];
         grid.innerHTML = "";
         items.forEach((item) => {
           const tile = renderTile(item);
