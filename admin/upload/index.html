@@ -67,11 +67,18 @@
       return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     }
 
+    function clearPreviewUrls() {
+      queue.querySelectorAll('.upload-preview').forEach((img) => {
+        if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+      });
+    }
+
     function fileCard(file) {
       const wrap = document.createElement('section');
       wrap.className = 'upload-file';
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
       const imagePreview = file.type.startsWith('image/')
-        ? `<img class="upload-preview" src="${URL.createObjectURL(file)}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
+        ? `<img class="upload-preview" data-object-url="${previewUrl}" src="${previewUrl}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
         : '';
       wrap.innerHTML = `
         <h3>${file.name}</h3>
@@ -98,6 +105,7 @@
     }
 
     filesInput.addEventListener('change', () => {
+      clearPreviewUrls();
       queue.innerHTML = '';
       [...filesInput.files].forEach((f) => queue.appendChild(fileCard(f)));
       syncMetadataFields();
@@ -139,8 +147,12 @@
       result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a>`;
     }
 
+    function selectedCollection() {
+      return collectionInput.value;
+    }
+
     async function uploadFile(file, card) {
-      const collection = collectionInput.value;
+      const collection = selectedCollection();
       const title = card.querySelector('.title').value;
       const location = card.querySelector('.location')?.value || '';
       const description = collection === 'photography'
