@@ -988,3 +988,38 @@ textarea:focus{
 .upload-meta textarea,
 .upload-meta select{ background:#181818; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:8px; }
 .small-note{ font-size:13px; color:var(--muted); }
+
+.admin-links,
+.hidden-pages-grid{
+  display:grid;
+  gap:14px;
+  margin-top:14px;
+}
+
+.admin-link-card,
+.hidden-page-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  padding:14px;
+}
+
+.admin-link-card{
+  text-decoration:none;
+  display:block;
+}
+
+.admin-link-card h2,
+.hidden-page-card h2{
+  margin:0 0 6px;
+  font-size:1.1rem;
+}
+
+.admin-link-card p,
+.hidden-page-card p{
+  margin:0 0 8px;
+}
+
+.hidden-page-card code{
+  word-break:break-word;
+}

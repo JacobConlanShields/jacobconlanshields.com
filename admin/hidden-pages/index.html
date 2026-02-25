@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hidden Pages — Admin</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main>
+    <p class="nav">
+      <a href="/">← Back to home</a>
+      <span class="dot">•</span>
+      <a href="/admin">Admin</a>
+    </p>
+
+    <h1>Hidden Pages</h1>
+    <p>Pages not linked from the public site navigation.</p>
+
+    <div id="hidden-pages" class="hidden-pages-grid" aria-live="polite"></div>
+  </main>
+
+  <script type="module">
+    import { hiddenPages } from '/src/admin/hidden-pages.js';
+
+    const container = document.getElementById('hidden-pages');
+
+    if (!hiddenPages.length) {
+      container.innerHTML = '<p class="small-note">No hidden pages are currently registered. Run <code>node scripts/generate-hidden-pages.mjs</code> and review <code>src/admin/hidden-pages.js</code>.</p>';
+    } else {
+      const cards = hiddenPages
+        .map((page) => `
+          <article class="hidden-page-card">
+            <h2><a href="${page.path}">${page.title}</a></h2>
+            <p>${page.description}</p>
+            <p class="small-note"><code>${page.path}</code></p>
+          </article>
+        `)
+        .join('');
+
+      container.innerHTML = cards;
+    }
+  </script>
+</body>
+</html>
