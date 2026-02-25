@@ -137,12 +137,20 @@ If you want to test the Cloudflare Pages Function locally:
 >
 
 ## Media system (Spincline + Photography)
+
+### Admin routes (Cloudflare Access protected)
+- `/admin/`: admin hub page for internal tools.
+- `/admin/upload/`: media upload console for images and resumable multipart video uploads.
+- `/admin/hidden-pages/`: private index of routes not linked in the public top navigation.
+- These routes are intended to be protected by Cloudflare Access (Google login) in production.
+
 This repo now includes a durable media system using Cloudflare Pages Functions + D1 + R2.
 
 ### New pages
 - `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
 - `/pages/photography/`: API-driven masonry/tetris grid using CSS grid + JS row-span measurement.
-- `/pages/admin/upload/`: admin upload console for images and resumable multipart video uploads.
+- `/admin/upload/`: admin upload console for images and resumable multipart video uploads.
+- `/admin/hidden-pages/`: admin index of hidden routes.
 
 ### Data model (D1)
 Schema file: `db/schema.sql`.

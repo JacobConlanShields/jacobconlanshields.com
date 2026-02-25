@@ -111,7 +111,10 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - New media pages are now live under:
   - `/pages/spincline/`
   - `/pages/photography/`
-  - `/pages/admin/upload/` (hidden admin UI)
+- Admin pages are now live under:
+  - `/admin/`
+  - `/admin/upload/`
+  - `/admin/hidden-pages/`
 - Cloudflare Pages Functions now include media APIs under `/functions/api/**`.
 - Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
 - Admin uploads support both standard image upload and resumable multipart video uploads.
