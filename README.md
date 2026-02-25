@@ -158,7 +158,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 ### API routes (Pages Functions)
 - Public:
   - `GET /api/media?collection=<collection>`
-- Admin (requires `X-Admin-Token`):
+- Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
   - `POST /api/admin/upload-image`
   - `POST /api/admin/upload-poster`
   - `POST /api/admin/multipart/init`
@@ -186,14 +186,13 @@ Configure in Cloudflare Pages project settings:
   - `SPINCLINE_BUCKET`
   - `PHOTO_BUCKET`
 - Secrets:
-  - `ADMIN_TOKEN`
   - `R2_ACCOUNT_ID`
   - `R2_ACCESS_KEY_ID`
   - `R2_SECRET_ACCESS_KEY`
 
 ### Security hardening for `/admin/*`
-1. Protect `/pages/admin/*` route with **Cloudflare Access** policy (email/IdP allowlist).
-2. Keep API-side token verification enabled (`X-Admin-Token` == `ADMIN_TOKEN`).
+1. Protect `/admin/*` and `/api/admin/*` with **Cloudflare Access** policy (Google/email allowlist).
+2. Do not use client-side admin tokens; rely on Access at the edge.
 3. Never commit secrets into source code or client bundles.
 
 ### R2 CORS settings for direct multipart uploads
@@ -216,3 +215,10 @@ For best browser playback compatibility, encode uploaded videos as MP4 (H.264 vi
   ```bash
   wrangler pages dev .
   ```
+
+### Upload checklist (tonight)
+1. Log in through Cloudflare Access (Google) and open `/admin/upload`.
+2. Choose a destination collection and select one or more files.
+3. Click **Upload all files** (or upload one-by-one).
+4. Verify each file shows a success message with media URL and public page link.
+5. Confirm new items are returned by `/api/media?collection=<collection>` and visible on `/spincline` or `/photography`.
