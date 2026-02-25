@@ -1,4 +1,4 @@
-import { badRequest, handleOptions, json, requireAdmin, signR2Request, withCors } from "../../../_lib/media.js";
+import { badRequest, getBucketName, handleOptions, json, requireAdmin, signR2Request, withCors } from "../../../_lib/media.js";
 
 export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
@@ -6,22 +6,14 @@ export async function onRequest({ request, env }) {
 
   try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
-  const { key, uploadId, partNumber } = await request.json();
-  if (!key || !uploadId || !partNumber) return withCors(badRequest("Missing key/uploadId/partNumber"));
+  const { r2Base, key, uploadId, partNumber } = await request.json();
+  if (!r2Base || !key || !uploadId || !partNumber) return withCors(badRequest("Missing r2Base/key/uploadId/partNumber"));
 
-  const record = await env.DB.prepare("SELECT r2_base FROM multipart_uploads WHERE key = ? AND upload_id = ?").bind(key, uploadId).first();
-  if (!record) return withCors(badRequest("Upload record not found", 404));
+  const bucketName = getBucketName(r2Base, env);
+  if (!bucketName) return withCors(badRequest("Invalid r2Base"));
 
-  const bucketName = record.r2_base === "SPINCLINE" ? env.SPINCLINE_BUCKET.name : env.PHOTO_BUCKET.name;
   const query = `partNumber=${Number(partNumber)}&uploadId=${encodeURIComponent(uploadId)}`;
-  const signed = await signR2Request({
-    method: "PUT",
-    bucket: bucketName,
-    key,
-    query,
-    env,
-    expires: 900,
-  });
+  const signed = await signR2Request({ method: "PUT", bucket: bucketName, key, query, env, expires: 900 });
 
   return withCors(json({ url: signed.url }));
 }

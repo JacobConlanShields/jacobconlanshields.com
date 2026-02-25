@@ -10,14 +10,14 @@
   <main>
     <p class="nav"><a href="/">← Back to home</a></p>
     <h1>Admin Upload</h1>
-    <p class="small-note">Protect this route using Cloudflare Access in production. This page also requires <code>X-Admin-Token</code> for API calls.</p>
+    <p class="small-note">Protect <code>/admin/*</code> and <code>/api/admin/*</code> with Cloudflare Access. If <code>ADMIN_TOKEN</code> is configured server-side, add it here for defense-in-depth.</p>
     <div class="upload-meta">
-      <label>Admin token <input id="admin-token" type="password" autocomplete="off" /></label>
+      <label>Optional admin token <input id="admin-token" type="password" autocomplete="off" /></label>
       <label>Destination
         <select id="collection">
           <option value="spincline_design_build">Spincline: Design &amp; Build</option>
           <option value="spincline_finished_products">Spincline: Finished Products</option>
-          <option value="spincline_in_action">Spincline: In Action (Video)</option>
+          <option value="spincline_in_action">Spincline: In Action</option>
           <option value="photography">Photography</option>
         </select>
       </label>
@@ -31,19 +31,34 @@
     const filesInput = document.getElementById('files');
     const collectionInput = document.getElementById('collection');
     const tokenInput = document.getElementById('admin-token');
+    const corsHint = 'If this failed during direct upload, check R2 bucket CORS and ensure ExposeHeaders includes ETag.';
 
     function api(path, opts = {}) {
-      return fetch(path, {
-        ...opts,
-        headers: { ...(opts.headers || {}), 'X-Admin-Token': tokenInput.value.trim() }
-      });
+      const token = tokenInput.value.trim();
+      const headers = { ...(opts.headers || {}) };
+      if (token) headers['X-Admin-Token'] = token;
+      return fetch(path, { ...opts, headers });
+    }
+
+    async function readJsonOrError(response) {
+      const text = await response.text();
+      const payload = text ? JSON.parse(text) : {};
+      if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      return payload;
     }
 
     function fileCard(file) {
       const wrap = document.createElement('section');
       wrap.className = 'upload-file';
-      wrap.innerHTML = `<h3>${file.name}</h3><div class="upload-meta"><label>Title <input type="text" class="title"></label><label>Description <textarea class="description" rows="3"></textarea></label>${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}<progress max="100" value="0"></progress><div class="small-note status">Ready.</div><button type="button" class="start">Upload</button></div>`;
+      wrap.innerHTML = `<h3>${file.name}</h3><div class="upload-meta"><label>Title <input type="text" class="title"></label><label>Description <textarea class="description" rows="3"></textarea></label>${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label><div class="small-note part-progress"></div><button type="button" class="abort">Abort upload</button>' : ''}<progress max="100" value="0"></progress><div class="small-note status">Ready.</div><button type="button" class="start">Upload</button></div>`;
       wrap.querySelector('.start').addEventListener('click', () => uploadFile(file, wrap));
+      if (file.type.startsWith('video/')) {
+        wrap.querySelector('.abort').addEventListener('click', () => {
+          const resume = wrap.dataset.resume ? JSON.parse(wrap.dataset.resume) : null;
+          if (!resume) return;
+          abortMultipart(resume, wrap.querySelector('.status'));
+        });
+      }
       return wrap;
     }
 
@@ -56,10 +71,148 @@
       return new Promise((resolve) => {
         if (!file.type.startsWith('image/')) return resolve({});
         const img = new Image();
-        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, aspect_ratio: img.naturalWidth / img.naturalHeight });
+        img.onload = () => {
+          const width = img.naturalWidth;
+          const height = img.naturalHeight;
+          URL.revokeObjectURL(img.src);
+          resolve({ width, height, aspect_ratio: width && height ? width / height : null });
+        };
         img.onerror = () => resolve({});
         img.src = URL.createObjectURL(file);
       });
+    }
+
+    async function uploadImageDirect(file, collection, status, progress) {
+      const init = await readJsonOrError(await api('/api/admin/image/init', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ collection, filename: file.name, contentType: file.type }),
+      }));
+
+      status.textContent = 'Uploading image bytes directly to R2...';
+      const putRes = await fetch(init.putUrl, { method: 'PUT', headers: { 'content-type': file.type }, body: file });
+      if (!putRes.ok) throw new Error(`Image PUT failed (${putRes.status}). ${corsHint}`);
+
+      progress.value = 92;
+      const dims = await imageDimensions(file);
+      return { ...init, ...dims };
+    }
+
+    async function uploadPosterIfAny(card, collection) {
+      const posterFile = card.querySelector('.poster')?.files?.[0];
+      if (!posterFile) return null;
+      const init = await readJsonOrError(await api('/api/admin/image/init', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ collection, filename: posterFile.name, contentType: posterFile.type, keyPrefix: 'posters' }),
+      }));
+      const putRes = await fetch(init.putUrl, { method: 'PUT', headers: { 'content-type': posterFile.type }, body: posterFile });
+      if (!putRes.ok) throw new Error(`Poster upload failed (${putRes.status}). ${corsHint}`);
+      return init.key;
+    }
+
+    async function abortMultipart(resume, statusEl) {
+      try {
+        await readJsonOrError(await api('/api/admin/multipart/abort', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ r2Base: resume.r2Base, key: resume.key, uploadId: resume.uploadId }),
+        }));
+        localStorage.removeItem(resume.storageKey);
+        statusEl.textContent = 'Upload aborted.';
+      } catch (error) {
+        statusEl.textContent = `Abort failed: ${error.message}`;
+      }
+    }
+
+    async function uploadVideoMultipart(file, card, collection, status, progress) {
+      status.textContent = 'Initializing multipart upload...';
+      const init = await readJsonOrError(await api('/api/admin/multipart/init', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ collection, filename: file.name, contentType: file.type }),
+      }));
+
+      const storageKey = `multipart:${init.r2Base}:${init.key}:${init.uploadId}`;
+      const partInfo = card.querySelector('.part-progress');
+      card.dataset.resume = JSON.stringify({ ...init, storageKey });
+
+      const totalParts = Math.ceil(file.size / init.partSize);
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      const uploaded = {};
+
+      const remote = await readJsonOrError(await api(`/api/admin/multipart/status?key=${encodeURIComponent(init.key)}&uploadId=${encodeURIComponent(init.uploadId)}&r2Base=${encodeURIComponent(init.r2Base)}`));
+      for (const part of remote.uploadedParts || []) uploaded[part.partNumber] = part.etag;
+      for (const [partNumber, etag] of Object.entries(saved)) uploaded[Number(partNumber)] = etag;
+
+      function updateProgress() {
+        const done = Object.keys(uploaded).length;
+        progress.value = Math.min(99, Math.round((done / totalParts) * 100));
+        partInfo.textContent = `Uploaded parts: ${done}/${totalParts}`;
+      }
+
+      updateProgress();
+
+      async function uploadPart(partNumber) {
+        if (uploaded[partNumber]) return;
+        const sign = await readJsonOrError(await api('/api/admin/multipart/sign-part', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ r2Base: init.r2Base, key: init.key, uploadId: init.uploadId, partNumber }),
+        }));
+
+        const start = (partNumber - 1) * init.partSize;
+        const end = Math.min(start + init.partSize, file.size);
+        const blob = file.slice(start, end);
+        const putRes = await fetch(sign.url, { method: 'PUT', body: blob });
+        if (!putRes.ok) throw new Error(`Part ${partNumber} failed (${putRes.status}). ${corsHint}`);
+
+        const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
+        if (!etag) throw new Error(`Part ${partNumber} uploaded but ETag was unavailable. ${corsHint}`);
+
+        uploaded[partNumber] = etag;
+        localStorage.setItem(storageKey, JSON.stringify(uploaded));
+        updateProgress();
+      }
+
+      const queueParts = Array.from({ length: totalParts }, (_, i) => i + 1);
+      const concurrency = 4;
+      while (queueParts.length) {
+        const batch = queueParts.splice(0, concurrency);
+        await Promise.all(batch.map(uploadPart));
+      }
+
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      const dims = await new Promise((resolve) => {
+        const source = URL.createObjectURL(file);
+        video.onloadedmetadata = () => {
+          URL.revokeObjectURL(source);
+          resolve({ width: video.videoWidth || null, height: video.videoHeight || null, aspect_ratio: video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : null });
+        };
+        video.onerror = () => resolve({});
+        video.src = source;
+      });
+
+      return { init, uploaded, storageKey, dims };
+    }
+
+    function attachItemActions(status, card, item) {
+      status.innerHTML = `Upload complete. <button class="edit">Save metadata update</button> <button class="hide">Hide</button> <button class="delete">Delete</button>`;
+      status.querySelector('.edit').onclick = async () => {
+        await api('/api/admin/item', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: item.id, title: card.querySelector('.title').value, description: card.querySelector('.description').value }),
+        });
+      };
+      status.querySelector('.hide').onclick = async () => {
+        await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, is_public: 0 }) });
+      };
+      status.querySelector('.delete').onclick = async () => {
+        await api(`/api/admin/item?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+        status.textContent = 'Deleted.';
+      };
     }
 
     async function uploadFile(file, card) {
@@ -69,113 +222,55 @@
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
 
-      if (file.type.startsWith('image/')) {
-        const dims = await imageDimensions(file);
-        const fd = new FormData();
-        fd.append('file', file); fd.append('collection', collection); fd.append('title', title); fd.append('description', description);
-        if (dims.width) { fd.append('width', dims.width); fd.append('height', dims.height); fd.append('aspect_ratio', dims.aspect_ratio); }
-        status.textContent = 'Uploading image...';
-        const res = await api('/api/admin/upload-image', { method: 'POST', body: fd });
-        progress.value = 100;
-        if (!res.ok) { status.textContent = `Image upload failed (${res.status})`; return; }
-        const item = await res.json();
-        status.innerHTML = `Image uploaded. <button class="edit">Save metadata update</button> <button class="hide">Hide</button> <button class="delete">Delete</button>`;
-        status.querySelector('.edit').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, title: card.querySelector('.title').value, description: card.querySelector('.description').value }) });
-        };
-        status.querySelector('.hide').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, is_public: 0 }) });
-        };
-        status.querySelector('.delete').onclick = async () => {
-          await api(`/api/admin/item?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' });
-          status.textContent = 'Deleted.';
-        };
-        return;
-      }
-
-      status.textContent = 'Initializing multipart upload...';
-      const initRes = await api('/api/admin/multipart/init', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description }) });
-      if (!initRes.ok) { status.textContent = 'Failed to initialize upload.'; return; }
-      const init = await initRes.json();
-      const savedKey = `multipart:${init.key}`;
-      const chunkSize = init.partSize;
-      const totalParts = Math.ceil(file.size / chunkSize);
-
-      let uploaded = {};
       try {
-        const st = await api(`/api/admin/multipart/status?key=${encodeURIComponent(init.key)}`);
-        if (st.ok) {
-          const payload = await st.json();
-          (payload.etags || []).forEach((p) => { uploaded[p.partNumber] = p.etag; });
+        if (file.type.startsWith('image/')) {
+          const image = await uploadImageDirect(file, collection, status, progress);
+          const item = await readJsonOrError(await api('/api/admin/image/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              collection,
+              r2Base: image.r2Base,
+              key: image.key,
+              title,
+              description,
+              width: image.width || null,
+              height: image.height || null,
+              aspect_ratio: image.aspect_ratio || null,
+            }),
+          }));
+          progress.value = 100;
+          attachItemActions(status, card, item);
+          return;
         }
-      } catch {}
 
-      const saved = JSON.parse(localStorage.getItem(savedKey) || '{}');
-      uploaded = { ...saved, ...uploaded };
-      let uploadedBytes = Object.keys(uploaded).length * chunkSize;
+        const multi = await uploadVideoMultipart(file, card, collection, status, progress);
+        status.textContent = 'Uploading optional poster and completing video...';
+        const poster_r2_key = await uploadPosterIfAny(card, collection);
 
-      async function uploadPart(partNumber) {
-        if (uploaded[partNumber]) return;
-        const signRes = await api('/api/admin/multipart/sign-part', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: init.key, uploadId: init.uploadId, partNumber }) });
-        const signed = await signRes.json();
-        const start = (partNumber - 1) * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
-        const blob = file.slice(start, end);
-        const putRes = await fetch(signed.url, { method: 'PUT', body: blob });
-        if (!putRes.ok) throw new Error(`Part ${partNumber} failed`);
-        const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
-        uploaded[partNumber] = etag;
-        localStorage.setItem(savedKey, JSON.stringify(uploaded));
-        uploadedBytes += blob.size;
-        progress.value = Math.min(99, Math.round((uploadedBytes / file.size) * 100));
-      }
+        const complete = await readJsonOrError(await api('/api/admin/multipart/complete', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            collection,
+            r2Base: multi.init.r2Base,
+            key: multi.init.key,
+            uploadId: multi.init.uploadId,
+            parts: Object.entries(multi.uploaded).map(([partNumber, etag]) => ({ partNumber: Number(partNumber), etag })),
+            title,
+            description,
+            width: multi.dims.width || null,
+            height: multi.dims.height || null,
+            aspect_ratio: multi.dims.aspect_ratio || null,
+            poster_r2_key,
+          }),
+        }));
 
-      const concurrency = 3;
-      const parts = Array.from({ length: totalParts }, (_, i) => i + 1);
-      while (parts.length) {
-        const batch = parts.splice(0, concurrency);
-        await Promise.all(batch.map(uploadPart));
-        status.textContent = `Uploaded ${Object.keys(uploaded).length}/${totalParts} parts...`;
-      }
-
-      let posterKey = null;
-      const posterFile = card.querySelector('.poster')?.files?.[0];
-      if (posterFile) {
-        const posterFd = new FormData();
-        posterFd.append('file', posterFile);
-        posterFd.append('collection', collection);
-        const posterResp = await api('/api/admin/upload-poster', { method: 'POST', body: posterFd });
-        if (posterResp.ok) posterKey = (await posterResp.json()).key;
-      }
-
-      const completePayload = {
-        key: init.key,
-        uploadId: init.uploadId,
-        parts: Object.entries(uploaded).map(([partNumber, etag]) => ({ partNumber: Number(partNumber), etag })),
-        title,
-        description,
-        posterKey,
-      };
-
-      status.textContent = 'Finalizing upload...';
-      const completeRes = await api('/api/admin/multipart/complete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(completePayload) });
-      if (completeRes.ok) {
-        localStorage.removeItem(savedKey);
+        localStorage.removeItem(multi.storageKey);
         progress.value = 100;
-        const item = await completeRes.json();
-        status.innerHTML = `Upload complete. <button class="edit">Save metadata update</button> <button class="hide">Hide</button> <button class="delete">Delete</button>`;
-        status.querySelector('.edit').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, title: card.querySelector('.title').value, description: card.querySelector('.description').value }) });
-        };
-        status.querySelector('.hide').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, is_public: 0 }) });
-        };
-        status.querySelector('.delete').onclick = async () => {
-          await api(`/api/admin/item?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' });
-          status.textContent = 'Deleted.';
-        };
-      } else {
-        status.textContent = 'Complete call failed.';
+        attachItemActions(status, card, complete);
+      } catch (error) {
+        status.textContent = `Upload failed: ${error.message}`;
       }
     }
   </script>
