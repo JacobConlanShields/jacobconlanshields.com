@@ -24,6 +24,7 @@
       <input id="files" type="file" multiple accept="image/*,video/*" />
       <button id="upload-all" type="button">Upload all files</button>
     </div>
+    <div class="small-note" id="env-banner" hidden></div>
     <div class="small-note" id="batch-status">No files selected yet.</div>
     <div class="small-note" id="cors-help" hidden>
       <strong>Fix CORS:</strong> If upload PUT requests to R2 fail with “TypeError: Failed to fetch”, your R2 bucket CORS is likely missing.
@@ -34,11 +35,13 @@
     <div class="admin-grid" id="queue"></div>
   </main>
 
+  <script src="/assets/vendor/heic2any.js"></script>
   <script>
     const queue = document.getElementById('queue');
     const filesInput = document.getElementById('files');
     const collectionInput = document.getElementById('collection');
     const batchStatus = document.getElementById('batch-status');
+    const envBanner = document.getElementById('env-banner');
     const uploadAllBtn = document.getElementById('upload-all');
     const corsHelp = document.getElementById('cors-help');
 
@@ -50,8 +53,6 @@
     };
 
     const selectedItems = [];
-    let heicConverterPromise = null;
-
     function api(path, opts = {}) {
       return fetch(path, { ...opts, credentials: 'same-origin' });
     }
@@ -98,16 +99,11 @@
       return fileName.replace(/\.(heic|heif)$/i, '') + '.jpg';
     }
 
-    async function loadHeicConverter() {
-      if (!heicConverterPromise) {
-        heicConverterPromise = import('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm');
-      }
-      return heicConverterPromise;
-    }
-
     async function convertHeicToJpeg(file) {
-      const mod = await loadHeicConverter();
-      const heic2any = mod.default || mod;
+      const heic2any = window.heic2any;
+      if (typeof heic2any !== 'function') {
+        throw new Error('HEIC converter is unavailable in this build. Export as JPG and retry.');
+      }
       const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
       const blob = Array.isArray(converted) ? converted[0] : converted;
       if (!(blob instanceof Blob)) throw new Error('HEIC conversion did not return a Blob');
@@ -128,7 +124,7 @@
         ? `<div class="small-note" style="color:#ff9f9f;">HEIC conversion failed. Export this file as JPG and retry. (${item.conversionError})</div>`
         : '';
       const imagePreview = item.previewUrl
-        ? `<img class="upload-preview" src="${item.previewUrl}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
+        ? `<img class="upload-preview" src="${item.previewUrl}" alt="Preview of ${file.name}" style="display:block; max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
         : '';
       wrap.innerHTML = `
         <h3>${file.name}</h3>
@@ -232,12 +228,50 @@
       return collectionInput.value;
     }
 
+    function showEnvBanner(text) {
+      envBanner.hidden = false;
+      envBanner.innerHTML = `<strong>Uploads unavailable:</strong> ${text}`;
+      envBanner.style.color = '#ff9f9f';
+      envBanner.style.marginBottom = '8px';
+    }
+
+    async function checkUploadHealth() {
+      try {
+        const res = await api('/api/admin/health');
+        const payload = await res.json();
+        if (!res.ok) {
+          showEnvBanner(`Health check failed (HTTP ${res.status}).`);
+          return;
+        }
+        if (!payload.ok) {
+          showEnvBanner('Uploads are not configured in this environment (preview). Use production or add bindings/secrets for preview. Missing: ' + (payload.missing || []).join(', '));
+        }
+      } catch (err) {
+        showEnvBanner(`Could not verify upload config: ${err.message || String(err)}`);
+      }
+    }
+
+    async function readErrorDetail(response) {
+      try {
+        const text = await response.text();
+        if (!text) return '';
+        try {
+          const parsed = JSON.parse(text);
+          return JSON.stringify(parsed);
+        } catch {
+          return text;
+        }
+      } catch {
+        return '';
+      }
+    }
+
     function hostOf(url) {
       try { return new URL(url, location.origin).host; } catch { return 'unknown-host'; }
     }
 
     function formatLikelyCause(failure) {
-      if (failure.step === 'put' && failure.status == null) return 'Likely R2 CORS misconfiguration. See CORS snippet above.';
+      if (failure.step === 'put' && failure.status == null) return 'Likely R2 CORS misconfiguration (origin missing), or Content-Type mismatch vs signature.';
       if (failure.status === 401 || failure.status === 403) return 'Likely auth/signature issue.';
       if (failure.status && failure.status >= 500) return 'Likely server or upstream issue.';
       return 'Likely network request or request-shape issue.';
@@ -293,7 +327,10 @@
           } catch (err) {
             throw makeUploadError({ step: 'init', url: '/api/admin/image/init', detail: err.message || String(err) });
           }
-          if (!initRes.ok) throw makeUploadError({ step: 'init', url: '/api/admin/image/init', status: initRes.status });
+          if (!initRes.ok) {
+            const detail = await readErrorDetail(initRes);
+            throw makeUploadError({ step: 'init', url: '/api/admin/image/init', status: initRes.status, detail });
+          }
 
           const init = await initRes.json();
           if (init.r2Host && init.r2Host.includes('.r2.dev')) {
@@ -313,7 +350,10 @@
           } catch (err) {
             throw makeUploadError({ step: 'put', url: init.putUrl, detail: err.message || String(err) });
           }
-          if (!putRes.ok) throw makeUploadError({ step: 'put', url: init.putUrl, status: putRes.status });
+          if (!putRes.ok) {
+            const detail = await readErrorDetail(putRes);
+            throw makeUploadError({ step: 'put', url: init.putUrl, status: putRes.status, detail });
+          }
 
           status.textContent = 'Finalizing image metadata in D1...';
           progress.value = 85;
@@ -329,7 +369,10 @@
             throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', detail: err.message || String(err) });
           }
 
-          if (!completeRes.ok) throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', status: completeRes.status });
+          if (!completeRes.ok) {
+            const detail = await readErrorDetail(completeRes);
+            throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', status: completeRes.status, detail });
+          }
           const complete = await completeRes.json();
 
           progress.value = 100;
@@ -349,7 +392,10 @@
         } catch (err) {
           throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', detail: err.message || String(err) });
         }
-        if (!initRes.ok) throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', status: initRes.status });
+        if (!initRes.ok) {
+          const detail = await readErrorDetail(initRes);
+          throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', status: initRes.status, detail });
+        }
 
         const init = await initRes.json();
         const savedKey = `multipart:${init.key}`;
@@ -376,7 +422,10 @@
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ key: init.key, uploadId: init.uploadId, partNumber })
           });
-          if (!signRes.ok) throw makeUploadError({ step: 'sign-part', url: '/api/admin/multipart/sign-part', status: signRes.status });
+          if (!signRes.ok) {
+            const detail = await readErrorDetail(signRes);
+            throw makeUploadError({ step: 'sign-part', url: '/api/admin/multipart/sign-part', status: signRes.status, detail });
+          }
           const signed = await signRes.json();
 
           const start = (partNumber - 1) * chunkSize;
@@ -389,7 +438,10 @@
             throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, detail: err.message || String(err) });
           }
 
-          if (!putRes.ok) throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, status: putRes.status });
+          if (!putRes.ok) {
+            const detail = await readErrorDetail(putRes);
+            throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, status: putRes.status, detail });
+          }
 
           const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
           if (!etag) {
@@ -434,7 +486,10 @@
           })
         });
 
-        if (!completeRes.ok) throw makeUploadError({ step: 'complete', url: '/api/admin/multipart/complete', status: completeRes.status });
+        if (!completeRes.ok) {
+          const detail = await readErrorDetail(completeRes);
+          throw makeUploadError({ step: 'complete', url: '/api/admin/multipart/complete', status: completeRes.status, detail });
+        }
 
         const result = await completeRes.json();
         localStorage.removeItem(savedKey);
@@ -448,6 +503,7 @@
       }
     }
 
+    checkUploadHealth();
     updateBatchSummary();
     window.addEventListener('beforeunload', clearPreviewUrls);
   </script>

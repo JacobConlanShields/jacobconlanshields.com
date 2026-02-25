@@ -171,3 +171,22 @@ export function xmlValue(xml, tag) {
   const match = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
   return match ? match[1] : null;
 }
+
+export function requiredUploadConfig(env = {}) {
+  const missing = [];
+  if (!env.DB?.prepare) missing.push("DB");
+  if (!env.SPINCLINE_BUCKET?.name) missing.push("SPINCLINE_BUCKET");
+  if (!env.PHOTO_BUCKET?.name) missing.push("PHOTO_BUCKET");
+  if (!env.R2_ACCOUNT_ID) missing.push("R2_ACCOUNT_ID");
+  if (!env.R2_ACCESS_KEY_ID) missing.push("R2_ACCESS_KEY_ID");
+  if (!env.R2_SECRET_ACCESS_KEY) missing.push("R2_SECRET_ACCESS_KEY");
+  return missing;
+}
+
+export function missingConfigResponse(missing) {
+  return withCors(json({
+    error: "missing_config",
+    missing,
+    hint: "Set secrets/bindings for this environment in Cloudflare Pages.",
+  }, { status: 503 }));
+}

@@ -123,6 +123,12 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Admin uploads support both standard image upload and resumable multipart video uploads.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
 
+## 2026 preview + upload reliability updates
+- `/admin/upload` uses a locally bundled HEIC converter (`/assets/vendor/heic2any.js`) instead of dynamic CDN import so HEIC conversion keeps working during locked-down preview environments.
+- `/api/admin/health` reports whether required upload config is present (`DB`, bucket bindings, R2 signing secrets) so preview deployments can show a clear “not configured” banner instead of opaque 500s.
+- `/api/admin/image/init` now returns structured `missing_config` errors (`503`) when env bindings are missing and logs server-side errors with the `[admin-image-init]` prefix for faster Pages log debugging.
+- R2 bucket CORS should allow both `https://jacobconlanshields.com` and preview `https://*.pages.dev` origins (or explicit preview hostnames), with `ExposeHeaders: ETag`.
+
 ## 2026 upload reliability notes
 - `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload.
 - Image uploads use presigned R2 PUT URLs (`/api/admin/image/init` + `/api/admin/image/complete`) so large image uploads avoid function body limits.
