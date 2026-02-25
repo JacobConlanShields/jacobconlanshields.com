@@ -106,3 +106,13 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Do all navigation links work?
 - If the podcast page was touched, do video cards still load and open the modal?
 - If the contact form was touched, does it still open a mail client?
+
+## 2026 update: media platform additions
+- New media pages are now live under:
+  - `/pages/spincline/`
+  - `/pages/photography/`
+  - `/pages/admin/upload/` (hidden admin UI)
+- Cloudflare Pages Functions now include media APIs under `/functions/api/**`.
+- Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
+- Admin uploads support both standard image upload and resumable multipart video uploads.
+- `/admin/*` should be protected with Cloudflare Access, and API calls must include `X-Admin-Token`.
