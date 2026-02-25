@@ -119,3 +119,11 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
 - Admin uploads support both standard image upload and resumable multipart video uploads.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
+
+## 2026 upload reliability notes
+- Image uploads now follow a presigned direct-upload flow:
+  - `POST /api/admin/image/init` returns `putUrl` on `*.r2.cloudflarestorage.com` and `contentTypeExpected`.
+  - Browser uploads bytes directly to R2 using PUT.
+  - `POST /api/admin/image/complete` writes the D1 media record.
+- `/admin/upload` now converts HEIC/HEIF files to JPEG in-browser before preview/upload, and blocks upload if conversion fails.
+- If admin upload shows `Failed to fetch` during R2 PUT, check bucket CORS first. Both buckets must expose `ETag` and allow `https://jacobconlanshields.com` for `GET,HEAD,PUT,POST,DELETE`.
