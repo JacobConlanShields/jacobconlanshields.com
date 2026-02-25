@@ -47,6 +47,20 @@
       return fetch(path, { ...opts, credentials: 'same-origin' });
     }
 
+    function isPhotographyCollection() {
+      return collectionInput.value === 'photography';
+    }
+
+    function syncMetadataFields() {
+      const photographyMode = isPhotographyCollection();
+      queue.querySelectorAll('.upload-file').forEach((card) => {
+        const descWrap = card.querySelector('.description-wrap');
+        const locationWrap = card.querySelector('.location-wrap');
+        if (descWrap) descWrap.hidden = photographyMode;
+        if (locationWrap) locationWrap.hidden = !photographyMode;
+      });
+    }
+
     function friendlySize(bytes) {
       if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
       if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -56,12 +70,17 @@
     function fileCard(file) {
       const wrap = document.createElement('section');
       wrap.className = 'upload-file';
+      const imagePreview = file.type.startsWith('image/')
+        ? `<img class="upload-preview" src="${URL.createObjectURL(file)}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
+        : '';
       wrap.innerHTML = `
         <h3>${file.name}</h3>
         <div class="small-note">${file.type || 'unknown type'} · ${friendlySize(file.size)}</div>
+        ${imagePreview}
         <div class="upload-meta">
           <label>Title <input type="text" class="title" placeholder="Optional"></label>
-          <label>Description <textarea class="description" rows="3" placeholder="Optional"></textarea></label>
+          <label class="description-wrap">Description <textarea class="description" rows="3" placeholder="Optional"></textarea></label>
+          <label class="location-wrap" hidden>Location <input type="text" class="location" placeholder="Optional"></label>
           ${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}
           <progress max="100" value="0"></progress>
           <div class="small-note status">Ready.</div>
@@ -81,8 +100,11 @@
     filesInput.addEventListener('change', () => {
       queue.innerHTML = '';
       [...filesInput.files].forEach((f) => queue.appendChild(fileCard(f)));
+      syncMetadataFields();
       updateBatchSummary();
     });
+
+    collectionInput.addEventListener('change', syncMetadataFields);
 
     uploadAllBtn.addEventListener('click', async () => {
       const cards = [...queue.querySelectorAll('.upload-file')];
@@ -108,16 +130,22 @@
       });
     }
 
-    function showResult(card, collection, item) {
+    function showResult(card, collection, item, location) {
       const result = card.querySelector('.result');
       const publicLink = PUBLIC_LINKS[collection] || '/';
-      result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>Description: ${item.description || '(none)'}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a>`;
+      const secondaryLine = collection === 'photography'
+        ? `Location: ${location || '(none)'}`
+        : `Description: ${item.description || '(none)'}`;
+      result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a>`;
     }
 
     async function uploadFile(file, card) {
       const collection = collectionInput.value;
       const title = card.querySelector('.title').value;
-      const description = card.querySelector('.description').value;
+      const location = card.querySelector('.location')?.value || '';
+      const description = collection === 'photography'
+        ? location
+        : (card.querySelector('.description')?.value || '');
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
       const startBtn = card.querySelector('.start');
@@ -145,7 +173,7 @@
           if (!res.ok) throw new Error(`Image upload failed (${res.status})`);
           const item = await res.json();
           status.textContent = 'Image upload complete.';
-          showResult(card, collection, item);
+          showResult(card, collection, item, location);
           return;
         }
 
@@ -238,7 +266,7 @@
         localStorage.removeItem(savedKey);
         progress.value = 100;
         status.textContent = 'Video upload complete.';
-        showResult(card, collection, item);
+        showResult(card, collection, item, location);
       } catch (err) {
         status.textContent = `Upload failed: ${err.message}`;
       } finally {
