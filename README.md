@@ -144,6 +144,12 @@ If you want to test the Cloudflare Pages Function locally:
 - `/admin/hidden-pages/`: private index of routes not linked in the public top navigation.
 - These routes are intended to be protected by Cloudflare Access (Google login) in production.
 
+### Hidden-pages registry policy
+- `src/admin/hidden-pages.js` is the source used by `/admin/hidden-pages/`.
+- Every route that is intentionally not linked from the public top navigation must appear in that file.
+- If a route is promoted into public navigation, remove it from hidden-pages by rerunning `node scripts/generate-hidden-pages.mjs` and reviewing the generated output before shipping.
+- Current canonical hidden routes include `/spincline/` and `/photography/`, in addition to legacy `/pages/...` media routes and other intentionally unlinked pages.
+
 This repo now includes a durable media system using Cloudflare Pages Functions + D1 + R2.
 
 ### New pages
