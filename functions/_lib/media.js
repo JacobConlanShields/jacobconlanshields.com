@@ -1,6 +1,9 @@
 const SPINCLINE_MEDIA_BASE = "https://pub-a0784713bd834a079424dc14cf218eea.r2.dev";
 const PHOTO_MEDIA_BASE = "https://pub-980fbe5c774b4339805365b9656ec9fe.r2.dev";
 
+const SPINCLINE_BUCKET_NAME = "spincline";
+const PHOTO_BUCKET_NAME = "jcs-photography";
+
 export const COLLECTION_CONFIG = {
   spincline_design_build: { r2Base: "SPINCLINE", prefix: "design-and-build/", mediaType: "image" },
   spincline_finished_products: { r2Base: "SPINCLINE", prefix: "finished-products/", mediaType: "image" },
@@ -24,6 +27,16 @@ export function getCollectionConfig(collection) {
   return COLLECTION_CONFIG[collection] || null;
 }
 
+export function getBucketName(env, r2Base) {
+  if (r2Base === "SPINCLINE") return env.SPINCLINE_BUCKET_NAME || SPINCLINE_BUCKET_NAME;
+  if (r2Base === "PHOTO") return env.PHOTO_BUCKET_NAME || PHOTO_BUCKET_NAME;
+  return null;
+}
+
+export function getBucketBinding(env, r2Base) {
+  return r2Base === "SPINCLINE" ? env.SPINCLINE_BUCKET : env.PHOTO_BUCKET;
+}
+
 export function publicBaseFor(r2Base) {
   return r2Base === "SPINCLINE" ? SPINCLINE_MEDIA_BASE : PHOTO_MEDIA_BASE;
 }
@@ -40,9 +53,20 @@ export function uuid() {
   return crypto.randomUUID();
 }
 
+export function hasS3SigningEnv(env) {
+  return Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY);
+}
+
+export function validateS3Env(env) {
+  if (!hasS3SigningEnv(env)) {
+    throw new Error("Missing R2 S3 credentials (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)");
+  }
+}
+
 export async function requireAdmin(request, env) {
+  if (!env.ADMIN_TOKEN) return;
   const token = request.headers.get("x-admin-token");
-  if (!token || !env.ADMIN_TOKEN || token !== env.ADMIN_TOKEN) {
+  if (!token || token !== env.ADMIN_TOKEN) {
     throw new Error("Unauthorized");
   }
 }
@@ -96,6 +120,8 @@ export async function signR2Request({
   env,
   expires,
 }) {
+  validateS3Env(env);
+
   const service = "s3";
   const region = "auto";
   const host = `${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
@@ -105,9 +131,7 @@ export async function signR2Request({
   const canonicalUri = `/${bucket}${key ? `/${encodeKeyPath(key)}` : ""}`;
 
   const baseHeaders = typeof expires === "number" ? { host, ...headers } : { host, "x-amz-date": amzDate, ...headers };
-  const normalizedHeaders = Object.fromEntries(
-    Object.entries(baseHeaders).map(([k, v]) => [k.toLowerCase(), String(v).trim()]),
-  );
+  const normalizedHeaders = Object.fromEntries(Object.entries(baseHeaders).map(([k, v]) => [k.toLowerCase(), String(v).trim()]));
 
   const signedHeaderKeys = Object.keys(normalizedHeaders).sort();
   const canonicalHeaders = signedHeaderKeys.map((k) => `${k}:${normalizedHeaders[k]}\n`).join("");
@@ -170,4 +194,9 @@ export async function signR2Request({
 export function xmlValue(xml, tag) {
   const match = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
   return match ? match[1] : null;
+}
+
+export function extension(filename = "", fallback = "bin") {
+  const idx = filename.lastIndexOf(".");
+  return idx > -1 ? filename.slice(idx + 1).toLowerCase() : fallback;
 }

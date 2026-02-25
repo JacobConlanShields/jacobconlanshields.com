@@ -1,9 +1,4 @@
-import { badRequest, getCollectionConfig, handleOptions, json, nowIso, requireAdmin, signR2Request, uuid, xmlValue, withCors } from "../../../_lib/media.js";
-
-function extension(filename = "") {
-  const idx = filename.lastIndexOf(".");
-  return idx > -1 ? filename.slice(idx + 1) : "mp4";
-}
+import { badRequest, extension, getBucketName, getCollectionConfig, handleOptions, json, nowIso, requireAdmin, signR2Request, uuid, xmlValue, withCors } from "../../../_lib/media.js";
 
 const EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -14,16 +9,16 @@ export async function onRequest({ request, env }) {
   try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
   const { collection, filename, contentType } = await request.json();
-  const config = getCollectionConfig(collection);
-  if (!config) return withCors(badRequest("Invalid collection"));
+  const cfg = getCollectionConfig(collection);
+  if (!cfg) return withCors(badRequest("Invalid collection"));
 
-  const key = `${config.prefix}${uuid()}.${extension(filename || "video.mp4")}`;
-  const bucketName = config.r2Base === "SPINCLINE" ? env.SPINCLINE_BUCKET.name : env.PHOTO_BUCKET.name;
+  const key = `${cfg.prefix}${uuid()}.${extension(filename || "video.mp4", "mp4")}`;
+  const bucket = getBucketName(env, cfg.r2Base);
   const createdAt = nowIso();
 
   const req = await signR2Request({
     method: "POST",
-    bucket: bucketName,
+    bucket,
     key,
     query: "uploads=",
     headers: { "content-type": contentType || "video/mp4" },
@@ -49,7 +44,7 @@ export async function onRequest({ request, env }) {
   const partSize = 33554432;
   await env.DB.prepare(`INSERT INTO multipart_uploads (key, upload_id, collection, r2_base, media_type, original_filename, content_type, part_size, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, 'video', ?, ?, ?, 'initiated', ?, ?)`)
-    .bind(key, uploadId, collection, config.r2Base, filename || null, contentType || null, partSize, createdAt, createdAt).run();
+    .bind(key, uploadId, collection, cfg.r2Base, filename || null, contentType || null, partSize, createdAt, createdAt).run();
 
-  return withCors(json({ r2Base: config.r2Base, key, uploadId, partSize }));
+  return withCors(json({ r2Base: cfg.r2Base, key, uploadId, partSize }));
 }

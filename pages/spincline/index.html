@@ -51,7 +51,8 @@
       status.textContent = "Loading...";
       try {
         const resp = await fetch(`/api/media?collection=${collection}`);
-        const items = await resp.json();
+        const payload = await resp.json();
+        const items = payload.items || [];
         row.innerHTML = items.map(card).join("");
         status.textContent = items.length ? "" : "No media yet.";
       } catch (err) {

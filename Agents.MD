@@ -114,5 +114,5 @@ There are **no automated tests** at the moment. Manual validation is expected.
   - `/pages/admin/upload/` (hidden admin UI)
 - Cloudflare Pages Functions now include media APIs under `/functions/api/**`.
 - Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
-- Admin uploads support both standard image upload and resumable multipart video uploads.
-- `/admin/*` should be protected with Cloudflare Access, and API calls must include `X-Admin-Token`.
+- Admin uploads support direct-to-R2 image PUT and resumable multipart video uploads via presigned S3 URLs.
+- `/admin/*` and `/api/admin/*` should be protected with Cloudflare Access. `X-Admin-Token` is optional and only enforced when `ADMIN_TOKEN` is configured.

@@ -145,7 +145,7 @@ This repo now includes a durable media system using Cloudflare Pages Functions +
 - `/pages/admin/upload/`: admin upload console for images and resumable multipart video uploads.
 
 ### Data model (D1)
-Schema file: `db/schema.sql`.
+Schema files: `db/schema.sql` (latest snapshot) and `db/migrations/0001_media.sql` (migration).
 
 - `media_items`: source of truth for title/description/order/aspect ratio/public visibility.
 - `multipart_uploads`: tracks resumable multipart uploads (`initiated`, `completed`, `aborted`).
@@ -158,16 +158,17 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 ### API routes (Pages Functions)
 - Public:
   - `GET /api/media?collection=<collection>`
-- Admin (requires `X-Admin-Token`):
-  - `POST /api/admin/upload-image`
-  - `POST /api/admin/upload-poster`
+- Admin (`/api/admin/*` should be behind Cloudflare Access; `X-Admin-Token` is optional defense-in-depth when `ADMIN_TOKEN` is configured):
+  - `POST /api/admin/image/init`
+  - `POST /api/admin/image/complete`
   - `POST /api/admin/multipart/init`
   - `POST /api/admin/multipart/sign-part`
-  - `GET /api/admin/multipart/status?key=<key>`
+  - `GET /api/admin/multipart/status?key=<key>&uploadId=<uploadId>&r2Base=<r2Base>`
   - `POST /api/admin/multipart/complete`
   - `POST /api/admin/multipart/abort`
   - `PATCH /api/admin/item`
   - `DELETE /api/admin/item?id=<id>`
+  - `POST /api/admin/import`
 
 ### Collection to bucket/prefix mapping
 - `spincline_design_build` → `SPINCLINE_BUCKET` + `design-and-build/`
@@ -179,29 +180,32 @@ Public base URLs used for playback/rendering:
 - `SPINCLINE_MEDIA_BASE = https://pub-a0784713bd834a079424dc14cf218eea.r2.dev`
 - `PHOTO_MEDIA_BASE = https://pub-980fbe5c774b4339805365b9656ec9fe.r2.dev`
 
+Poster uploads for videos use the same bucket and collection prefix as the video object (no separate bucket required).
+
 ### Required environment bindings/secrets
 Configure in Cloudflare Pages project settings:
 - D1 binding: `DB`
-- R2 bindings:
+- R2 bindings (for runtime reads/writes if desired):
   - `SPINCLINE_BUCKET`
   - `PHOTO_BUCKET`
-- Secrets:
-  - `ADMIN_TOKEN`
+- Environment variables/secrets:
   - `R2_ACCOUNT_ID`
   - `R2_ACCESS_KEY_ID`
   - `R2_SECRET_ACCESS_KEY`
+  - Optional: `ADMIN_TOKEN`
+  - Optional overrides: `SPINCLINE_BUCKET_NAME` (`spincline` default), `PHOTO_BUCKET_NAME` (`jcs-photography` default)
 
 ### Security hardening for `/admin/*`
 1. Protect `/pages/admin/*` route with **Cloudflare Access** policy (email/IdP allowlist).
-2. Keep API-side token verification enabled (`X-Admin-Token` == `ADMIN_TOKEN`).
+2. Optionally enable API-side token verification by setting `ADMIN_TOKEN`; when unset, Cloudflare Access is the primary enforcement layer.
 3. Never commit secrets into source code or client bundles.
 
 ### R2 CORS settings for direct multipart uploads
 Set CORS on buckets to allow browser PUTs to presigned URLs:
 - Allowed origins: your site origin(s) (prod + preview)
-- Allowed methods: `PUT, GET, HEAD`
-- Allowed headers: `*` (or at least `content-type`, `x-amz-*`)
-- Expose headers: `ETag`
+- Allowed methods: `GET, HEAD, PUT, POST, DELETE`
+- Allowed headers: `*` (or at least `content-type`, `x-amz-*`, `authorization`)
+- Expose headers: `ETag` (required so browsers can read multipart part ETags)
 - Max age: e.g. `3600`
 
 ### Media encoding guidance
