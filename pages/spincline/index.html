@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spincline — Jacob Shields</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main>
+    <p class="nav"><a href="/">← Back to home</a></p>
+    <h1>Spincline</h1>
+    <p class="lede">Design-to-build progression and in-action field footage.</p>
+
+    <section class="media-section row-block row-block--tight">
+      <div class="row-head"><h2 class="row-title">Design &amp; Build</h2><div class="row-controls"><button class="icon-btn" data-row="spincline-design" data-dir="-1">◀</button><button class="icon-btn" data-row="spincline-design" data-dir="1">▶</button></div></div>
+      <div class="status" id="status-design"></div>
+      <div class="row" id="spincline-design"></div>
+    </section>
+
+    <section class="media-section row-block row-block--tight">
+      <div class="row-head"><h2 class="row-title">Finished Products</h2><div class="row-controls"><button class="icon-btn" data-row="spincline-finished" data-dir="-1">◀</button><button class="icon-btn" data-row="spincline-finished" data-dir="1">▶</button></div></div>
+      <div class="status" id="status-finished"></div>
+      <div class="row" id="spincline-finished"></div>
+    </section>
+
+    <section class="media-section row-block row-block--tight">
+      <div class="row-head"><h2 class="row-title">In Action</h2><div class="row-controls"><button class="icon-btn" data-row="spincline-action" data-dir="-1">◀</button><button class="icon-btn" data-row="spincline-action" data-dir="1">▶</button></div></div>
+      <div class="status" id="status-action"></div>
+      <div class="row" id="spincline-action"></div>
+    </section>
+  </main>
+
+  <script>
+    const endpoints = [
+      ["spincline_design_build", "spincline-design", "status-design"],
+      ["spincline_finished_products", "spincline-finished", "status-finished"],
+      ["spincline_in_action", "spincline-action", "status-action"],
+    ];
+
+    function card(item) {
+      const media = item.media_type === "video"
+        ? `<video controls playsinline preload="metadata" ${item.posterUrl ? `poster="${item.posterUrl}"` : ""}><source src="${item.url}" /></video>`
+        : `<img src="${item.url}" alt="${item.title || "Spincline media"}" loading="lazy" />`;
+      return `<article class="media-card card"><div class="media-card-media">${media}</div><div class="media-card-body"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || ""}</p></div></article>`;
+    }
+
+    async function loadCollection(collection, rowId, statusId) {
+      const row = document.getElementById(rowId);
+      const status = document.getElementById(statusId);
+      status.textContent = "Loading...";
+      try {
+        const resp = await fetch(`/api/media?collection=${collection}`);
+        const items = await resp.json();
+        row.innerHTML = items.map(card).join("");
+        status.textContent = items.length ? "" : "No media yet.";
+      } catch (err) {
+        status.textContent = "Unable to load right now.";
+      }
+    }
+
+    document.querySelectorAll(".icon-btn[data-row]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const row = document.getElementById(btn.dataset.row);
+        row?.scrollBy({ left: Number(btn.dataset.dir) * 320, behavior: "smooth" });
+      });
+    });
+
+    endpoints.forEach(([collection, rowId, statusId]) => loadCollection(collection, rowId, statusId));
+  </script>
+</body>
+</html>
