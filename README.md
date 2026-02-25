@@ -158,7 +158,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 ### API routes (Pages Functions)
 - Public:
   - `GET /api/media?collection=<collection>`
-- Admin (requires `X-Admin-Token`):
+- Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
   - `POST /api/admin/upload-image`
   - `POST /api/admin/upload-poster`
   - `POST /api/admin/multipart/init`
@@ -186,15 +186,22 @@ Configure in Cloudflare Pages project settings:
   - `SPINCLINE_BUCKET`
   - `PHOTO_BUCKET`
 - Secrets:
-  - `ADMIN_TOKEN`
   - `R2_ACCOUNT_ID`
   - `R2_ACCESS_KEY_ID`
   - `R2_SECRET_ACCESS_KEY`
 
 ### Security hardening for `/admin/*`
-1. Protect `/pages/admin/*` route with **Cloudflare Access** policy (email/IdP allowlist).
-2. Keep API-side token verification enabled (`X-Admin-Token` == `ADMIN_TOKEN`).
+1. Protect both `/admin/*` and `/api/admin/*` with **Cloudflare Access** policy (Google account allowlist).
+2. Admin API relies on that edge protection (no client-side admin token header is required).
 3. Never commit secrets into source code or client bundles.
+
+### Upload media tonight (quick checklist)
+1. Log in through Cloudflare Access and open `/admin/upload`.
+2. Choose the destination collection and select one or more files (images or videos).
+3. Click **Upload** on each file or **Upload all** for a batch.
+4. For videos, multipart upload runs directly from browser → R2 using presigned URLs and supports large files (>100MB).
+5. Confirm each card shows **Created item** and open the provided public-page link to verify visibility.
+6. If media does not appear immediately in an already-open tab, reload `/spincline` or `/photography` to fetch fresh `/api/media` data.
 
 ### R2 CORS settings for direct multipart uploads
 Set CORS on buckets to allow browser PUTs to presigned URLs:

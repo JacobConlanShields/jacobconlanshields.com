@@ -10,9 +10,9 @@
   <main>
     <p class="nav"><a href="/">← Back to home</a></p>
     <h1>Admin Upload</h1>
-    <p class="small-note">Protect this route using Cloudflare Access in production. This page also requires <code>X-Admin-Token</code> for API calls.</p>
+    <p class="small-note">This route and <code>/api/admin/*</code> are protected by Cloudflare Access. Uploads run directly to R2 for speed and large-file stability.</p>
+
     <div class="upload-meta">
-      <label>Admin token <input id="admin-token" type="password" autocomplete="off" /></label>
       <label>Destination
         <select id="collection">
           <option value="spincline_design_build">Spincline: Design &amp; Build</option>
@@ -22,7 +22,10 @@
         </select>
       </label>
       <input id="files" type="file" multiple accept="image/*,video/*" />
+      <div class="small-note" id="file-count">No files selected.</div>
+      <button type="button" id="upload-all" disabled>Upload all</button>
     </div>
+
     <div class="admin-grid" id="queue"></div>
   </main>
 
@@ -30,26 +33,111 @@
     const queue = document.getElementById('queue');
     const filesInput = document.getElementById('files');
     const collectionInput = document.getElementById('collection');
-    const tokenInput = document.getElementById('admin-token');
+    const uploadAllButton = document.getElementById('upload-all');
+    const fileCount = document.getElementById('file-count');
+
+    const PUBLIC_LINKS = {
+      spincline_design_build: '/spincline#design-build',
+      spincline_finished_products: '/spincline#finished-products',
+      spincline_in_action: '/spincline#in-action',
+      photography: '/photography',
+    };
 
     function api(path, opts = {}) {
       return fetch(path, {
+        credentials: 'same-origin',
         ...opts,
-        headers: { ...(opts.headers || {}), 'X-Admin-Token': tokenInput.value.trim() }
+        headers: { ...(opts.headers || {}) },
       });
+    }
+
+    function getPublicLink(collection) {
+      return PUBLIC_LINKS[collection] || '/';
+    }
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function formatBytes(value) {
+      if (!Number.isFinite(value)) return '';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let size = value;
+      let unit = units[0];
+      for (let i = 0; i < units.length; i += 1) {
+        unit = units[i];
+        if (size < 1024 || i === units.length - 1) break;
+        size /= 1024;
+      }
+      return `${size.toFixed(unit === 'B' ? 0 : 1)} ${unit}`;
+    }
+
+    function setStatus(card, message, kind = 'info') {
+      const status = card.querySelector('.status');
+      status.textContent = message;
+      status.className = `small-note status status-${kind}`;
+    }
+
+    function renderResult(card, item, collection) {
+      const result = card.querySelector('.result');
+      const publicLink = `${getPublicLink(collection)}${getPublicLink(collection).includes('?') ? '&' : '?'}refresh=${Date.now()}`;
+      result.innerHTML = `<strong>Created item</strong><div>Title: ${escapeHtml(item.title || '(untitled)')}</div><div>Description: ${escapeHtml(item.description || '')}</div><div>URL: <a href="${item.url}" target="_blank" rel="noopener">${item.url}</a></div><div><a href="${publicLink}" target="_blank" rel="noopener">Open public page section</a></div>`;
+      result.hidden = false;
     }
 
     function fileCard(file) {
       const wrap = document.createElement('section');
       wrap.className = 'upload-file';
-      wrap.innerHTML = `<h3>${file.name}</h3><div class="upload-meta"><label>Title <input type="text" class="title"></label><label>Description <textarea class="description" rows="3"></textarea></label>${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}<progress max="100" value="0"></progress><div class="small-note status">Ready.</div><button type="button" class="start">Upload</button></div>`;
+      wrap.dataset.filename = file.name;
+      wrap.innerHTML = `
+        <h3>${file.name}</h3>
+        <div class="small-note">${file.type || 'Unknown type'} · ${formatBytes(file.size)}</div>
+        <div class="upload-meta">
+          <label>Title <input type="text" class="title" /></label>
+          <label>Description <textarea class="description" rows="3"></textarea></label>
+          ${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*" /></label>' : ''}
+          <progress max="100" value="0"></progress>
+          <div class="small-note status">Ready.</div>
+          <div class="small-note result" hidden></div>
+          <div class="upload-actions">
+            <button type="button" class="start">Upload</button>
+            <button type="button" class="hide" disabled>Hide</button>
+            <button type="button" class="delete" disabled>Delete</button>
+          </div>
+        </div>`;
+
       wrap.querySelector('.start').addEventListener('click', () => uploadFile(file, wrap));
       return wrap;
     }
 
     filesInput.addEventListener('change', () => {
       queue.innerHTML = '';
-      [...filesInput.files].forEach((f) => queue.appendChild(fileCard(f)));
+      const selected = [...filesInput.files];
+      selected.forEach((f) => queue.appendChild(fileCard(f)));
+      fileCount.textContent = selected.length ? `${selected.length} file(s) selected.` : 'No files selected.';
+      uploadAllButton.disabled = !selected.length;
+    });
+
+    uploadAllButton.addEventListener('click', async () => {
+      const cards = [...queue.querySelectorAll('.upload-file')];
+      for (const card of cards) {
+        const button = card.querySelector('.start');
+        if (button.disabled) continue;
+        button.click();
+        await new Promise((resolve) => {
+          const poll = setInterval(() => {
+            if (!button.disabled) {
+              clearInterval(poll);
+              resolve();
+            }
+          }, 250);
+        });
+      }
     });
 
     async function imageDimensions(file) {
@@ -62,120 +150,183 @@
       });
     }
 
+    function wireItemActions(card, item) {
+      const hideButton = card.querySelector('.hide');
+      const deleteButton = card.querySelector('.delete');
+      hideButton.disabled = false;
+      deleteButton.disabled = false;
+
+      hideButton.onclick = async () => {
+        hideButton.disabled = true;
+        const resp = await api('/api/admin/item', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: item.id, is_public: 0 }),
+        });
+        setStatus(card, resp.ok ? 'Item hidden from public pages.' : `Hide failed (${resp.status}).`, resp.ok ? 'success' : 'error');
+        hideButton.disabled = !resp.ok;
+      };
+
+      deleteButton.onclick = async () => {
+        deleteButton.disabled = true;
+        const resp = await api(`/api/admin/item?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+        setStatus(card, resp.ok ? 'Item deleted.' : `Delete failed (${resp.status}).`, resp.ok ? 'success' : 'error');
+        if (resp.ok) {
+          card.querySelector('.result').hidden = true;
+          hideButton.disabled = true;
+        } else {
+          deleteButton.disabled = false;
+        }
+      };
+    }
+
     async function uploadFile(file, card) {
       const collection = collectionInput.value;
       const title = card.querySelector('.title').value;
       const description = card.querySelector('.description').value;
       const progress = card.querySelector('progress');
-      const status = card.querySelector('.status');
+      const startButton = card.querySelector('.start');
 
-      if (file.type.startsWith('image/')) {
-        const dims = await imageDimensions(file);
-        const fd = new FormData();
-        fd.append('file', file); fd.append('collection', collection); fd.append('title', title); fd.append('description', description);
-        if (dims.width) { fd.append('width', dims.width); fd.append('height', dims.height); fd.append('aspect_ratio', dims.aspect_ratio); }
-        status.textContent = 'Uploading image...';
-        const res = await api('/api/admin/upload-image', { method: 'POST', body: fd });
-        progress.value = 100;
-        if (!res.ok) { status.textContent = `Image upload failed (${res.status})`; return; }
-        const item = await res.json();
-        status.innerHTML = `Image uploaded. <button class="edit">Save metadata update</button> <button class="hide">Hide</button> <button class="delete">Delete</button>`;
-        status.querySelector('.edit').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, title: card.querySelector('.title').value, description: card.querySelector('.description').value }) });
-        };
-        status.querySelector('.hide').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, is_public: 0 }) });
-        };
-        status.querySelector('.delete').onclick = async () => {
-          await api(`/api/admin/item?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' });
-          status.textContent = 'Deleted.';
-        };
-        return;
-      }
+      startButton.disabled = true;
+      card.querySelector('.result').hidden = true;
 
-      status.textContent = 'Initializing multipart upload...';
-      const initRes = await api('/api/admin/multipart/init', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description }) });
-      if (!initRes.ok) { status.textContent = 'Failed to initialize upload.'; return; }
-      const init = await initRes.json();
-      const savedKey = `multipart:${init.key}`;
-      const chunkSize = init.partSize;
-      const totalParts = Math.ceil(file.size / chunkSize);
-
-      let uploaded = {};
       try {
-        const st = await api(`/api/admin/multipart/status?key=${encodeURIComponent(init.key)}`);
-        if (st.ok) {
-          const payload = await st.json();
-          (payload.etags || []).forEach((p) => { uploaded[p.partNumber] = p.etag; });
+        if (file.type.startsWith('image/')) {
+          const dims = await imageDimensions(file);
+          const fd = new FormData();
+          fd.append('file', file);
+          fd.append('collection', collection);
+          fd.append('title', title);
+          fd.append('description', description);
+          if (dims.width) {
+            fd.append('width', String(dims.width));
+            fd.append('height', String(dims.height));
+            fd.append('aspect_ratio', String(dims.aspect_ratio));
+          }
+
+          setStatus(card, 'Uploading image...');
+          const res = await api('/api/admin/upload-image', { method: 'POST', body: fd });
+          progress.value = 100;
+          if (!res.ok) {
+            setStatus(card, `Image upload failed (${res.status}).`, 'error');
+            return;
+          }
+
+          const item = await res.json();
+          setStatus(card, 'Image uploaded successfully.', 'success');
+          renderResult(card, item, collection);
+          wireItemActions(card, item);
+          return;
         }
-      } catch {}
 
-      const saved = JSON.parse(localStorage.getItem(savedKey) || '{}');
-      uploaded = { ...saved, ...uploaded };
-      let uploadedBytes = Object.keys(uploaded).length * chunkSize;
+        setStatus(card, 'Initializing multipart upload...');
+        const initRes = await api('/api/admin/multipart/init', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description }),
+        });
+        if (!initRes.ok) {
+          setStatus(card, `Failed to initialize upload (${initRes.status}).`, 'error');
+          return;
+        }
 
-      async function uploadPart(partNumber) {
-        if (uploaded[partNumber]) return;
-        const signRes = await api('/api/admin/multipart/sign-part', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: init.key, uploadId: init.uploadId, partNumber }) });
-        const signed = await signRes.json();
-        const start = (partNumber - 1) * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
-        const blob = file.slice(start, end);
-        const putRes = await fetch(signed.url, { method: 'PUT', body: blob });
-        if (!putRes.ok) throw new Error(`Part ${partNumber} failed`);
-        const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
-        uploaded[partNumber] = etag;
-        localStorage.setItem(savedKey, JSON.stringify(uploaded));
-        uploadedBytes += blob.size;
-        progress.value = Math.min(99, Math.round((uploadedBytes / file.size) * 100));
-      }
+        const init = await initRes.json();
+        const savedKey = `multipart:${init.key}`;
+        const chunkSize = init.partSize;
+        const totalParts = Math.ceil(file.size / chunkSize);
 
-      const concurrency = 3;
-      const parts = Array.from({ length: totalParts }, (_, i) => i + 1);
-      while (parts.length) {
-        const batch = parts.splice(0, concurrency);
-        await Promise.all(batch.map(uploadPart));
-        status.textContent = `Uploaded ${Object.keys(uploaded).length}/${totalParts} parts...`;
-      }
+        let uploaded = {};
+        try {
+          const st = await api(`/api/admin/multipart/status?key=${encodeURIComponent(init.key)}`);
+          if (st.ok) {
+            const payload = await st.json();
+            (payload.etags || []).forEach((p) => {
+              uploaded[p.partNumber] = p.etag;
+            });
+          }
+        } catch (error) {
+          console.warn('Unable to load remote multipart status', error);
+        }
 
-      let posterKey = null;
-      const posterFile = card.querySelector('.poster')?.files?.[0];
-      if (posterFile) {
-        const posterFd = new FormData();
-        posterFd.append('file', posterFile);
-        posterFd.append('collection', collection);
-        const posterResp = await api('/api/admin/upload-poster', { method: 'POST', body: posterFd });
-        if (posterResp.ok) posterKey = (await posterResp.json()).key;
-      }
+        const saved = JSON.parse(localStorage.getItem(savedKey) || '{}');
+        uploaded = { ...saved, ...uploaded };
+        let uploadedBytes = Math.min(file.size, Object.keys(uploaded).length * chunkSize);
 
-      const completePayload = {
-        key: init.key,
-        uploadId: init.uploadId,
-        parts: Object.entries(uploaded).map(([partNumber, etag]) => ({ partNumber: Number(partNumber), etag })),
-        title,
-        description,
-        posterKey,
-      };
+        async function uploadPart(partNumber) {
+          if (uploaded[partNumber]) return;
+          const signRes = await api('/api/admin/multipart/sign-part', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ key: init.key, uploadId: init.uploadId, partNumber }),
+          });
+          if (!signRes.ok) throw new Error(`sign-part failed (${signRes.status})`);
+          const signed = await signRes.json();
+          const start = (partNumber - 1) * chunkSize;
+          const end = Math.min(start + chunkSize, file.size);
+          const blob = file.slice(start, end);
+          const putRes = await fetch(signed.url, { method: 'PUT', body: blob });
+          if (!putRes.ok) throw new Error(`Part ${partNumber} failed (${putRes.status})`);
 
-      status.textContent = 'Finalizing upload...';
-      const completeRes = await api('/api/admin/multipart/complete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(completePayload) });
-      if (completeRes.ok) {
+          const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
+          if (!etag) throw new Error(`Missing ETag for part ${partNumber}. Ensure R2 CORS exposes ETag.`);
+          uploaded[partNumber] = etag;
+          localStorage.setItem(savedKey, JSON.stringify(uploaded));
+          uploadedBytes += blob.size;
+          progress.value = Math.min(99, Math.round((uploadedBytes / file.size) * 100));
+        }
+
+        const concurrency = 3;
+        const parts = Array.from({ length: totalParts }, (_, i) => i + 1);
+        while (parts.length) {
+          const batch = parts.splice(0, concurrency);
+          await Promise.all(batch.map(uploadPart));
+          setStatus(card, `Uploaded ${Object.keys(uploaded).length}/${totalParts} parts...`);
+        }
+
+        let posterKey = null;
+        const posterFile = card.querySelector('.poster')?.files?.[0];
+        if (posterFile) {
+          const posterFd = new FormData();
+          posterFd.append('file', posterFile);
+          posterFd.append('collection', collection);
+          const posterResp = await api('/api/admin/upload-poster', { method: 'POST', body: posterFd });
+          if (posterResp.ok) {
+            posterKey = (await posterResp.json()).key;
+          } else {
+            setStatus(card, `Poster upload failed (${posterResp.status}), continuing without poster...`);
+          }
+        }
+
+        setStatus(card, 'Finalizing upload...');
+        const completeRes = await api('/api/admin/multipart/complete', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            key: init.key,
+            uploadId: init.uploadId,
+            parts: Object.entries(uploaded).map(([partNumber, etag]) => ({ partNumber: Number(partNumber), etag })),
+            title,
+            description,
+            posterKey,
+          }),
+        });
+
+        if (!completeRes.ok) {
+          setStatus(card, `Finalize failed (${completeRes.status}).`, 'error');
+          return;
+        }
+
         localStorage.removeItem(savedKey);
         progress.value = 100;
         const item = await completeRes.json();
-        status.innerHTML = `Upload complete. <button class="edit">Save metadata update</button> <button class="hide">Hide</button> <button class="delete">Delete</button>`;
-        status.querySelector('.edit').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, title: card.querySelector('.title').value, description: card.querySelector('.description').value }) });
-        };
-        status.querySelector('.hide').onclick = async () => {
-          await api('/api/admin/item', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, is_public: 0 }) });
-        };
-        status.querySelector('.delete').onclick = async () => {
-          await api(`/api/admin/item?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' });
-          status.textContent = 'Deleted.';
-        };
-      } else {
-        status.textContent = 'Complete call failed.';
+        setStatus(card, 'Video upload complete.', 'success');
+        renderResult(card, item, collection);
+        wireItemActions(card, item);
+      } catch (error) {
+        console.error(error);
+        setStatus(card, error?.message || 'Upload failed.', 'error');
+      } finally {
+        startButton.disabled = false;
       }
     }
   </script>

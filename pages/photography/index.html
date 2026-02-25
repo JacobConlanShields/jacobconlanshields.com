@@ -36,7 +36,7 @@
     let t;
     window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(relayout, 120); });
 
-    fetch("/api/media?collection=photography")
+    fetch("/api/media?collection=photography", { cache: "no-store" })
       .then((resp) => resp.json())
       .then((items) => {
         grid.innerHTML = "";
