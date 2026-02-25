@@ -175,6 +175,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 - Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
   - `POST /api/admin/image/init`
   - `POST /api/admin/image/complete`
+  - `GET /api/admin/health`
   - `POST /api/admin/upload-image` (legacy fallback endpoint)
   - `POST /api/admin/upload-poster`
   - `POST /api/admin/multipart/init`
@@ -214,7 +215,7 @@ Configure in Cloudflare Pages project settings:
 ### Tonight upload checklist
 1. Sign in through Cloudflare Access and open `/admin/upload`.
 2. Pick the destination collection and select one or more files.
-3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload.
+3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload using a locally bundled dependency (`heic2any`) instead of CDN dynamic imports.
 4. Click **Upload all files** (or upload per file).
 5. Confirm each card shows success + created item URL.
 6. Verify on `/spincline` or `/photography` that new items render from `/api/media`.
@@ -227,7 +228,10 @@ Apply this CORS policy to **both buckets** (`SPINCLINE_BUCKET` and `PHOTO_BUCKET
 ```json
 [
   {
-    "AllowedOrigins": ["https://jacobconlanshields.com"],
+    "AllowedOrigins": [
+      "https://jacobconlanshields.com",
+      "https://*.pages.dev"
+    ],
     "AllowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
     "AllowedHeaders": ["*"],
     "ExposeHeaders": ["ETag"],
@@ -237,8 +241,10 @@ Apply this CORS policy to **both buckets** (`SPINCLINE_BUCKET` and `PHOTO_BUCKET
 ```
 
 Notes:
+- If your bucket CORS implementation does not support wildcard subdomains, replace `https://*.pages.dev` with explicit preview hostnames.
 - `ExposeHeaders: ETag` is required for browser JS multipart uploads to read each part ETag.
 - Presigned upload URLs should target `*.r2.cloudflarestorage.com` (never `r2.dev`).
+- If uploads work on production but not on `pages.dev` previews, it is usually missing env vars/bindings and/or CORS not allowing the preview origin.
 
 ### Media encoding guidance
 For best browser playback compatibility, encode uploaded videos as MP4 (H.264 video + AAC audio).

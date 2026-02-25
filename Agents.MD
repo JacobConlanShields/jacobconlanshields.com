@@ -124,7 +124,10 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
 
 ## 2026 upload reliability notes
-- `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload.
+- `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload using a locally bundled dependency (`/assets/vendor/heic2any.js`) rather than a CDN dynamic import.
 - Image uploads use presigned R2 PUT URLs (`/api/admin/image/init` + `/api/admin/image/complete`) so large image uploads avoid function body limits.
-- When uploads fail, UI errors now include failing step (init/put/complete), host, HTTP status when available, and a likely-cause hint.
+- `/api/admin/health` reports whether required upload bindings/secrets are present so preview environments can show an actionable “not configured” banner.
+- `/api/admin/image/init` returns structured JSON for missing config (`503 missing_config`) instead of opaque 500s and logs with `[admin:image:init]` prefix.
+- When uploads fail, UI errors now include failing step (init/put/complete), host, HTTP status when available, response body (if present), and a likely-cause hint.
 - If a PUT request fails without an HTTP status, treat R2 bucket CORS as the first thing to verify.
+- R2 bucket CORS must include `ExposeHeaders: ETag` and should allow both production origin and preview Pages origins.
