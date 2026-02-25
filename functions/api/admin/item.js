@@ -1,8 +1,7 @@
-import { badRequest, handleOptions, json, nowIso, requireAdmin, withCors } from "../../_lib/media.js";
+import { badRequest, handleOptions, json, nowIso, withCors } from "../../_lib/media.js";
 
 export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
-  try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
   if (request.method === "PATCH") {
     const { id, title, description, is_public, sort_index } = await request.json();

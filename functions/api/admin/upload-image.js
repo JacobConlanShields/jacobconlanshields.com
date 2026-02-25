@@ -1,4 +1,4 @@
-import { badRequest, getCollectionConfig, handleOptions, json, mediaUrl, nowIso, requireAdmin, uuid, withCors } from "../../_lib/media.js";
+import { badRequest, getCollectionConfig, handleOptions, json, mediaUrl, nowIso, uuid, withCors } from "../../_lib/media.js";
 
 function extFromName(name = "") {
   const i = name.lastIndexOf(".");
@@ -9,12 +9,6 @@ export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
-
-  try {
-    await requireAdmin(request, env);
-  } catch {
-    return withCors(badRequest("Unauthorized", 401));
-  }
 
   const form = await request.formData();
   const file = form.get("file");
