@@ -40,10 +40,10 @@ export function uuid() {
   return crypto.randomUUID();
 }
 
-export async function requireAdmin(request, env) {
-  const token = request.headers.get("x-admin-token");
-  if (!token || !env.ADMIN_TOKEN || token !== env.ADMIN_TOKEN) {
-    throw new Error("Unauthorized");
+export async function requireAdmin(request) {
+  const accessJwt = request.headers.get("cf-access-jwt-assertion");
+  if (!accessJwt) {
+    console.warn("[admin] Missing cf-access-jwt-assertion header. Relying on Cloudflare Access at the edge.");
   }
 }
 
@@ -51,7 +51,7 @@ export function withCors(resp) {
   const headers = new Headers(resp.headers);
   headers.set("access-control-allow-origin", "*");
   headers.set("access-control-allow-methods", "GET,POST,PATCH,DELETE,OPTIONS");
-  headers.set("access-control-allow-headers", "content-type,x-admin-token");
+  headers.set("access-control-allow-headers", "content-type,cf-access-jwt-assertion");
   return new Response(resp.body, { status: resp.status, headers });
 }
 
@@ -61,7 +61,7 @@ export function handleOptions() {
     headers: {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
-      "access-control-allow-headers": "content-type,x-admin-token",
+      "access-control-allow-headers": "content-type,cf-access-jwt-assertion",
     },
   });
 }

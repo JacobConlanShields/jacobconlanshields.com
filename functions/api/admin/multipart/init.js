@@ -1,4 +1,4 @@
-import { badRequest, getCollectionConfig, handleOptions, json, nowIso, requireAdmin, signR2Request, uuid, xmlValue, withCors } from "../../../_lib/media.js";
+import { badRequest, getCollectionConfig, handleOptions, json, nowIso, signR2Request, uuid, xmlValue, withCors } from "../../../_lib/media.js";
 
 function extension(filename = "") {
   const idx = filename.lastIndexOf(".");
@@ -11,7 +11,6 @@ export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
 
-  try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
   const { collection, filename, contentType } = await request.json();
   const config = getCollectionConfig(collection);

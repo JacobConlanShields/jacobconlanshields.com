@@ -1,11 +1,10 @@
-import { badRequest, getCollectionConfig, handleOptions, json, requireAdmin, uuid, withCors } from "../../_lib/media.js";
+import { badRequest, getCollectionConfig, handleOptions, json, uuid, withCors } from "../../_lib/media.js";
 
 function extFromName(name = "") { const i = name.lastIndexOf("."); return i > -1 ? name.slice(i + 1).toLowerCase() : "jpg"; }
 
 export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
-  try { await requireAdmin(request, env); } catch { return withCors(badRequest("Unauthorized", 401)); }
 
   const form = await request.formData();
   const file = form.get("file");
