@@ -68,22 +68,106 @@
     }
 
     function clearPreviewUrls() {
-      queue.querySelectorAll('.upload-preview').forEach((img) => {
-        if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+      queue.querySelectorAll('.upload-file').forEach((card) => {
+        if (card.dataset.objectUrl) URL.revokeObjectURL(card.dataset.objectUrl);
       });
     }
 
-    function fileCard(file) {
+    const queueItems = [];
+
+    function isHeicFile(file) {
+      const name = (file?.name || '').toLowerCase();
+      const type = (file?.type || '').toLowerCase();
+      return type === 'image/heic' || type === 'image/heif' || name.endsWith('.heic') || name.endsWith('.heif');
+    }
+
+    let heicConverterPromise = null;
+    async function loadHeicConverter() {
+      if (!heicConverterPromise) {
+        heicConverterPromise = import('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm').then((mod) => mod.default || mod);
+      }
+      return heicConverterPromise;
+    }
+
+    function toJpegName(fileName = 'upload.heic') {
+      return fileName.replace(/\.(heic|heif)$/i, '.jpg');
+    }
+
+    async function convertHeicToJpeg(file) {
+      const heic2any = await loadHeicConverter();
+      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+      if (!(jpegBlob instanceof Blob)) throw new Error('HEIC conversion returned an invalid file blob.');
+      return new File([jpegBlob], toJpegName(file.name), { type: 'image/jpeg', lastModified: Date.now() });
+    }
+
+    async function imageDimensions(file) {
+      return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) return resolve({});
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve({ width: img.naturalWidth, height: img.naturalHeight, aspect_ratio: img.naturalWidth / img.naturalHeight });
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve({});
+        };
+        img.src = objectUrl;
+      });
+    }
+
+    function parseError(err, context = {}) {
+      const payload = {
+        step: context.step || 'unknown',
+        url: context.url || '',
+        host: '',
+        status: context.status || null,
+        message: err?.message || String(err || 'Unknown error'),
+      };
+      if (payload.url) {
+        try { payload.host = new URL(payload.url, location.origin).host; } catch {}
+      }
+      const isFailedFetch = payload.message.toLowerCase().includes('failed to fetch') || err?.name === 'TypeError';
+      const isR2Put = payload.step.includes('put') || payload.host.includes('cloudflarestorage.com');
+      payload.likelyCause = '';
+      if (isFailedFetch && isR2Put && !payload.status) {
+        payload.likelyCause = 'Likely R2 CORS misconfiguration. See docs snippet below.';
+      } else if (payload.status === 401 || payload.status === 403) {
+        payload.likelyCause = 'Likely auth/presign issue (expired URL or Cloudflare Access).';
+      } else if (payload.status >= 500) {
+        payload.likelyCause = 'Server/network issue. Retry and check function logs.';
+      }
+      console.error('[upload-error]', payload, err);
+      return payload;
+    }
+
+    function errorText(parsed) {
+      return `Upload failed at ${parsed.step}. host=${parsed.host || '(unknown)'} status=${parsed.status || 'n/a'} error=${parsed.message}${parsed.likelyCause ? ` — ${parsed.likelyCause}` : ''}`;
+    }
+
+    function corsHelpPanel() {
+      return `<details class="small-note" style="margin-top:8px;"><summary>Fix CORS (Cloudflare R2)</summary><pre style="white-space:pre-wrap;">[
+  {
+    "AllowedOrigins": ["https://jacobconlanshields.com"],
+    "AllowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]</pre></details>`;
+    }
+
+    function fileCard(item) {
+      const file = item.originalFile;
       const wrap = document.createElement('section');
       wrap.className = 'upload-file';
-      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
-      const imagePreview = file.type.startsWith('image/')
-        ? `<img class="upload-preview" data-object-url="${previewUrl}" src="${previewUrl}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
-        : '';
       wrap.innerHTML = `
         <h3>${file.name}</h3>
         <div class="small-note">${file.type || 'unknown type'} · ${friendlySize(file.size)}</div>
-        ${imagePreview}
+        <div class="small-note conversion-note"></div>
+        <div class="preview-wrap"></div>
         <div class="upload-meta">
           <label>Title <input type="text" class="title" placeholder="Optional"></label>
           <label class="description-wrap">Description <textarea class="description" rows="3" placeholder="Optional"></textarea></label>
@@ -94,8 +178,40 @@
           <div class="small-note result"></div>
           <button type="button" class="start">Upload</button>
         </div>`;
-      wrap.querySelector('.start').addEventListener('click', () => uploadFile(file, wrap));
+      wrap.querySelector('.start').addEventListener('click', () => uploadFile(item, wrap));
       return wrap;
+    }
+
+    function setPreview(card, file) {
+      const previewWrap = card.querySelector('.preview-wrap');
+      previewWrap.innerHTML = '';
+      if (!file.type.startsWith('image/')) return;
+      if (card.dataset.objectUrl) URL.revokeObjectURL(card.dataset.objectUrl);
+      const objectUrl = URL.createObjectURL(file);
+      card.dataset.objectUrl = objectUrl;
+      previewWrap.innerHTML = `<img class="upload-preview" src="${objectUrl}" alt="Preview of ${file.name}" style="max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`;
+    }
+
+    async function prepareFileForUpload(item, card) {
+      const note = card.querySelector('.conversion-note');
+      const status = card.querySelector('.status');
+      if (!item.originalFile.type.startsWith('image/')) return;
+      if (!isHeicFile(item.originalFile)) {
+        item.uploadFile = item.originalFile;
+        setPreview(card, item.uploadFile);
+        return;
+      }
+
+      note.textContent = 'HEIC isn’t supported by most browsers; converting to JPEG for preview + upload.';
+      status.textContent = 'Converting HEIC → JPEG...';
+      try {
+        item.uploadFile = await convertHeicToJpeg(item.originalFile);
+        setPreview(card, item.uploadFile);
+        status.textContent = `Converted to ${item.uploadFile.name}. Ready.`;
+      } catch (err) {
+        item.conversionError = `HEIC conversion failed. Please export as JPG and try again. (${err.message})`;
+        status.textContent = item.conversionError;
+      }
     }
 
     function updateBatchSummary() {
@@ -107,7 +223,14 @@
     filesInput.addEventListener('change', () => {
       clearPreviewUrls();
       queue.innerHTML = '';
-      [...filesInput.files].forEach((f) => queue.appendChild(fileCard(f)));
+      queueItems.length = 0;
+      [...filesInput.files].forEach((f) => {
+        const item = { originalFile: f, uploadFile: f, conversionError: '' };
+        queueItems.push(item);
+        const card = fileCard(item);
+        queue.appendChild(card);
+        prepareFileForUpload(item, card);
+      });
       syncMetadataFields();
       updateBatchSummary();
     });
@@ -120,23 +243,13 @@
       uploadAllBtn.disabled = true;
       batchStatus.textContent = `Uploading ${cards.length} file(s)...`;
       for (const [idx, card] of cards.entries()) {
-        const file = filesInput.files[idx];
-        if (!file) continue;
-        await uploadFile(file, card);
+        const item = queueItems[idx];
+        if (!item) continue;
+        await uploadFile(item, card);
       }
       batchStatus.textContent = 'Batch upload finished.';
       uploadAllBtn.disabled = false;
     });
-
-    async function imageDimensions(file) {
-      return new Promise((resolve) => {
-        if (!file.type.startsWith('image/')) return resolve({});
-        const img = new Image();
-        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, aspect_ratio: img.naturalWidth / img.naturalHeight });
-        img.onerror = () => resolve({});
-        img.src = URL.createObjectURL(file);
-      });
-    }
 
     function showResult(card, collection, item, location) {
       const result = card.querySelector('.result');
@@ -151,7 +264,8 @@
       return collectionInput.value;
     }
 
-    async function uploadFile(file, card) {
+    async function uploadFile(item, card) {
+      const file = item.uploadFile || item.originalFile;
       const collection = selectedCollection();
       const title = card.querySelector('.title').value;
       const location = card.querySelector('.location')?.value || '';
@@ -166,26 +280,49 @@
       startBtn.disabled = true;
 
       try {
+        if (item.conversionError) throw new Error(item.conversionError);
         if (file.type.startsWith('image/')) {
           const dims = await imageDimensions(file);
-          const fd = new FormData();
-          fd.append('file', file);
-          fd.append('collection', collection);
-          fd.append('title', title);
-          fd.append('description', description);
-          if (dims.width) {
-            fd.append('width', dims.width);
-            fd.append('height', dims.height);
-            fd.append('aspect_ratio', dims.aspect_ratio);
+          status.textContent = 'Initializing image upload...';
+          const initRes = await api('/api/admin/image/init', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ collection, filename: file.name, contentType: file.type })
+          });
+          if (!initRes.ok) {
+            throw Object.assign(new Error(`Image init failed (${initRes.status})`), { step: 'image-init', url: '/api/admin/image/init', status: initRes.status });
+          }
+          const init = await initRes.json();
+
+          status.textContent = `Uploading image bytes to ${new URL(init.putUrl).host}...`;
+          let putRes;
+          try {
+            putRes = await fetch(init.putUrl, {
+              method: 'PUT',
+              headers: { 'content-type': init.contentTypeExpected || file.type || 'application/octet-stream' },
+              body: file,
+            });
+          } catch (err) {
+            throw Object.assign(err, { step: 'image-put', url: init.putUrl });
+          }
+          if (!putRes.ok) {
+            throw Object.assign(new Error(`Image PUT failed (${putRes.status})`), { step: 'image-put', url: init.putUrl, status: putRes.status });
           }
 
-          status.textContent = 'Uploading image...';
-          const res = await api('/api/admin/upload-image', { method: 'POST', body: fd });
+          status.textContent = 'Finalizing image upload...';
+          const completeRes = await api('/api/admin/image/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ key: init.key, collection, title, description, ...dims })
+          });
+          if (!completeRes.ok) {
+            throw Object.assign(new Error(`Image complete failed (${completeRes.status})`), { step: 'image-complete', url: '/api/admin/image/complete', status: completeRes.status });
+          }
+
           progress.value = 100;
-          if (!res.ok) throw new Error(`Image upload failed (${res.status})`);
-          const item = await res.json();
+          const created = await completeRes.json();
           status.textContent = 'Image upload complete.';
-          showResult(card, collection, item, location);
+          showResult(card, collection, created, location);
           return;
         }
 
@@ -195,7 +332,7 @@
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description })
         });
-        if (!initRes.ok) throw new Error(`Failed to initialize upload (${initRes.status})`);
+        if (!initRes.ok) throw Object.assign(new Error(`Failed to initialize upload (${initRes.status})`), { step: 'multipart-init', url: '/api/admin/multipart/init', status: initRes.status });
 
         const init = await initRes.json();
         const savedKey = `multipart:${init.key}`;
@@ -222,17 +359,22 @@
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ key: init.key, uploadId: init.uploadId, partNumber })
           });
-          if (!signRes.ok) throw new Error(`Failed to sign part ${partNumber} (${signRes.status})`);
+          if (!signRes.ok) throw Object.assign(new Error(`Failed to sign part ${partNumber} (${signRes.status})`), { step: `multipart-sign-part-${partNumber}`, url: '/api/admin/multipart/sign-part', status: signRes.status });
           const signed = await signRes.json();
 
           const start = (partNumber - 1) * chunkSize;
           const end = Math.min(start + chunkSize, file.size);
           const blob = file.slice(start, end);
-          const putRes = await fetch(signed.url, { method: 'PUT', body: blob });
-          if (!putRes.ok) throw new Error(`Part ${partNumber} upload failed (${putRes.status})`);
+          let putRes;
+          try {
+            putRes = await fetch(signed.url, { method: 'PUT', body: blob });
+          } catch (err) {
+            throw Object.assign(err, { step: `multipart-put-part-${partNumber}`, url: signed.url });
+          }
+          if (!putRes.ok) throw Object.assign(new Error(`Part ${partNumber} upload failed (${putRes.status})`), { step: `multipart-put-part-${partNumber}`, url: signed.url, status: putRes.status });
 
           const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
-          if (!etag) throw new Error(`Part ${partNumber} returned empty ETag`);
+          if (!etag) throw new Error(`Part ${partNumber} returned empty ETag. Configure R2 CORS ExposeHeaders to include ETag.`);
 
           uploaded[partNumber] = etag;
           localStorage.setItem(savedKey, JSON.stringify(uploaded));
@@ -272,7 +414,7 @@
           })
         });
 
-        if (!completeRes.ok) throw new Error(`Complete call failed (${completeRes.status})`);
+        if (!completeRes.ok) throw Object.assign(new Error(`Complete call failed (${completeRes.status})`), { step: 'multipart-complete', url: '/api/admin/multipart/complete', status: completeRes.status });
 
         const item = await completeRes.json();
         localStorage.removeItem(savedKey);
@@ -280,7 +422,11 @@
         status.textContent = 'Video upload complete.';
         showResult(card, collection, item, location);
       } catch (err) {
-        status.textContent = `Upload failed: ${err.message}`;
+        const parsed = parseError(err, err);
+        status.textContent = errorText(parsed);
+        if (parsed.likelyCause.includes('CORS')) {
+          card.querySelector('.result').innerHTML = corsHelpPanel();
+        }
       } finally {
         startBtn.disabled = false;
       }
