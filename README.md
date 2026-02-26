@@ -155,7 +155,7 @@ This repo now includes a durable media system using Cloudflare Pages Functions +
 ### New pages
 - `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
 - `/pages/photography/`: API-driven Mosaic layout (trimmed-mean global sizing + packed absolute positioning + drag pinning + full-size overlay viewer).
-- `/admin/upload/`: admin upload console for images and resumable multipart video uploads.
+- `/admin/upload/`: admin upload console for images and resumable multipart video uploads. It now restores per-file metadata fields (title + location/description), includes animated metadata panels, per-file removal, and keeps upload statuses visible per item.
 - `/admin/hidden-pages/`: admin index of hidden routes.
 
 ### Data model (D1)
@@ -185,7 +185,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `GET /api/admin/multipart/status?key=<key>`
   - `POST /api/admin/multipart/complete`
   - `POST /api/admin/multipart/abort`
-  - `POST /api/photos/upload` (Photography manifest + originals/display uploads)
+  - `POST /api/photos/upload` (Photography manifest + originals/display uploads; supports `meta` JSON payload with destination/title/location/description/width/height per file while remaining backward-compatible with legacy field arrays)
   - `PATCH /api/admin/item`
   - `DELETE /api/admin/item?id=<id>`
 

@@ -126,6 +126,7 @@ There are **no automated tests** at the moment. Manual validation is expected.
 
 ## 2026 upload reliability notes
 - `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload using a locally bundled dependency (`/assets/vendor/heic2any.js`) rather than a CDN dynamic import.
+- `/admin/upload` now restores destination-aware per-file metadata fields (Title + Location/Description), including slide-in field animations, per-file removal, and per-item upload state feedback.
 - Image uploads use presigned R2 PUT URLs (`/api/admin/image/init` + `/api/admin/image/complete`) so large image uploads avoid function body limits.
 - `/api/admin/health` reports whether required upload bindings/secrets are present so preview environments can show an actionable “not configured” banner.
 - `/api/admin/image/init` returns structured JSON for missing config (`503 missing_config`) instead of opaque 500s and logs with `[admin:image:init]` prefix.
