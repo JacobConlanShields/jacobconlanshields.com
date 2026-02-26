@@ -70,6 +70,10 @@
       return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
+    function displayFileName(item) {
+      return item.originalFile?.name || item.uploadFile.name;
+    }
+
     function friendlySize(bytes) {
       if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
       if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -156,7 +160,7 @@
 
     function makePreview(item) {
       if (item.uploadFile.type.startsWith('image/') && item.previewUrl) {
-        return `<img class="upload-thumb" src="${item.previewUrl}" alt="Preview for ${item.uploadFile.name}" />`;
+        return `<img class="upload-thumb" src="${item.previewUrl}" alt="Preview of ${displayFileName(item)}" />`;
       }
       return '<div class="upload-thumb upload-thumb--generic" aria-hidden="true">📄</div>';
     }
@@ -172,14 +176,14 @@
         <div class="upload-row">
           ${makePreview(item)}
           <div class="upload-file-meta">
-            <h3>${item.uploadFile.name}</h3>
-            <div class="small-note">${item.uploadFile.type || 'unknown type'} · ${friendlySize(item.uploadFile.size)}</div>
+            <h3>${displayFileName(item)}</h3>
+            <div class="small-note">${item.originalFile.type || item.uploadFile.type || 'unknown type'} · ${friendlySize(item.originalFile.size || item.uploadFile.size)}</div>
           </div>
           <button type="button" class="remove">Remove</button>
         </div>
         <div class="small-note" style="color:#ff9f9f;" ${item.conversionError ? '' : 'hidden'}>${item.conversionError || ''}</div>
         <div class="upload-meta upload-fields">
-          <label>Title <input type="text" class="title" value="${titleFromFilename(item.uploadFile.name)}" placeholder="Optional"></label>
+          <label>Title <input type="text" class="title" value="${titleFromFilename(displayFileName(item))}" placeholder="Optional"></label>
           <label><span class="secondary-label">${config.secondaryLabel}</span> ${config.secondaryKind === 'location' ? '<input type="text" class="secondary-input" placeholder="Optional">' : '<textarea class="secondary-input" rows="3" placeholder="Optional"></textarea>'}</label>
           ${item.uploadFile.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}
           <progress max="100" value="0"></progress>
@@ -268,7 +272,7 @@
         fd.append('displayFiles', display || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), display?.name || 'empty.jpg');
         meta.push({
           clientId,
-          filename: item.uploadFile.name,
+          filename: item.originalFile.name,
           title,
           location,
           description: location,
