@@ -36,8 +36,8 @@
     <div class="upload-actions-bottom"><button id="upload-all-bottom" type="button">Upload all files</button></div>
   </main>
 
-  <script type="module">
-    import heic2any from '/assets/vendor/heic2any.js';
+  <script src="/assets/vendor/heic2any.js"></script>
+  <script>
 
     const queue = document.getElementById('queue');
     const filesInput = document.getElementById('files');
@@ -90,7 +90,8 @@
     }
 
     async function convertHeicToJpeg(file) {
-      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      if (typeof window.heic2any !== 'function') throw new Error('HEIC converter not loaded');
+      const converted = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
       const blob = Array.isArray(converted) ? converted[0] : converted;
       if (!(blob instanceof Blob)) throw new Error('HEIC conversion did not return a Blob');
       return new File([blob], jpgNameFrom(file.name), { type: 'image/jpeg' });
