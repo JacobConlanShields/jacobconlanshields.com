@@ -39,10 +39,12 @@
     ];
 
     function card(item) {
+      const title = item.title || item.filename || "Untitled";
+      const description = item.description || item.location || "";
       const media = item.media_type === "video"
-        ? `<video controls playsinline preload="metadata" ${item.posterUrl ? `poster="${item.posterUrl}"` : ""}><source src="${item.url}" /></video>`
-        : `<img src="${item.url}" alt="${item.title || "Spincline media"}" loading="lazy" />`;
-      return `<article class="media-card card"><div class="media-card-media">${media}</div><div class="media-card-body"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || ""}</p></div></article>`;
+        ? `<video controls playsinline preload="metadata" ${item.posterUrl ? `poster=\"${item.posterUrl}\"` : ""}><source src="${item.url}" /></video>`
+        : `<img src="${item.url}" alt="${title || "Spincline media"}" loading="lazy" />`;
+      return `<article class="media-card card"><div class="media-card-media">${media}</div><div class="media-card-body"><h3 class="media-card-title">${title}</h3><p class="media-card-description">${description}</p></div></article>`;
     }
 
     async function loadCollection(collection, rowId, statusId) {

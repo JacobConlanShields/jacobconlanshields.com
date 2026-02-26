@@ -66,14 +66,16 @@ function renderCards() {
     const img = document.createElement('img');
     img.className = 'mosaic-image';
     img.src = keyUrl(photo.displayKey || photo.originalKey);
-    img.alt = photo.title || 'Photography image';
+    img.alt = photo.title || photo.filename || 'Photography image';
     img.loading = 'lazy';
     img.decoding = 'async';
     imageWrap.appendChild(img);
 
     const text = document.createElement('div');
     text.className = 'mosaic-text';
-    text.innerHTML = `<h2 class="mosaic-title">${escapeHtml(photo.title || 'Untitled')}</h2><p class="mosaic-location">${escapeHtml(photo.location || '')}</p>`;
+    const title = photo.title || photo.filename || 'Untitled';
+    const location = photo.location || photo.description || '';
+    text.innerHTML = `<h2 class="mosaic-title">${escapeHtml(title)}</h2><p class="mosaic-location">${escapeHtml(location)}</p>`;
 
     card.append(imageWrap, text);
     card.style.transition = reduceMotion ? 'none' : `transform ${CONFIG.animationMs}ms ${CONFIG.ease}`;

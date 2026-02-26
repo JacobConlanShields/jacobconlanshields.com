@@ -70,6 +70,16 @@
       return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
+    function getCardMetadata(card, fileName, collection) {
+      const titleInput = card.querySelector('.title');
+      const secondaryInput = card.querySelector('.secondary-input');
+      const fallbackTitle = titleFromFilename(fileName) || fileName;
+      const title = (titleInput?.value || '').trim() || fallbackTitle;
+      const secondary = (secondaryInput?.value || '').trim();
+      const description = collection === 'photography' ? secondary : secondary;
+      return { title, secondary, description };
+    }
+
     function friendlySize(bytes) {
       if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
       if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -259,8 +269,7 @@
         const card = queue.querySelector(`[data-client-id="${clientId}"]`);
         if (!item || !card || item.conversionError || !item.uploadFile.type.startsWith('image/')) continue;
 
-        const title = card.querySelector('.title').value.trim();
-        const location = card.querySelector('.secondary-input').value.trim();
+        const { title, secondary: location } = getCardMetadata(card, item.uploadFile.name, 'photography');
         const dims = await imageDimensions(item.uploadFile);
         const display = await makeDisplayVariant(item.uploadFile);
 
@@ -309,9 +318,7 @@
 
       const file = item.uploadFile;
       const collection = collectionInput.value;
-      const title = card.querySelector('.title').value.trim();
-      const secondary = card.querySelector('.secondary-input').value.trim();
-      const description = collection === 'photography' ? secondary : secondary;
+      const { title, secondary, description } = getCardMetadata(card, item.uploadFile.name, collection);
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
 
