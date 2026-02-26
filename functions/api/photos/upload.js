@@ -10,6 +10,34 @@ function extFromName(fileName = '') {
   return idx > -1 ? fileName.slice(idx + 1).toLowerCase() : 'jpg';
 }
 
+function parseMeta(form, files) {
+  const metaRaw = form.get('meta');
+  if (typeof metaRaw === 'string' && metaRaw.trim()) {
+    try {
+      const parsed = JSON.parse(metaRaw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      throw new Error('Invalid meta JSON payload');
+    }
+  }
+
+  const titles = form.getAll('titles');
+  const locations = form.getAll('locations');
+  const widths = form.getAll('widths');
+  const heights = form.getAll('heights');
+
+  return files.map((file, idx) => ({
+    clientId: crypto.randomUUID(),
+    filename: file.name,
+    title: String(titles[idx] || file.name.replace(/\.[^.]+$/, '')),
+    location: String(locations[idx] || ''),
+    description: '',
+    destination: 'photography',
+    width: Number(widths[idx]) || null,
+    height: Number(heights[idx]) || null,
+  }));
+}
+
 export async function onRequestPost({ request, env }) {
   await requireAdmin(request);
 
@@ -20,10 +48,13 @@ export async function onRequestPost({ request, env }) {
   const files = form.getAll('files').filter((f) => f instanceof File);
   if (!files.length) return badRequest('No files provided');
 
-  const titles = form.getAll('titles');
-  const locations = form.getAll('locations');
-  const widths = form.getAll('widths');
-  const heights = form.getAll('heights');
+  let metadata = [];
+  try {
+    metadata = parseMeta(form, files);
+  } catch (error) {
+    return badRequest(error.message || 'Invalid metadata');
+  }
+
   const displayBlobs = form.getAll('displayFiles').filter((f) => f instanceof File);
 
   const manifest = await readPhotosManifest(env);
@@ -32,6 +63,7 @@ export async function onRequestPost({ request, env }) {
 
   for (let i = 0; i < files.length; i += 1) {
     const file = files[i];
+    const meta = metadata[i] || {};
     const id = crypto.randomUUID();
     const originalKey = `photos/original/${id}.${extFromName(file.name)}`;
     await env.PHOTO_BUCKET.put(originalKey, file.stream(), {
@@ -47,19 +79,23 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    const width = Number(widths[i]) || null;
-    const height = Number(heights[i]) || null;
+    const width = Number(meta.width) || null;
+    const height = Number(meta.height) || null;
     const entry = {
       id,
-      title: String(titles[i] || file.name.replace(/\.[^.]+$/, '')),
-      location: String(locations[i] || ''),
+      clientId: String(meta.clientId || ''),
+      title: String(meta.title || file.name.replace(/\.[^.]+$/, '')),
+      location: String(meta.location || meta.description || ''),
+      destination: 'photography',
       width,
       height,
       createdAt: new Date().toISOString(),
       originalKey,
+      originalUrl: `/photos/${originalKey.split('/').map(encodeURIComponent).join('/')}`,
       displayKey,
+      displayUrl: displayKey ? `/photos/${displayKey.split('/').map(encodeURIComponent).join('/')}` : null,
       thumbKey: null,
-      filename: safeName(file.name),
+      filename: safeName(meta.filename || file.name),
     };
 
     byId.set(id, entry);

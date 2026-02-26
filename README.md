@@ -223,9 +223,13 @@ Configure in Cloudflare Pages project settings:
 1. Sign in through Cloudflare Access and open `/admin/upload`.
 2. Pick the destination collection and select one or more files.
 3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload using a locally bundled dependency (`heic2any`) instead of CDN dynamic imports.
-4. Click **Upload all files** (or upload per file).
-5. Confirm each card shows success + created item URL.
-6. Verify on `/spincline` or `/photography` that new items render.
+4. Per-file metadata now appears as animated panels when files are selected:
+   - Photography: **Title** + **Location**
+   - Spincline collections: **Title** + **Description**
+   - Title auto-fills from filename and can be edited before upload.
+5. Click **Upload all files** (or upload per file).
+6. Confirm each card shows success + created item URL.
+7. Verify on `/spincline` or `/photography` that new items render with metadata.
    - Spincline still renders from `/api/media`.
    - Photography Mosaic renders from `/api/photos` + `/photos/<key>`.
 
