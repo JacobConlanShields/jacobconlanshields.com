@@ -15,6 +15,7 @@ export async function onRequest(context) {
   const collection = form.get("collection");
   const title = String(form.get("title") || "");
   const description = String(form.get("description") || "");
+  const location = String(form.get("location") || "");
   const width = Number(form.get("width") || 0) || null;
   const height = Number(form.get("height") || 0) || null;
   const aspectRatio = Number(form.get("aspect_ratio") || 0) || null;
@@ -32,10 +33,12 @@ export async function onRequest(context) {
 
   const id = uuid();
   const createdAt = nowIso();
+  const resolvedDescription = String(description || location || '');
+
   await env.DB.prepare(`INSERT INTO media_items
     (id, collection, media_type, r2_base, r2_key, title, description, width, height, aspect_ratio, created_at)
     VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, collection, config.r2Base, key, title, description, width, height, aspectRatio, createdAt)
+    .bind(id, collection, config.r2Base, key, title, resolvedDescription, width, height, aspectRatio, createdAt)
     .run();
 
   return withCors(json({
@@ -45,7 +48,7 @@ export async function onRequest(context) {
     r2_base: config.r2Base,
     r2_key: key,
     title,
-    description,
+    description: resolvedDescription,
     width,
     height,
     aspect_ratio: aspectRatio,

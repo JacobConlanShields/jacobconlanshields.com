@@ -4,7 +4,7 @@ export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
 
-  const { key, uploadId, parts, title = "", description = "", width = null, height = null, aspect_ratio = null, posterKey = null } = await request.json();
+  const { key, uploadId, parts, title = "", description = "", location = "", width = null, height = null, aspect_ratio = null, posterKey = null } = await request.json();
   if (!key || !uploadId || !Array.isArray(parts) || !parts.length) return withCors(badRequest("Missing key/uploadId/parts"));
 
   const record = await env.DB.prepare("SELECT collection, r2_base FROM multipart_uploads WHERE key = ? AND upload_id = ?").bind(key, uploadId).first();
@@ -34,12 +34,14 @@ export async function onRequest({ request, env }) {
   const xml = await resp.text();
   if (!resp.ok) return withCors(badRequest(`Failed to complete upload: ${xml}`, 502));
 
+  const resolvedDescription = String(description || location || '');
+
   const id = uuid();
   const createdAt = nowIso();
   await env.DB.prepare(`INSERT INTO media_items (id, collection, media_type, r2_base, r2_key, title, description, width, height, aspect_ratio, poster_r2_key, created_at)
     VALUES (?, ?, 'video', ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, record.collection, record.r2_base, key, title, description, width, height, aspect_ratio, posterKey, createdAt).run();
+    .bind(id, record.collection, record.r2_base, key, title, resolvedDescription, width, height, aspect_ratio, posterKey, createdAt).run();
   await env.DB.prepare("UPDATE multipart_uploads SET status = 'completed', updated_at = ? WHERE key = ?").bind(nowIso(), key).run();
 
-  return withCors(json({ id, collection: record.collection, media_type: "video", r2_base: record.r2_base, r2_key: key, url: mediaUrl(record.r2_base, key), poster_r2_key: posterKey, title, description, width, height, aspect_ratio, created_at: createdAt }));
+  return withCors(json({ id, collection: record.collection, media_type: "video", r2_base: record.r2_base, r2_key: key, url: mediaUrl(record.r2_base, key), poster_r2_key: posterKey, title, description: resolvedDescription, width, height, aspect_ratio, created_at: createdAt }));
 }
