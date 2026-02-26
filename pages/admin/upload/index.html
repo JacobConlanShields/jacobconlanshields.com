@@ -12,7 +12,7 @@
     <h1>Admin Upload</h1>
     <p class="small-note">This route is protected by Cloudflare Access. Pick a destination, select files, and upload.</p>
 
-    <div class="upload-meta">
+    <div class="upload-meta upload-toolbar">
       <label>Destination
         <select id="collection">
           <option value="spincline_design_build">Spincline: Design &amp; Build</option>
@@ -33,6 +33,7 @@
     </div>
 
     <div class="admin-grid" id="queue"></div>
+    <button id="upload-all-bottom" type="button" hidden>Upload all files</button>
   </main>
 
   <script type="module">
@@ -42,6 +43,7 @@
     const batchStatus = document.getElementById('batch-status');
     const uploadAllBtn = document.getElementById('upload-all');
     const corsHelp = document.getElementById('cors-help');
+    const uploadAllBottomBtn = document.getElementById('upload-all-bottom');
 
     const PUBLIC_LINKS = {
       spincline_design_build: '/spincline#design-build',
@@ -51,6 +53,7 @@
     };
 
     const selectedItems = [];
+    let isUploadingBatch = false;
 
     function api(path, opts = {}) {
       return fetch(path, { ...opts, credentials: 'same-origin' });
@@ -93,13 +96,25 @@
       return collectionInput.value === 'photography';
     }
 
+    function inferTitle(filename = '') {
+      return filename
+        .replace(/\.[^.]+$/, '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function metadataFieldMarkup() {
+      if (isPhotographyCollection()) {
+        return `<label class="meta-field-wrap"><span class="meta-label">Location</span><input type="text" class="location" placeholder="Optional" ${isUploadingBatch ? 'disabled' : ''}></label>`;
+      }
+      return `<label class="meta-field-wrap"><span class="meta-label">Description</span><textarea class="description" rows="3" placeholder="Optional" ${isUploadingBatch ? 'disabled' : ''}></textarea></label>`;
+    }
+
     function syncMetadataFields() {
-      const photographyMode = isPhotographyCollection();
       queue.querySelectorAll('.upload-file').forEach((card) => {
-        const descWrap = card.querySelector('.description-wrap');
-        const locationWrap = card.querySelector('.location-wrap');
-        if (descWrap) descWrap.hidden = photographyMode;
-        if (locationWrap) locationWrap.hidden = !photographyMode;
+        const dynamic = card.querySelector('.meta-dynamic');
+        if (dynamic) dynamic.innerHTML = metadataFieldMarkup();
       });
     }
 
@@ -144,6 +159,7 @@
       const file = item.uploadFile;
       const wrap = document.createElement('section');
       wrap.className = 'upload-file';
+      wrap.dataset.clientId = item.clientId;
       const typeLabel = item.heicConverted
         ? `${item.originalFile.type || 'image/heic'} → image/jpeg`
         : (file.type || 'unknown type');
@@ -154,32 +170,53 @@
         ? `<div class="small-note" style="color:#ff9f9f;">HEIC conversion failed. Export this file as JPG and retry. (${item.conversionError})</div>`
         : '';
       const imagePreview = item.previewUrl
-        ? `<img class="upload-preview" src="${item.previewUrl}" alt="Preview of ${file.name}" style="display:block; max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
-        : '';
+        ? `<img class="upload-preview" src="${item.previewUrl}" alt="Preview of ${file.name}" />`
+        : '<div class="upload-preview upload-preview--fallback" aria-hidden="true">📄</div>';
       wrap.innerHTML = `
-        <h3>${file.name}</h3>
-        <div class="small-note">${typeLabel} · ${friendlySize(file.size)}</div>
-        ${noteHtml}
-        ${errorHtml}
-        ${imagePreview}
-        <div class="upload-meta">
-          <label>Title <input type="text" class="title" placeholder="Optional"></label>
-          <label class="description-wrap">Description <textarea class="description" rows="3" placeholder="Optional"></textarea></label>
-          <label class="location-wrap" hidden>Location <input type="text" class="location" placeholder="Optional"></label>
-          ${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}
-          <progress max="100" value="0"></progress>
-          <div class="small-note status">${item.conversionError ? 'Blocked: conversion failed.' : 'Ready.'}</div>
-          <div class="small-note result"></div>
-          <button type="button" class="start" ${item.conversionError ? 'disabled' : ''}>Upload</button>
-        </div>`;
+        <div class="upload-file-head">
+          ${imagePreview}
+          <div class="upload-file-meta">
+            <h3>${file.name}</h3>
+            <div class="small-note">${typeLabel} · ${friendlySize(file.size)}</div>
+            ${noteHtml}
+            ${errorHtml}
+          </div>
+          <button type="button" class="remove" ${isUploadingBatch ? 'disabled' : ''}>Remove</button>
+        </div>
+        <div class="upload-meta-panel">
+          <div class="upload-meta meta-enter">
+            <label class="meta-field-wrap"><span class="meta-label">Title</span><input type="text" class="title" placeholder="Optional" value="${escapeHtml(inferTitle(file.name))}" ${isUploadingBatch ? 'disabled' : ''}></label>
+            <div class="meta-dynamic">${metadataFieldMarkup()}</div>
+            ${file.type.startsWith('video/') ? '<label class="meta-field-wrap"><span class="meta-label">Poster image (optional)</span><input type="file" class="poster" accept="image/*"></label>' : ''}
+          </div>
+        </div>
+        <progress max="100" value="0"></progress>
+        <div class="small-note status">${item.conversionError ? 'Blocked: conversion failed.' : 'Ready.'}</div>
+        <div class="small-note result"></div>
+        <button type="button" class="start" ${item.conversionError || isUploadingBatch ? 'disabled' : ''}>Upload</button>`;
       wrap.querySelector('.start').addEventListener('click', () => uploadFile(item, wrap));
+      wrap.querySelector('.remove').addEventListener('click', () => removeItem(item.clientId));
+      requestAnimationFrame(() => {
+        wrap.querySelector('.meta-enter')?.classList.add('visible');
+      });
       return wrap;
+    }
+
+    function removeItem(clientId) {
+      const idx = selectedItems.findIndex((item) => item.clientId === clientId);
+      if (idx < 0) return;
+      cleanupItem(selectedItems[idx]);
+      selectedItems.splice(idx, 1);
+      queue.querySelector(`[data-client-id="${clientId}"]`)?.remove();
+      updateBatchSummary();
     }
 
     function updateBatchSummary() {
       const count = selectedItems.length;
       batchStatus.textContent = count ? `${count} file(s) selected.` : 'No files selected yet.';
       uploadAllBtn.disabled = count === 0;
+      uploadAllBottomBtn.hidden = count === 0;
+      uploadAllBottomBtn.disabled = count === 0;
     }
 
     filesInput.addEventListener('change', async () => {
@@ -189,7 +226,7 @@
 
       const fileList = [...filesInput.files];
       for (const file of fileList) {
-        const item = { originalFile: file, uploadFile: file, previewUrl: null, heicConverted: false, conversionError: '' };
+        const item = { clientId: crypto.randomUUID(), originalFile: file, uploadFile: file, previewUrl: null, heicConverted: false, conversionError: '' };
 
         if (file.type.startsWith('image/') && isHeic(file)) {
           try {
@@ -214,26 +251,39 @@
 
     collectionInput.addEventListener('change', syncMetadataFields);
 
-    uploadAllBtn.addEventListener('click', async () => {
+    async function uploadAll() {
       const cards = [...queue.querySelectorAll('.upload-file')];
       if (!cards.length) return;
       uploadAllBtn.disabled = true;
+      uploadAllBottomBtn.disabled = true;
+      isUploadingBatch = true;
+      queue.querySelectorAll('input, textarea, select, button.start, button.remove').forEach((el) => { el.disabled = true; });
 
-      if (isPhotographyCollection()) {
-        await uploadPhotographyBatch(cards);
+      try {
+        if (isPhotographyCollection()) {
+          await uploadPhotographyBatch(cards);
+          return;
+        }
+
+        batchStatus.textContent = `Uploading ${cards.length} file(s)...`;
+        for (const [idx, card] of cards.entries()) {
+          const item = selectedItems[idx];
+          if (!item) continue;
+          await uploadFile(item, card);
+        }
+        batchStatus.textContent = 'Batch upload finished.';
+      } finally {
+        isUploadingBatch = false;
         uploadAllBtn.disabled = false;
-        return;
+        uploadAllBottomBtn.disabled = false;
+        queue.querySelectorAll('button.remove').forEach((el) => { el.disabled = false; });
+        queue.querySelectorAll('button.start').forEach((el) => { el.disabled = false; });
+        queue.querySelectorAll('.meta-field-wrap input, .meta-field-wrap textarea').forEach((el) => { el.disabled = false; });
       }
+    }
 
-      batchStatus.textContent = `Uploading ${cards.length} file(s)...`;
-      for (const [idx, card] of cards.entries()) {
-        const item = selectedItems[idx];
-        if (!item) continue;
-        await uploadFile(item, card);
-      }
-      batchStatus.textContent = 'Batch upload finished.';
-      uploadAllBtn.disabled = false;
-    });
+    uploadAllBtn.addEventListener('click', uploadAll);
+    uploadAllBottomBtn.addEventListener('click', uploadAll);
 
     async function imageDimensions(file) {
       if (!file.type.startsWith('image/')) return {};
@@ -268,6 +318,8 @@
         batchStatus.textContent = `Uploading ${cards.length} photography file(s)...`;
         const fd = new FormData();
 
+        const payloadMeta = [];
+
         for (const [idx, card] of cards.entries()) {
           const item = selectedItems[idx];
           if (!item || item.conversionError || !item.uploadFile.type.startsWith('image/')) continue;
@@ -277,10 +329,16 @@
           const display = await makeDisplayVariant(item.uploadFile);
 
           fd.append('files', item.uploadFile, item.uploadFile.name);
-          fd.append('titles', title);
-          fd.append('locations', location);
-          fd.append('widths', String(dims.width || ''));
-          fd.append('heights', String(dims.height || ''));
+          payloadMeta.push({
+            clientId: item.clientId,
+            filename: item.uploadFile.name,
+            title,
+            location,
+            description: '',
+            destination: 'photography',
+            width: dims.width || null,
+            height: dims.height || null,
+          });
           if (display) fd.append('displayFiles', display, display.name);
           else fd.append('displayFiles', new File([''], 'empty.jpg', { type: 'application/octet-stream' }));
 
@@ -288,12 +346,14 @@
           card.querySelector('progress').value = 50;
         }
 
+        fd.append('meta', JSON.stringify(payloadMeta));
+
         const resp = await api('/api/photos/upload', { method: 'POST', body: fd });
         if (!resp.ok) throw new Error(`Batch upload failed (${resp.status})`);
         const payload = await resp.json();
 
-        cards.forEach((card, idx) => {
-          const item = payload.items?.[idx];
+        cards.forEach((card) => {
+          const item = payload.items?.find((row) => row.clientId === card.dataset.clientId);
           card.querySelector('progress').value = item ? 100 : 0;
           card.querySelector('.status').textContent = item ? 'Image upload complete.' : 'Skipped.';
           if (item) showResult(card, 'photography', { ...item, url: `/photos/${item.displayKey || item.originalKey}` }, item.location || '');
@@ -353,6 +413,7 @@
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
       const startBtn = card.querySelector('.start');
+      const rowInputs = card.querySelectorAll('input, textarea, button.remove');
 
       if (startBtn.disabled) return;
       if (item.conversionError) {
@@ -361,6 +422,7 @@
       }
 
       startBtn.disabled = true;
+      rowInputs.forEach((el) => { el.disabled = true; });
 
       try {
         if (file.type.startsWith('image/')) {
@@ -561,7 +623,17 @@
         showFailure(card, failure?.step ? failure : { message: failure?.message || String(failure), step: 'unknown', status: null, url: 'unknown' });
       } finally {
         startBtn.disabled = false;
+        rowInputs.forEach((el) => { el.disabled = false; });
       }
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
     }
 
     updateBatchSummary();
