@@ -121,8 +121,10 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Cloudflare Pages Functions now include media APIs under `/functions/api/**`.
 - Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
 - Admin uploads support both standard image upload and resumable multipart video uploads.
+- Admin upload file rows include destination-aware metadata fields (Title + Location/Description), per-file remove, and slide-in metadata panels; title defaults from filename.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
 - Photography now uses a dedicated manifest-backed Mosaic system (`/api/photos`, `/api/photos/upload`, `/photos/*`) with metadata stored in `manifest/photos.json` in `PHOTO_BUCKET`; this runs alongside legacy D1 media APIs for existing sections.
+- `/api/photos/upload` accepts both legacy parallel fields and `meta` JSON (clientId, destination, title/location/description, width/height) so the admin UI can map upload results back to each tile.
 
 ## 2026 upload reliability notes
 - `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload using a locally bundled dependency (`/assets/vendor/heic2any.js`) rather than a CDN dynamic import.
