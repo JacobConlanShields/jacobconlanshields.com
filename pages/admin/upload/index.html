@@ -62,8 +62,8 @@
 
     function destinationConfig(value = collectionInput.value) {
       return value === 'photography'
-        ? { secondaryLabel: 'Location', secondaryKind: 'location', isPhoto: true }
-        : { secondaryLabel: 'Description', secondaryKind: 'description', isPhoto: false };
+        ? { secondaryLabel: 'Location', secondaryKind: 'location', secondaryField: 'location', isPhoto: true }
+        : { secondaryLabel: 'Description', secondaryKind: 'description', secondaryField: 'description', isPhoto: false };
     }
 
     function titleFromFilename(name = '') {
@@ -311,7 +311,7 @@
       const collection = collectionInput.value;
       const title = card.querySelector('.title').value.trim();
       const secondary = card.querySelector('.secondary-input').value.trim();
-      const description = collection === 'photography' ? secondary : secondary;
+      const description = secondary;
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
 
