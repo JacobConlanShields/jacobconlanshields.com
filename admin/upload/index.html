@@ -56,6 +56,43 @@
       return fetch(path, { ...opts, credentials: 'same-origin' });
     }
 
+    function selectedCollection() {
+      return collectionInput.value;
+    }
+
+    function isPhotographyCollection() {
+      return selectedCollection() === 'photography';
+    }
+
+    function inferTitle(name = '') {
+      return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function friendlySize(bytes) {
+      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+      if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    }
+
+    function cleanupItem(item) {
+      if (item?.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+        item.previewUrl = null;
+      }
+    }
+
+    function clearAllItems() {
+      selectedItems.forEach(cleanupItem);
+      selectedItems.length = 0;
+      queue.innerHTML = '';
+      corsHelp.hidden = true;
+      updateBatchSummary();
+    }
+
+    function hostOf(url) {
+      try { return new URL(url, location.origin).host; } catch { return 'unknown-host'; }
+    }
+
     async function readErrorBody(resp) {
       const text = await resp.text();
       if (!text) return '';
@@ -73,7 +110,7 @@
         const resp = await api('/api/admin/health');
         if (!resp.ok) {
           envBanner.hidden = false;
-          envBanner.textContent = `Uploads health check failed (${resp.status}).`; 
+          envBanner.textContent = `Uploads health check failed (${resp.status}).`;
           return;
         }
         const payload = await resp.json();
@@ -89,37 +126,52 @@
       }
     }
 
-    function isPhotographyCollection() {
-      return collectionInput.value === 'photography';
-    }
-
     function syncMetadataFields() {
       const photographyMode = isPhotographyCollection();
-      queue.querySelectorAll('.upload-file').forEach((card) => {
+      for (const item of selectedItems) {
+        const card = item.card;
+        if (!card) continue;
         const descWrap = card.querySelector('.description-wrap');
         const locationWrap = card.querySelector('.location-wrap');
         if (descWrap) descWrap.hidden = photographyMode;
         if (locationWrap) locationWrap.hidden = !photographyMode;
-      });
-    }
-
-    function friendlySize(bytes) {
-      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-      if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-    }
-
-    function cleanupItem(item) {
-      if (item?.previewUrl) {
-        URL.revokeObjectURL(item.previewUrl);
-        item.previewUrl = null;
       }
     }
 
-    function clearPreviewUrls() {
-      selectedItems.forEach(cleanupItem);
-      selectedItems.length = 0;
-      corsHelp.hidden = true;
+    function updateBatchSummary() {
+      const count = selectedItems.length;
+      batchStatus.textContent = count ? `${count} file(s) selected.` : 'No files selected yet.';
+      uploadAllBtn.disabled = count === 0;
+    }
+
+    function markUploading(item, active) {
+      const card = item.card;
+      if (!card) return;
+      card.classList.toggle('uploading', active);
+      card.querySelectorAll('input,textarea,select,button').forEach((el) => {
+        if (el.classList.contains('upload-remove')) {
+          el.disabled = active || item.uploaded;
+          return;
+        }
+        if (el.classList.contains('start')) {
+          el.disabled = active || item.uploaded || !!item.conversionError;
+          return;
+        }
+        el.disabled = active;
+      });
+    }
+
+    function removeItem(item) {
+      const idx = selectedItems.findIndex((entry) => entry.clientId === item.clientId);
+      if (idx === -1) return;
+      cleanupItem(item);
+      const [removed] = selectedItems.splice(idx, 1);
+      if (removed?.card) {
+        const card = removed.card;
+        card.classList.remove('visible');
+        window.setTimeout(() => card.remove(), 220);
+      }
+      updateBatchSummary();
     }
 
     function isHeic(file) {
@@ -140,100 +192,49 @@
       return new File([blob], jpgNameFrom(file.name), { type: 'image/jpeg' });
     }
 
-    function fileCard(item) {
+    function buildCard(item) {
       const file = item.uploadFile;
       const wrap = document.createElement('section');
-      wrap.className = 'upload-file';
-      const typeLabel = item.heicConverted
-        ? `${item.originalFile.type || 'image/heic'} → image/jpeg`
-        : (file.type || 'unknown type');
-      const noteHtml = item.heicConverted
-        ? '<div class="small-note">HEIC isn’t supported by most browsers; converting to JPEG for preview + upload.</div>'
+      wrap.className = 'upload-file upload-fields';
+      const thumb = item.previewUrl
+        ? `<img class="upload-preview" src="${item.previewUrl}" alt="Preview of ${file.name}" />`
+        : `<div class="upload-file-icon" aria-hidden="true">${file.type.startsWith('video/') ? '🎬' : '📄'}</div>`;
+
+      const extraInput = file.type.startsWith('video/')
+        ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>'
         : '';
-      const errorHtml = item.conversionError
-        ? `<div class="small-note" style="color:#ff9f9f;">HEIC conversion failed. Export this file as JPG and retry. (${item.conversionError})</div>`
-        : '';
-      const imagePreview = item.previewUrl
-        ? `<img class="upload-preview" src="${item.previewUrl}" alt="Preview of ${file.name}" style="display:block; max-width:220px; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px;" />`
-        : '';
+
       wrap.innerHTML = `
-        <h3>${file.name}</h3>
-        <div class="small-note">${typeLabel} · ${friendlySize(file.size)}</div>
-        ${noteHtml}
-        ${errorHtml}
-        ${imagePreview}
+        <div class="upload-file-head">
+          <div class="upload-file-main">
+            ${thumb}
+            <div>
+              <h3 class="upload-file-name">${file.name}</h3>
+              <div class="small-note">${file.type || 'unknown type'} · ${friendlySize(file.size)}</div>
+              ${item.heicConverted ? '<div class="small-note">Converted HEIC/HEIF → JPEG for upload.</div>' : ''}
+              ${item.conversionError ? `<div class="small-note" style="color:#ff9f9f;">HEIC conversion failed: ${item.conversionError}</div>` : ''}
+            </div>
+          </div>
+          <button type="button" class="upload-remove">Remove</button>
+        </div>
         <div class="upload-meta">
-          <label>Title <input type="text" class="title" placeholder="Optional"></label>
-          <label class="description-wrap">Description <textarea class="description" rows="3" placeholder="Optional"></textarea></label>
-          <label class="location-wrap" hidden>Location <input type="text" class="location" placeholder="Optional"></label>
-          ${file.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}
+          <label>Title <input type="text" class="title" value="${item.initialTitle}" placeholder="Title"></label>
+          <label class="description-wrap">Description <textarea class="description" rows="3" placeholder="Description"></textarea></label>
+          <label class="location-wrap" hidden>Location <input type="text" class="location" placeholder="Location"></label>
+          ${extraInput}
           <progress max="100" value="0"></progress>
           <div class="small-note status">${item.conversionError ? 'Blocked: conversion failed.' : 'Ready.'}</div>
           <div class="small-note result"></div>
           <button type="button" class="start" ${item.conversionError ? 'disabled' : ''}>Upload</button>
         </div>`;
-      wrap.querySelector('.start').addEventListener('click', () => uploadFile(item, wrap));
+
+      wrap.querySelector('.upload-remove').addEventListener('click', () => removeItem(item));
+      wrap.querySelector('.start').addEventListener('click', () => uploadFile(item));
+      item.card = wrap;
+
+      requestAnimationFrame(() => wrap.classList.add('visible'));
       return wrap;
     }
-
-    function updateBatchSummary() {
-      const count = selectedItems.length;
-      batchStatus.textContent = count ? `${count} file(s) selected.` : 'No files selected yet.';
-      uploadAllBtn.disabled = count === 0;
-    }
-
-    filesInput.addEventListener('change', async () => {
-      clearPreviewUrls();
-      queue.innerHTML = '';
-      batchStatus.textContent = 'Preparing previews...';
-
-      const fileList = [...filesInput.files];
-      for (const file of fileList) {
-        const item = { originalFile: file, uploadFile: file, previewUrl: null, heicConverted: false, conversionError: '' };
-
-        if (file.type.startsWith('image/') && isHeic(file)) {
-          try {
-            item.heicConverted = true;
-            item.uploadFile = await convertHeicToJpeg(file);
-          } catch (err) {
-            item.conversionError = err.message || 'Unknown conversion error';
-          }
-        }
-
-        if (item.uploadFile.type.startsWith('image/') && !item.conversionError) {
-          item.previewUrl = URL.createObjectURL(item.uploadFile);
-        }
-
-        selectedItems.push(item);
-        queue.appendChild(fileCard(item));
-      }
-
-      syncMetadataFields();
-      updateBatchSummary();
-    });
-
-    collectionInput.addEventListener('change', syncMetadataFields);
-
-    uploadAllBtn.addEventListener('click', async () => {
-      const cards = [...queue.querySelectorAll('.upload-file')];
-      if (!cards.length) return;
-      uploadAllBtn.disabled = true;
-
-      if (isPhotographyCollection()) {
-        await uploadPhotographyBatch(cards);
-        uploadAllBtn.disabled = false;
-        return;
-      }
-
-      batchStatus.textContent = `Uploading ${cards.length} file(s)...`;
-      for (const [idx, card] of cards.entries()) {
-        const item = selectedItems[idx];
-        if (!item) continue;
-        await uploadFile(item, card);
-      }
-      batchStatus.textContent = 'Batch upload finished.';
-      uploadAllBtn.disabled = false;
-    });
 
     async function imageDimensions(file) {
       if (!file.type.startsWith('image/')) return {};
@@ -263,62 +264,25 @@
       return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
     }
 
-    async function uploadPhotographyBatch(cards) {
-      try {
-        batchStatus.textContent = `Uploading ${cards.length} photography file(s)...`;
-        const fd = new FormData();
-
-        for (const [idx, card] of cards.entries()) {
-          const item = selectedItems[idx];
-          if (!item || item.conversionError || !item.uploadFile.type.startsWith('image/')) continue;
-          const title = card.querySelector('.title').value;
-          const location = card.querySelector('.location')?.value || '';
-          const dims = await imageDimensions(item.uploadFile);
-          const display = await makeDisplayVariant(item.uploadFile);
-
-          fd.append('files', item.uploadFile, item.uploadFile.name);
-          fd.append('titles', title);
-          fd.append('locations', location);
-          fd.append('widths', String(dims.width || ''));
-          fd.append('heights', String(dims.height || ''));
-          if (display) fd.append('displayFiles', display, display.name);
-          else fd.append('displayFiles', new File([''], 'empty.jpg', { type: 'application/octet-stream' }));
-
-          card.querySelector('.status').textContent = 'Queued in batch upload...';
-          card.querySelector('progress').value = 50;
-        }
-
-        const resp = await api('/api/photos/upload', { method: 'POST', body: fd });
-        if (!resp.ok) throw new Error(`Batch upload failed (${resp.status})`);
-        const payload = await resp.json();
-
-        cards.forEach((card, idx) => {
-          const item = payload.items?.[idx];
-          card.querySelector('progress').value = item ? 100 : 0;
-          card.querySelector('.status').textContent = item ? 'Image upload complete.' : 'Skipped.';
-          if (item) showResult(card, 'photography', { ...item, url: `/photos/${item.displayKey || item.originalKey}` }, item.location || '');
-        });
-        batchStatus.textContent = `Batch upload finished (${payload.uploaded || 0} photo(s)).`;
-      } catch (err) {
-        batchStatus.textContent = `Batch upload failed: ${err.message || err}`;
-      }
+    function metadataFor(item) {
+      const card = item.card;
+      const destination = selectedCollection();
+      const title = card.querySelector('.title').value.trim();
+      const location = card.querySelector('.location')?.value.trim() || '';
+      const description = destination === 'photography'
+        ? (location || card.querySelector('.description')?.value.trim() || '')
+        : (card.querySelector('.description')?.value.trim() || '');
+      return { destination, title, location, description };
     }
 
-    function showResult(card, collection, item, location) {
+    function showResult(card, collection, item) {
       const result = card.querySelector('.result');
       const publicLink = PUBLIC_LINKS[collection] || '/';
       const secondaryLine = collection === 'photography'
-        ? `Location: ${location || '(none)'}`
+        ? `Location: ${item.location || '(none)'}`
         : `Description: ${item.description || '(none)'}`;
-      result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a><br>Saved to D1: yes`;
-    }
-
-    function selectedCollection() {
-      return collectionInput.value;
-    }
-
-    function hostOf(url) {
-      try { return new URL(url, location.origin).host; } catch { return 'unknown-host'; }
+      const resolvedUrl = item.url || item.displayUrl || item.originalUrl || '';
+      result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}${resolvedUrl ? `<br>URL: <a href=\"${resolvedUrl}\" target=\"_blank\" rel=\"noreferrer\">${resolvedUrl}</a>` : ''}<br><a href=\"${publicLink}\" target=\"_blank\" rel=\"noreferrer\">Open public page</a>`;
     }
 
     function formatLikelyCause(failure) {
@@ -335,68 +299,101 @@
       return failure;
     }
 
-    function showFailure(card, failure) {
-      const status = card.querySelector('.status');
+    function showFailure(item, failure) {
+      const status = item.card.querySelector('.status');
       status.textContent = `Upload failed: ${failure.message}`;
       if (failure.step === 'put' && failure.status == null) corsHelp.hidden = false;
       console.error('[upload-failure]', failure);
     }
 
-    async function uploadFile(item, card) {
-      const file = item.uploadFile;
-      const collection = selectedCollection();
-      const title = card.querySelector('.title').value;
-      const location = card.querySelector('.location')?.value || '';
-      const description = collection === 'photography'
-        ? location
-        : (card.querySelector('.description')?.value || '');
-      const progress = card.querySelector('progress');
-      const status = card.querySelector('.status');
-      const startBtn = card.querySelector('.start');
+    async function uploadPhotographyBatch(items) {
+      const uploading = items.filter((item) => !item.uploaded && !item.conversionError && item.uploadFile.type.startsWith('image/'));
+      if (!uploading.length) return;
 
-      if (startBtn.disabled) return;
-      if (item.conversionError) {
-        status.textContent = 'Upload blocked: HEIC conversion failed. Export as JPG and retry.';
-        return;
+      for (const item of uploading) {
+        markUploading(item, true);
+        item.card.querySelector('.status').innerHTML = '<span class="upload-spinner"></span>Preparing batch upload...';
+        item.card.querySelector('progress').value = 20;
       }
 
-      startBtn.disabled = true;
+      try {
+        batchStatus.textContent = `Uploading ${uploading.length} photography file(s)...`;
+        const fd = new FormData();
+        const meta = [];
+
+        for (const item of uploading) {
+          const file = item.uploadFile;
+          const dims = await imageDimensions(file);
+          const display = await makeDisplayVariant(file);
+          const info = metadataFor(item);
+          meta.push({
+            clientId: item.clientId,
+            filename: file.name,
+            title: info.title,
+            location: info.location,
+            description: info.description,
+            destination: info.destination,
+            width: dims.width || null,
+            height: dims.height || null,
+            originalWidth: dims.width || null,
+            originalHeight: dims.height || null,
+          });
+          fd.append('files[]', file, file.name);
+          if (display) fd.append('displayFiles[]', display, display.name);
+          else fd.append('displayFiles[]', new File([''], 'empty.jpg', { type: 'application/octet-stream' }));
+        }
+
+        fd.append('meta', JSON.stringify(meta));
+
+        const resp = await api('/api/photos/upload', { method: 'POST', body: fd });
+        if (!resp.ok) throw new Error(`Batch upload failed (${resp.status}) ${await readErrorBody(resp)}`);
+        const payload = await resp.json();
+        const byClientId = new Map((payload.items || []).map((entry) => [entry.clientId, entry]));
+
+        for (const item of uploading) {
+          const card = item.card;
+          const found = byClientId.get(item.clientId);
+          if (found) {
+            item.uploaded = true;
+            card.querySelector('progress').value = 100;
+            card.querySelector('.status').textContent = 'Image upload complete.';
+            showResult(card, 'photography', found);
+          } else {
+            card.querySelector('progress').value = 0;
+            card.querySelector('.status').textContent = 'Upload did not return an item for this file.';
+          }
+          markUploading(item, false);
+        }
+        batchStatus.textContent = `Batch upload finished (${payload.uploaded || 0} photo(s)).`;
+      } catch (err) {
+        for (const item of uploading) {
+          item.card.querySelector('.status').textContent = `Batch upload failed: ${err.message || err}`;
+          markUploading(item, false);
+        }
+        batchStatus.textContent = `Batch upload failed: ${err.message || err}`;
+      }
+    }
+
+    async function uploadFile(item) {
+      const card = item.card;
+      const file = item.uploadFile;
+      const progress = card.querySelector('progress');
+      const status = card.querySelector('.status');
+      const info = metadataFor(item);
+
+      if (item.uploaded || item.conversionError) return;
+
+      markUploading(item, true);
+      status.innerHTML = '<span class="upload-spinner"></span>Uploading...';
 
       try {
         if (file.type.startsWith('image/')) {
-          if (collection === 'photography') {
-            const dims = await imageDimensions(file);
-            const displayFile = await makeDisplayVariant(file);
-            status.textContent = 'Uploading photography image...';
-            progress.value = 35;
-
-            const fd = new FormData();
-            fd.append('files', file, file.name);
-            fd.append('titles', title);
-            fd.append('locations', location);
-            fd.append('widths', String(dims.width || ''));
-            fd.append('heights', String(dims.height || ''));
-            if (displayFile) fd.append('displayFiles', displayFile, displayFile.name);
-            else fd.append('displayFiles', new File([''], 'empty.jpg', { type: 'application/octet-stream' }));
-
-            let uploadRes;
-            try {
-              uploadRes = await api('/api/photos/upload', { method: 'POST', body: fd });
-            } catch (err) {
-              throw makeUploadError({ step: 'upload', url: '/api/photos/upload', detail: err.message || String(err) });
-            }
-            if (!uploadRes.ok) throw makeUploadError({ step: 'upload', url: '/api/photos/upload', status: uploadRes.status });
-            const payload = await uploadRes.json();
-            const complete = payload.items?.[0];
-
-            progress.value = 100;
-            status.textContent = 'Image upload complete.';
-            if (complete) showResult(card, collection, { ...complete, url: `/photos/${complete.displayKey || complete.originalKey}` }, location);
+          if (info.destination === 'photography') {
+            await uploadPhotographyBatch([item]);
             return;
           }
 
           const dims = await imageDimensions(file);
-          status.textContent = 'Initializing image upload...';
           progress.value = 10;
 
           let initRes;
@@ -404,7 +401,7 @@
             initRes = await api('/api/admin/image/init', {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ collection, filename: file.name, contentType: file.type })
+              body: JSON.stringify({ collection: info.destination, filename: file.name, contentType: file.type })
             });
           } catch (err) {
             throw makeUploadError({ step: 'init', url: '/api/admin/image/init', detail: err.message || String(err) });
@@ -412,11 +409,6 @@
           if (!initRes.ok) throw makeUploadError({ step: 'init', url: '/api/admin/image/init', status: initRes.status, detail: await readErrorBody(initRes) });
 
           const init = await initRes.json();
-          if (init.r2Host && init.r2Host.includes('.r2.dev')) {
-            throw makeUploadError({ step: 'put', url: init.putUrl, detail: 'Refusing upload to r2.dev host. Expected cloudflarestorage.com presigned URL.' });
-          }
-
-          status.textContent = `Uploading image bytes to ${hostOf(init.putUrl)}...`;
           progress.value = 55;
 
           let putRes;
@@ -431,40 +423,38 @@
           }
           if (!putRes.ok) throw makeUploadError({ step: 'put', url: init.putUrl, status: putRes.status, detail: await readErrorBody(putRes) });
 
-          status.textContent = 'Finalizing image metadata in D1...';
           progress.value = 85;
-
-          let completeRes;
-          try {
-            completeRes = await api('/api/admin/image/complete', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ key: init.key, collection, title, description, ...dims })
-            });
-          } catch (err) {
-            throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', detail: err.message || String(err) });
-          }
-
+          const completeRes = await api('/api/admin/image/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              key: init.key,
+              collection: info.destination,
+              destination: info.destination,
+              title: info.title,
+              description: info.description,
+              location: info.location,
+              ...dims,
+              originalWidth: dims.width || null,
+              originalHeight: dims.height || null,
+            })
+          });
           if (!completeRes.ok) throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', status: completeRes.status, detail: await readErrorBody(completeRes) });
           const complete = await completeRes.json();
 
+          item.uploaded = true;
           progress.value = 100;
           status.textContent = 'Image upload complete.';
-          showResult(card, collection, complete, location);
+          showResult(card, info.destination, { ...complete, location: info.location });
           return;
         }
 
-        status.textContent = 'Initializing multipart upload...';
-        let initRes;
-        try {
-          initRes = await api('/api/admin/multipart/init', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description })
-          });
-        } catch (err) {
-          throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', detail: err.message || String(err) });
-        }
+        const description = info.description;
+        const initRes = await api('/api/admin/multipart/init', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ collection: info.destination, filename: file.name, contentType: file.type, title: info.title, description })
+        });
         if (!initRes.ok) throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', status: initRes.status, detail: await readErrorBody(initRes) });
 
         const init = await initRes.json();
@@ -498,31 +488,22 @@
           const start = (partNumber - 1) * chunkSize;
           const end = Math.min(start + chunkSize, file.size);
           const blob = file.slice(start, end);
-          let putRes;
-          try {
-            putRes = await fetch(signed.url, { method: 'PUT', body: blob });
-          } catch (err) {
-            throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, detail: err.message || String(err) });
-          }
-
+          const putRes = await fetch(signed.url, { method: 'PUT', body: blob });
           if (!putRes.ok) throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, status: putRes.status, detail: await readErrorBody(putRes) });
 
           const etag = (putRes.headers.get('etag') || '').replaceAll('"', '');
-          if (!etag) {
-            throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, detail: 'ETag missing. Ensure R2 CORS ExposeHeaders includes ETag.' });
-          }
+          if (!etag) throw makeUploadError({ step: `put-part-${partNumber}`, url: signed.url, detail: 'ETag missing. Ensure R2 CORS ExposeHeaders includes ETag.' });
 
           uploaded[partNumber] = etag;
           localStorage.setItem(savedKey, JSON.stringify(uploaded));
           uploadedBytes += blob.size;
           progress.value = Math.min(99, Math.round((uploadedBytes / file.size) * 100));
-          status.textContent = `Uploaded ${Object.keys(uploaded).length}/${totalParts} parts...`;
+          status.innerHTML = `<span class="upload-spinner"></span>Uploaded ${Object.keys(uploaded).length}/${totalParts} parts...`;
         }
 
-        const concurrency = 3;
         const parts = Array.from({ length: totalParts }, (_, i) => i + 1);
         while (parts.length) {
-          const batch = parts.splice(0, concurrency);
+          const batch = parts.splice(0, 3);
           await Promise.all(batch.map(uploadPart));
         }
 
@@ -531,12 +512,11 @@
         if (posterFile) {
           const posterFd = new FormData();
           posterFd.append('file', posterFile);
-          posterFd.append('collection', collection);
+          posterFd.append('collection', info.destination);
           const posterResp = await api('/api/admin/upload-poster', { method: 'POST', body: posterFd });
           if (posterResp.ok) posterKey = (await posterResp.json()).key;
         }
 
-        status.textContent = 'Finalizing upload...';
         const completeRes = await api('/api/admin/multipart/complete', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -544,29 +524,93 @@
             key: init.key,
             uploadId: init.uploadId,
             parts: Object.entries(uploaded).map(([partNumber, etag]) => ({ partNumber: Number(partNumber), etag })),
-            title,
+            title: info.title,
             description,
+            destination: info.destination,
             posterKey,
           })
         });
-
         if (!completeRes.ok) throw makeUploadError({ step: 'complete', url: '/api/admin/multipart/complete', status: completeRes.status, detail: await readErrorBody(completeRes) });
 
         const result = await completeRes.json();
         localStorage.removeItem(savedKey);
+        item.uploaded = true;
         progress.value = 100;
         status.textContent = 'Video upload complete.';
-        showResult(card, collection, result, location);
+        showResult(card, info.destination, result);
       } catch (failure) {
-        showFailure(card, failure?.step ? failure : { message: failure?.message || String(failure), step: 'unknown', status: null, url: 'unknown' });
+        showFailure(item, failure?.step ? failure : { message: failure?.message || String(failure), step: 'unknown', status: null, url: 'unknown' });
       } finally {
-        startBtn.disabled = false;
+        markUploading(item, false);
       }
     }
 
+    async function addFiles(rawFiles) {
+      batchStatus.textContent = 'Preparing previews...';
+      for (const file of rawFiles) {
+        const item = {
+          clientId: crypto.randomUUID(),
+          originalFile: file,
+          uploadFile: file,
+          previewUrl: null,
+          heicConverted: false,
+          conversionError: '',
+          uploaded: false,
+          card: null,
+          initialTitle: inferTitle(file.name),
+        };
+
+        if (file.type.startsWith('image/') && isHeic(file)) {
+          try {
+            item.heicConverted = true;
+            item.uploadFile = await convertHeicToJpeg(file);
+          } catch (err) {
+            item.conversionError = err.message || 'Unknown conversion error';
+          }
+        }
+
+        if (item.uploadFile.type.startsWith('image/') && !item.conversionError) {
+          item.previewUrl = URL.createObjectURL(item.uploadFile);
+        }
+
+        selectedItems.push(item);
+        queue.appendChild(buildCard(item));
+      }
+      syncMetadataFields();
+      updateBatchSummary();
+    }
+
+    filesInput.addEventListener('change', async () => {
+      clearAllItems();
+      const files = [...filesInput.files];
+      if (!files.length) return;
+      await addFiles(files);
+    });
+
+    collectionInput.addEventListener('change', syncMetadataFields);
+
+    uploadAllBtn.addEventListener('click', async () => {
+      const pending = selectedItems.filter((item) => !item.uploaded && !item.conversionError);
+      if (!pending.length) return;
+      uploadAllBtn.disabled = true;
+
+      if (isPhotographyCollection()) {
+        await uploadPhotographyBatch(pending);
+      } else {
+        batchStatus.textContent = `Uploading ${pending.length} file(s)...`;
+        for (const item of pending) {
+          await uploadFile(item);
+        }
+        batchStatus.textContent = 'Batch upload finished.';
+      }
+
+      uploadAllBtn.disabled = false;
+      updateBatchSummary();
+    });
+
     updateBatchSummary();
     checkUploadHealth();
-    window.addEventListener('beforeunload', clearPreviewUrls);
+    window.addEventListener('beforeunload', () => selectedItems.forEach(cleanupItem));
   </script>
 </body>
 </html>
