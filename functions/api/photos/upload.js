@@ -24,6 +24,16 @@ export async function onRequestPost({ request, env }) {
   const locations = form.getAll('locations');
   const widths = form.getAll('widths');
   const heights = form.getAll('heights');
+  let meta = [];
+  const metaRaw = form.get('meta');
+  if (typeof metaRaw === 'string' && metaRaw.trim()) {
+    try {
+      const parsed = JSON.parse(metaRaw);
+      if (Array.isArray(parsed)) meta = parsed;
+    } catch {
+      return badRequest('Invalid JSON in `meta`');
+    }
+  }
   const displayBlobs = form.getAll('displayFiles').filter((f) => f instanceof File);
 
   const manifest = await readPhotosManifest(env);
@@ -47,12 +57,15 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    const width = Number(widths[i]) || null;
-    const height = Number(heights[i]) || null;
+    const entryMeta = meta[i] || {};
+    const width = Number(entryMeta.width || widths[i]) || null;
+    const height = Number(entryMeta.height || heights[i]) || null;
     const entry = {
       id,
-      title: String(titles[i] || file.name.replace(/\.[^.]+$/, '')),
-      location: String(locations[i] || ''),
+      clientId: entryMeta.clientId ? String(entryMeta.clientId) : null,
+      destination: String(entryMeta.destination || 'photography'),
+      title: String(entryMeta.title || titles[i] || file.name.replace(/\.[^.]+$/, '')),
+      location: String(entryMeta.location || entryMeta.description || locations[i] || ''),
       width,
       height,
       createdAt: new Date().toISOString(),
