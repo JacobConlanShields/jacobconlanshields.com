@@ -62,8 +62,8 @@
 
     function destinationConfig(value = collectionInput.value) {
       return value === 'photography'
-        ? { secondaryLabel: 'Location', secondaryKind: 'location', isPhoto: true }
-        : { secondaryLabel: 'Description', secondaryKind: 'description', isPhoto: false };
+        ? { isPhoto: true }
+        : { isPhoto: false };
     }
 
     function titleFromFilename(name = '') {
@@ -116,29 +116,21 @@
     }
 
     function syncMetadataFields() {
-      const config = destinationConfig();
+      const { isPhoto } = destinationConfig();
       queue.querySelectorAll('.upload-file').forEach((card) => {
-        const label = card.querySelector('.secondary-label');
-        const input = card.querySelector('.secondary-input');
-        if (!label || !input) return;
-        label.textContent = config.secondaryLabel;
-        if (config.secondaryKind === 'description' && input.tagName === 'INPUT') {
-          const next = document.createElement('textarea');
-          next.className = 'secondary-input';
-          next.rows = 3;
-          next.placeholder = 'Optional';
-          next.value = input.value;
-          input.replaceWith(next);
-        }
-        if (config.secondaryKind === 'location' && input.tagName === 'TEXTAREA') {
-          const next = document.createElement('input');
-          next.className = 'secondary-input';
-          next.type = 'text';
-          next.placeholder = 'Optional';
-          next.value = input.value;
-          input.replaceWith(next);
-        }
+        const descriptionWrap = card.querySelector('.description-wrap');
+        const locationWrap = card.querySelector('.location-wrap');
+        if (descriptionWrap) descriptionWrap.hidden = isPhoto;
+        if (locationWrap) locationWrap.hidden = !isPhoto;
       });
+    }
+
+    function cardMetadata(card, collection = collectionInput.value) {
+      const title = card.querySelector('.title')?.value.trim() || '';
+      const location = card.querySelector('.location')?.value.trim() || '';
+      const descriptionInput = card.querySelector('.description')?.value.trim() || '';
+      const description = collection === 'photography' ? location : descriptionInput;
+      return { title, location, description };
     }
 
     function removeItem(clientId) {
@@ -162,7 +154,6 @@
     }
 
     function fileCard(item) {
-      const config = destinationConfig();
       const card = document.createElement('section');
       card.className = 'upload-file';
       card.dataset.clientId = item.clientId;
@@ -180,7 +171,8 @@
         <div class="small-note" style="color:#ff9f9f;" ${item.conversionError ? '' : 'hidden'}>${item.conversionError || ''}</div>
         <div class="upload-meta upload-fields">
           <label>Title <input type="text" class="title" value="${titleFromFilename(item.uploadFile.name)}" placeholder="Optional"></label>
-          <label><span class="secondary-label">${config.secondaryLabel}</span> ${config.secondaryKind === 'location' ? '<input type="text" class="secondary-input" placeholder="Optional">' : '<textarea class="secondary-input" rows="3" placeholder="Optional"></textarea>'}</label>
+          <label class="description-wrap">Description <textarea class="description" rows="3" placeholder="Optional"></textarea></label>
+          <label class="location-wrap" hidden>Location <input type="text" class="location" placeholder="Optional"></label>
           ${item.uploadFile.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}
           <progress max="100" value="0"></progress>
           <div class="small-note status">${item.conversionError ? 'Blocked: conversion failed.' : 'Ready.'}</div>
@@ -259,8 +251,7 @@
         const card = queue.querySelector(`[data-client-id="${clientId}"]`);
         if (!item || !card || item.conversionError || !item.uploadFile.type.startsWith('image/')) continue;
 
-        const title = card.querySelector('.title').value.trim();
-        const location = card.querySelector('.secondary-input').value.trim();
+        const { title, location } = cardMetadata(card, 'photography');
         const dims = await imageDimensions(item.uploadFile);
         const display = await makeDisplayVariant(item.uploadFile);
 
@@ -309,9 +300,7 @@
 
       const file = item.uploadFile;
       const collection = collectionInput.value;
-      const title = card.querySelector('.title').value.trim();
-      const secondary = card.querySelector('.secondary-input').value.trim();
-      const description = collection === 'photography' ? secondary : secondary;
+      const { title, location, description } = cardMetadata(card, collection);
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
 
@@ -359,7 +348,7 @@
           progress.value = 100;
           status.textContent = 'Image upload complete.';
           card.dataset.status = 'success';
-          showResult(card, collection, complete, secondary);
+          showResult(card, collection, complete, location);
           return;
         }
 
@@ -423,7 +412,7 @@
         progress.value = 100;
         status.textContent = 'Video upload complete.';
         card.dataset.status = 'success';
-        showResult(card, collection, result, secondary);
+        showResult(card, collection, result, location);
       } catch (failure) {
         showFailure(card, failure);
       } finally {
