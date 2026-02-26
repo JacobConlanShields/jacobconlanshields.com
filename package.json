@@ -1,0 +1,12 @@
+{
+  "name": "jacobconlanshields.com",
+  "version": "1.0.0",
+  "description": "Personal website to display arrays of talent",
+  "scripts": {},
+  "license": "ISC",
+  "type": "commonjs",
+  "private": true,
+  "dependencies": {
+    "heic2any": "0.0.4"
+  }
+}

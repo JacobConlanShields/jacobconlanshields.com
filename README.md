@@ -175,6 +175,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `GET /api/photos` (manifest-backed Photography listing)
   - `GET /photos/<r2Key...>` (same-origin stream proxy for PHOTO_BUCKET objects)
 - Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
+  - `GET /api/admin/health`
   - `POST /api/admin/image/init`
   - `POST /api/admin/image/complete`
   - `POST /api/admin/upload-image` (legacy fallback endpoint)
@@ -236,7 +237,10 @@ Apply this CORS policy to **both buckets** (`SPINCLINE_BUCKET` and `PHOTO_BUCKET
 ```json
 [
   {
-    "AllowedOrigins": ["https://jacobconlanshields.com"],
+    "AllowedOrigins": [
+      "https://jacobconlanshields.com",
+      "https://*.pages.dev"
+    ],
     "AllowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
     "AllowedHeaders": ["*"],
     "ExposeHeaders": ["ETag"],
@@ -248,6 +252,7 @@ Apply this CORS policy to **both buckets** (`SPINCLINE_BUCKET` and `PHOTO_BUCKET
 Notes:
 - `ExposeHeaders: ETag` is required for browser JS multipart uploads to read each part ETag.
 - Presigned upload URLs should target `*.r2.cloudflarestorage.com` (never `r2.dev`).
+- If uploads work on production but not on `pages.dev` previews, it is usually missing Pages env vars/bindings and/or bucket CORS not allowing the preview origin. If wildcard origins are not accepted in your setup, replace `https://*.pages.dev` with specific preview hosts.
 
 ### Media encoding guidance
 For best browser playback compatibility, encode uploaded videos as MP4 (H.264 video + AAC audio).
