@@ -171,3 +171,14 @@ export function xmlValue(xml, tag) {
   const match = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
   return match ? match[1] : null;
 }
+
+export function missingUploadConfig(env = {}) {
+  const missing = [];
+  if (!env.DB || typeof env.DB.prepare !== "function") missing.push("DB");
+  if (!env.R2_ACCOUNT_ID) missing.push("R2_ACCOUNT_ID");
+  if (!env.R2_ACCESS_KEY_ID) missing.push("R2_ACCESS_KEY_ID");
+  if (!env.R2_SECRET_ACCESS_KEY) missing.push("R2_SECRET_ACCESS_KEY");
+  if (!env.SPINCLINE_BUCKET || !env.SPINCLINE_BUCKET.name) missing.push("SPINCLINE_BUCKET");
+  if (!env.PHOTO_BUCKET || !env.PHOTO_BUCKET.name) missing.push("PHOTO_BUCKET");
+  return missing;
+}

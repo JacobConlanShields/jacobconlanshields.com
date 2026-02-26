@@ -1,0 +1,17 @@
+{
+  "name": "jacobconlanshields.com",
+  "version": "1.0.0",
+  "description": "Personal website to display arrays of talent",
+  "main": "index.js",
+  "scripts": {
+    "check:admin-upload": "node --input-type=module --eval \"import('./functions/api/admin/image/init.js'); import('./functions/api/admin/health.js'); import('./functions/_lib/media.js');\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "heic2any": "^0.0.4"
+  },
+  "private": true
+}
