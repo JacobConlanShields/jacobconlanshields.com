@@ -4,7 +4,7 @@ export async function onRequest({ request, env }) {
   if (request.method === "OPTIONS") return handleOptions();
   if (request.method !== "POST") return withCors(badRequest("Method not allowed", 405));
 
-  const { key, collection, title = "", description = "", width = null, height = null, aspect_ratio = null } = await request.json();
+  const { key, collection, title = "", description = "", location = "", width = null, height = null, aspect_ratio = null } = await request.json();
   if (!key || !collection) return withCors(badRequest("Missing key/collection"));
 
   const config = getCollectionConfig(collection);
@@ -14,10 +14,12 @@ export async function onRequest({ request, env }) {
 
   const id = uuid();
   const createdAt = nowIso();
+  const resolvedDescription = String(description || location || '');
+
   await env.DB.prepare(`INSERT INTO media_items
     (id, collection, media_type, r2_base, r2_key, title, description, width, height, aspect_ratio, created_at)
     VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(id, collection, config.r2Base, key, title, description, width || null, height || null, aspect_ratio || null, createdAt)
+    .bind(id, collection, config.r2Base, key, title, resolvedDescription, width || null, height || null, aspect_ratio || null, createdAt)
     .run();
 
   return withCors(json({
@@ -27,7 +29,7 @@ export async function onRequest({ request, env }) {
     r2_base: config.r2Base,
     r2_key: key,
     title,
-    description,
+    description: resolvedDescription,
     width,
     height,
     aspect_ratio,

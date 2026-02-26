@@ -38,11 +38,22 @@
       ["spincline_in_action", "spincline-action", "status-action"],
     ];
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
     function card(item) {
+      const title = item.title || "Untitled";
+      const description = item.description || item.location || "";
       const media = item.media_type === "video"
         ? `<video controls playsinline preload="metadata" ${item.posterUrl ? `poster="${item.posterUrl}"` : ""}><source src="${item.url}" /></video>`
-        : `<img src="${item.url}" alt="${item.title || "Spincline media"}" loading="lazy" />`;
-      return `<article class="media-card card"><div class="media-card-media">${media}</div><div class="media-card-body"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || ""}</p></div></article>`;
+        : `<img src="${item.url}" alt="${escapeHtml(title || "Spincline media")}" loading="lazy" />`;
+      return `<article class="media-card card"><div class="media-card-media">${media}</div><div class="media-card-body"><h3 class="media-card-title">${escapeHtml(title)}</h3><p class="media-card-description">${escapeHtml(description)}</p></div></article>`;
     }
 
     async function loadCollection(collection, rowId, statusId) {

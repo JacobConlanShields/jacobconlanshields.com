@@ -311,7 +311,8 @@
       const collection = collectionInput.value;
       const title = card.querySelector('.title').value.trim();
       const secondary = card.querySelector('.secondary-input').value.trim();
-      const description = collection === 'photography' ? secondary : secondary;
+      const location = collection === 'photography' ? secondary : '';
+      const description = collection === 'photography' ? '' : secondary;
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
 
@@ -351,7 +352,7 @@
           const completeRes = await api('/api/admin/image/complete', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ key: init.key, collection, title, description, destination: collection, ...dims })
+            body: JSON.stringify({ key: init.key, collection, title, description, location, destination: collection, ...dims })
           });
           if (!completeRes.ok) throw makeUploadError({ step: 'complete', url: '/api/admin/image/complete', status: completeRes.status, detail: await readErrorBody(completeRes) });
 
@@ -367,7 +368,7 @@
         const initRes = await api('/api/admin/multipart/init', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description, destination: collection })
+          body: JSON.stringify({ collection, filename: file.name, contentType: file.type, title, description, location, destination: collection })
         });
         if (!initRes.ok) throw makeUploadError({ step: 'init', url: '/api/admin/multipart/init', status: initRes.status, detail: await readErrorBody(initRes) });
 
@@ -413,6 +414,7 @@
             parts: Object.entries(uploaded).map(([partNumber, etag]) => ({ partNumber: Number(partNumber), etag })),
             title,
             description,
+            location,
             destination: collection,
             posterKey,
           })
