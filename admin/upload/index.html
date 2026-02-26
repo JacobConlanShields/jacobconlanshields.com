@@ -192,6 +192,13 @@
       const cards = [...queue.querySelectorAll('.upload-file')];
       if (!cards.length) return;
       uploadAllBtn.disabled = true;
+
+      if (isPhotographyCollection()) {
+        await uploadPhotographyBatch(cards);
+        uploadAllBtn.disabled = false;
+        return;
+      }
+
       batchStatus.textContent = `Uploading ${cards.length} file(s)...`;
       for (const [idx, card] of cards.entries()) {
         const item = selectedItems[idx];
@@ -203,20 +210,72 @@
     });
 
     async function imageDimensions(file) {
-      return new Promise((resolve) => {
-        if (!file.type.startsWith('image/')) return resolve({});
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          resolve({ width: img.naturalWidth, height: img.naturalHeight, aspect_ratio: img.naturalWidth / img.naturalHeight });
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          resolve({});
-        };
-        img.src = url;
-      });
+      if (!file.type.startsWith('image/')) return {};
+      try {
+        const bmp = await createImageBitmap(file);
+        const width = bmp.width;
+        const height = bmp.height;
+        bmp.close?.();
+        return { width, height, aspect_ratio: width / height };
+      } catch {
+        return {};
+      }
+    }
+
+    async function makeDisplayVariant(file, maxLongSide = 1600) {
+      if (!file.type.startsWith('image/')) return null;
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, maxLongSide / Math.max(bmp.width, bmp.height));
+      const w = Math.max(1, Math.round(bmp.width * scale));
+      const h = Math.max(1, Math.round(bmp.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close?.();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+      return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
+    }
+
+    async function uploadPhotographyBatch(cards) {
+      try {
+        batchStatus.textContent = `Uploading ${cards.length} photography file(s)...`;
+        const fd = new FormData();
+
+        for (const [idx, card] of cards.entries()) {
+          const item = selectedItems[idx];
+          if (!item || item.conversionError || !item.uploadFile.type.startsWith('image/')) continue;
+          const title = card.querySelector('.title').value;
+          const location = card.querySelector('.location')?.value || '';
+          const dims = await imageDimensions(item.uploadFile);
+          const display = await makeDisplayVariant(item.uploadFile);
+
+          fd.append('files', item.uploadFile, item.uploadFile.name);
+          fd.append('titles', title);
+          fd.append('locations', location);
+          fd.append('widths', String(dims.width || ''));
+          fd.append('heights', String(dims.height || ''));
+          if (display) fd.append('displayFiles', display, display.name);
+          else fd.append('displayFiles', new File([''], 'empty.jpg', { type: 'application/octet-stream' }));
+
+          card.querySelector('.status').textContent = 'Queued in batch upload...';
+          card.querySelector('progress').value = 50;
+        }
+
+        const resp = await api('/api/photos/upload', { method: 'POST', body: fd });
+        if (!resp.ok) throw new Error(`Batch upload failed (${resp.status})`);
+        const payload = await resp.json();
+
+        cards.forEach((card, idx) => {
+          const item = payload.items?.[idx];
+          card.querySelector('progress').value = item ? 100 : 0;
+          card.querySelector('.status').textContent = item ? 'Image upload complete.' : 'Skipped.';
+          if (item) showResult(card, 'photography', { ...item, url: `/photos/${item.displayKey || item.originalKey}` }, item.location || '');
+        });
+        batchStatus.textContent = `Batch upload finished (${payload.uploaded || 0} photo(s)).`;
+      } catch (err) {
+        batchStatus.textContent = `Batch upload failed: ${err.message || err}`;
+      }
     }
 
     function showResult(card, collection, item, location) {
@@ -279,6 +338,37 @@
 
       try {
         if (file.type.startsWith('image/')) {
+          if (collection === 'photography') {
+            const dims = await imageDimensions(file);
+            const displayFile = await makeDisplayVariant(file);
+            status.textContent = 'Uploading photography image...';
+            progress.value = 35;
+
+            const fd = new FormData();
+            fd.append('files', file, file.name);
+            fd.append('titles', title);
+            fd.append('locations', location);
+            fd.append('widths', String(dims.width || ''));
+            fd.append('heights', String(dims.height || ''));
+            if (displayFile) fd.append('displayFiles', displayFile, displayFile.name);
+            else fd.append('displayFiles', new File([''], 'empty.jpg', { type: 'application/octet-stream' }));
+
+            let uploadRes;
+            try {
+              uploadRes = await api('/api/photos/upload', { method: 'POST', body: fd });
+            } catch (err) {
+              throw makeUploadError({ step: 'upload', url: '/api/photos/upload', detail: err.message || String(err) });
+            }
+            if (!uploadRes.ok) throw makeUploadError({ step: 'upload', url: '/api/photos/upload', status: uploadRes.status });
+            const payload = await uploadRes.json();
+            const complete = payload.items?.[0];
+
+            progress.value = 100;
+            status.textContent = 'Image upload complete.';
+            if (complete) showResult(card, collection, { ...complete, url: `/photos/${complete.displayKey || complete.originalKey}` }, location);
+            return;
+          }
+
           const dims = await imageDimensions(file);
           status.textContent = 'Initializing image upload...';
           progress.value = 10;

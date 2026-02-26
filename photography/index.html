@@ -5,51 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Photography — Jacob Shields</title>
   <link rel="stylesheet" href="/assets/styles.css" />
+  <link rel="stylesheet" href="/assets/mosaic/mosaic.css" />
 </head>
 <body>
   <main>
     <p class="nav"><a href="/">← Back to home</a></p>
     <h1>Photography</h1>
     <div class="status" id="photo-status">Loading...</div>
-    <section class="masonry-grid" id="photo-grid"></section>
+    <section class="mosaic-shell" id="mosaic-shell">
+      <div class="mosaic-container" id="mosaic-container"></div>
+    </section>
   </main>
 
-  <script>
-    const grid = document.getElementById("photo-grid");
-    const status = document.getElementById("photo-status");
+  <section class="photo-overlay" id="photo-overlay" hidden>
+    <div class="photo-overlay-toolbar">
+      <button class="photo-overlay-toggle" type="button">100%</button>
+      <button class="photo-overlay-close" type="button" aria-label="Close viewer">Close</button>
+    </div>
+    <div class="photo-overlay-scroll">
+      <img class="photo-overlay-image" alt="Expanded photo" />
+    </div>
+  </section>
 
-    function renderTile(item) {
-      const ratio = item.aspect_ratio && Number(item.aspect_ratio) > 0 ? Number(item.aspect_ratio) : 1.5;
-      const mediaStyle = `aspect-ratio:${ratio};`;
-      const tile = document.createElement("article");
-      tile.className = "masonry-tile";
-      tile.innerHTML = `<div class="masonry-media" style="${mediaStyle}"><img src="${item.url}" alt="${item.title || "Photography image"}" loading="lazy"></div><div class="masonry-caption"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || ""}</p></div>`;
-      return tile;
-    }
-
-    function resizeTile(tile) {
-      const row = parseFloat(getComputedStyle(grid).getPropertyValue("--row-unit")) || 8;
-      tile.style.gridRowEnd = `span ${Math.ceil(tile.getBoundingClientRect().height / row)}`;
-    }
-
-    function relayout() { [...grid.children].forEach(resizeTile); }
-    let t;
-    window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(relayout, 120); });
-
-    fetch("/api/media?collection=photography")
-      .then((resp) => resp.json())
-      .then((items) => {
-        grid.innerHTML = "";
-        items.forEach((item) => {
-          const tile = renderTile(item);
-          const img = tile.querySelector("img");
-          img.addEventListener("load", () => resizeTile(tile));
-          grid.appendChild(tile);
-          resizeTile(tile);
-        });
-        status.textContent = items.length ? "" : "No photos yet.";
-      })
-      .catch(() => { status.textContent = "Unable to load photos right now."; });
-  </script>
+  <script type="module" src="/assets/mosaic/mosaic.js"></script>
 </body>
 </html>

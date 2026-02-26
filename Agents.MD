@@ -122,6 +122,7 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
 - Admin uploads support both standard image upload and resumable multipart video uploads.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
+- Photography now uses a dedicated manifest-backed Mosaic system (`/api/photos`, `/api/photos/upload`, `/photos/*`) with metadata stored in `manifest/photos.json` in `PHOTO_BUCKET`; this runs alongside legacy D1 media APIs for existing sections.
 
 ## 2026 upload reliability notes
 - `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload.

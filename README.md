@@ -154,7 +154,7 @@ This repo now includes a durable media system using Cloudflare Pages Functions +
 
 ### New pages
 - `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
-- `/pages/photography/`: API-driven masonry/tetris grid using CSS grid + JS row-span measurement.
+- `/pages/photography/`: API-driven Mosaic layout (trimmed-mean global sizing + packed absolute positioning + drag pinning + full-size overlay viewer).
 - `/admin/upload/`: admin upload console for images and resumable multipart video uploads.
 - `/admin/hidden-pages/`: admin index of hidden routes.
 
@@ -172,6 +172,8 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 ### API routes (Pages Functions)
 - Public:
   - `GET /api/media?collection=<collection>`
+  - `GET /api/photos` (manifest-backed Photography listing)
+  - `GET /photos/<r2Key...>` (same-origin stream proxy for PHOTO_BUCKET objects)
 - Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
   - `POST /api/admin/image/init`
   - `POST /api/admin/image/complete`
@@ -182,6 +184,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `GET /api/admin/multipart/status?key=<key>`
   - `POST /api/admin/multipart/complete`
   - `POST /api/admin/multipart/abort`
+  - `POST /api/photos/upload` (Photography manifest + originals/display uploads)
   - `PATCH /api/admin/item`
   - `DELETE /api/admin/item?id=<id>`
 
@@ -189,7 +192,11 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 - `spincline_design_build` → `SPINCLINE_BUCKET` + `design-and-build/`
 - `spincline_finished_products` → `SPINCLINE_BUCKET` + `finished-products/`
 - `spincline_in_action` → `SPINCLINE_BUCKET` + `in-action/`
-- `photography` → `PHOTO_BUCKET` + root prefix (`""`)
+- `photography` (legacy D1 image flow) → `PHOTO_BUCKET` + root prefix (`""`)
+- Mosaic Photography manifest objects:
+  - originals: `photos/original/<id>.<ext>`
+  - display: `photos/display/<id>.jpg`
+  - manifest: `manifest/photos.json`
 
 Public base URLs used for playback/rendering:
 - `SPINCLINE_MEDIA_BASE = https://pub-a0784713bd834a079424dc14cf218eea.r2.dev`
@@ -217,7 +224,9 @@ Configure in Cloudflare Pages project settings:
 3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload.
 4. Click **Upload all files** (or upload per file).
 5. Confirm each card shows success + created item URL.
-6. Verify on `/spincline` or `/photography` that new items render from `/api/media`.
+6. Verify on `/spincline` or `/photography` that new items render.
+   - Spincline still renders from `/api/media`.
+   - Photography Mosaic renders from `/api/photos` + `/photos/<key>`.
 
 ### R2 CORS settings for direct uploads (required)
 If you see `TypeError: Failed to fetch` during R2 PUT requests, check bucket CORS first.
