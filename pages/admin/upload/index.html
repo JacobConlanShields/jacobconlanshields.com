@@ -36,8 +36,9 @@
     <div class="upload-actions-bottom"><button id="upload-all-bottom" type="button">Upload all files</button></div>
   </main>
 
+  <script src="/assets/vendor/heic2any.js"></script>
   <script type="module">
-    import heic2any from '/assets/vendor/heic2any.js';
+    const heic2any = window.heic2any;
 
     const queue = document.getElementById('queue');
     const filesInput = document.getElementById('files');
@@ -62,12 +63,16 @@
 
     function destinationConfig(value = collectionInput.value) {
       return value === 'photography'
-        ? { secondaryLabel: 'Location', secondaryKind: 'location', isPhoto: true }
-        : { secondaryLabel: 'Description', secondaryKind: 'description', isPhoto: false };
+        ? { secondaryLabel: 'Location', secondaryKind: 'location', secondaryField: 'location', isPhoto: true }
+        : { secondaryLabel: 'Description', secondaryKind: 'description', secondaryField: 'description', isPhoto: false };
     }
 
     function titleFromFilename(name = '') {
       return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function displayFileName(item) {
+      return item.originalFile?.name || item.uploadFile.name;
     }
 
     function friendlySize(bytes) {
@@ -86,6 +91,7 @@
     }
 
     async function convertHeicToJpeg(file) {
+      if (typeof heic2any !== 'function') throw new Error('HEIC converter is unavailable in this browser');
       const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
       const blob = Array.isArray(converted) ? converted[0] : converted;
       if (!(blob instanceof Blob)) throw new Error('HEIC conversion did not return a Blob');
@@ -101,11 +107,7 @@
       collectionInput.disabled = disabled;
       filesInput.disabled = disabled;
       uploadAllBtns.forEach((btn) => { btn.disabled = disabled || selectedItems.length === 0; });
-      queue.querySelectorAll('input, textarea, button.start, button.remove').forEach((el) => {
-        if (el.classList.contains('remove') && el.closest('.upload-file')?.dataset.status === 'uploading') {
-          el.disabled = true;
-          return;
-        }
+      queue.querySelectorAll('input, textarea, button.start').forEach((el) => {
         el.disabled = disabled;
       });
     }
@@ -156,7 +158,7 @@
 
     function makePreview(item) {
       if (item.uploadFile.type.startsWith('image/') && item.previewUrl) {
-        return `<img class="upload-thumb" src="${item.previewUrl}" alt="Preview for ${item.uploadFile.name}" />`;
+        return `<img class="upload-thumb" src="${item.previewUrl}" alt="Preview of ${displayFileName(item)}" />`;
       }
       return '<div class="upload-thumb upload-thumb--generic" aria-hidden="true">📄</div>';
     }
@@ -169,17 +171,14 @@
       card.dataset.status = 'ready';
 
       card.innerHTML = `
-        <div class="upload-row">
-          ${makePreview(item)}
-          <div class="upload-file-meta">
-            <h3>${item.uploadFile.name}</h3>
-            <div class="small-note">${item.uploadFile.type || 'unknown type'} · ${friendlySize(item.uploadFile.size)}</div>
-          </div>
-          <button type="button" class="remove">Remove</button>
+        <div class="upload-file-meta">
+          <h3>${displayFileName(item)}</h3>
+          <div class="small-note">${item.originalFile.type || item.uploadFile.type || 'unknown type'} · ${friendlySize(item.originalFile.size || item.uploadFile.size)}</div>
         </div>
+        <div style="margin-top:8px;">${makePreview(item)}</div>
         <div class="small-note" style="color:#ff9f9f;" ${item.conversionError ? '' : 'hidden'}>${item.conversionError || ''}</div>
         <div class="upload-meta upload-fields">
-          <label>Title <input type="text" class="title" value="${titleFromFilename(item.uploadFile.name)}" placeholder="Optional"></label>
+          <label>Title <input type="text" class="title" value="${titleFromFilename(displayFileName(item))}" placeholder="Optional"></label>
           <label><span class="secondary-label">${config.secondaryLabel}</span> ${config.secondaryKind === 'location' ? '<input type="text" class="secondary-input" placeholder="Optional">' : '<textarea class="secondary-input" rows="3" placeholder="Optional"></textarea>'}</label>
           ${item.uploadFile.type.startsWith('video/') ? '<label>Poster image (optional)<input type="file" class="poster" accept="image/*"></label>' : ''}
           <progress max="100" value="0"></progress>
@@ -188,7 +187,6 @@
           <button type="button" class="start" ${item.conversionError ? 'disabled' : ''}>Upload</button>
         </div>`;
 
-      card.querySelector('.remove').addEventListener('click', () => removeItem(item.clientId));
       card.querySelector('.start').addEventListener('click', () => uploadSingle(item.clientId));
       return card;
     }
@@ -268,7 +266,7 @@
         fd.append('displayFiles', display || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), display?.name || 'empty.jpg');
         meta.push({
           clientId,
-          filename: item.uploadFile.name,
+          filename: item.originalFile.name,
           title,
           location,
           description: location,
@@ -311,7 +309,7 @@
       const collection = collectionInput.value;
       const title = card.querySelector('.title').value.trim();
       const secondary = card.querySelector('.secondary-input').value.trim();
-      const description = collection === 'photography' ? secondary : secondary;
+      const description = secondary;
       const progress = card.querySelector('progress');
       const status = card.querySelector('.status');
 
@@ -431,7 +429,6 @@
           const keepDisabled = card.dataset.status === 'success';
           card.querySelectorAll('input, textarea').forEach((el) => { el.disabled = keepDisabled; });
           card.querySelectorAll('button.start').forEach((el) => { el.disabled = keepDisabled; });
-          card.querySelectorAll('button.remove').forEach((el) => { el.disabled = false; });
         }
       }
     }
