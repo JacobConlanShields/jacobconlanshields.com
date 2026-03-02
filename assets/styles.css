@@ -1043,3 +1043,5 @@ textarea:focus{
 .hidden-page-card code{
   word-break:break-word;
 }
+
+.upload-limit-banner { margin: 12px 0; color: #ffcc80; }

@@ -134,3 +134,4 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - When uploads fail, UI errors now include failing step (init/put/complete), host, HTTP status when available, response body (if present), and a likely-cause hint.
 - If a PUT request fails without an HTTP status, treat R2 bucket CORS as the first thing to verify.
 - R2 bucket CORS must include `ExposeHeaders: ETag` and should allow both production origin and preview Pages origins.
+- Admin upload v2 now includes `/api/admin/upload` (single-image multipart requests writing to manifest JSON under `manifests/*.json`) and `/api/admin/video/mpu-*` multipart chunk endpoints; `/admin/upload` fetches `/api/admin/health` for `uploadMaxMb` and blocks oversized per-request image submissions client-side.
