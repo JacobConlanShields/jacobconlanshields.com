@@ -175,17 +175,18 @@ export function xmlValue(xml, tag) {
 export function missingUploadConfig(env = {}) {
   const missing = [];
 
-  // Keep DB only if you actually use it elsewhere.
-  // If you don't have D1 configured, remove this line.
+  const isR2Bucket = (b) =>
+    !!b &&
+    typeof b.get === "function" &&
+    typeof b.put === "function" &&
+    typeof b.head === "function"; // head is optional but nice
+
+  // Keep DB check ONLY if other endpoints truly require it.
+  // If you don't use D1 anymore, you can remove this later.
   // if (!env.DB || typeof env.DB.prepare !== "function") missing.push("DB");
 
-  if (!env.SPINCLINE_BUCKET || !env.SPINCLINE_BUCKET.name) missing.push("SPINCLINE_BUCKET");
-  if (!env.PHOTO_BUCKET || !env.PHOTO_BUCKET.name) missing.push("PHOTO_BUCKET");
-
-  // REMOVE these (they're for S3-style access, not R2 bindings)
-  // if (!env.R2_ACCOUNT_ID) missing.push("R2_ACCOUNT_ID");
-  // if (!env.R2_ACCESS_KEY_ID) missing.push("R2_ACCESS_KEY_ID");
-  // if (!env.R2_SECRET_ACCESS_KEY) missing.push("R2_SECRET_ACCESS_KEY");
+  if (!isR2Bucket(env.SPINCLINE_BUCKET)) missing.push("SPINCLINE_BUCKET");
+  if (!isR2Bucket(env.PHOTO_BUCKET)) missing.push("PHOTO_BUCKET");
 
   return missing;
 }
