@@ -268,3 +268,15 @@ For best browser playback compatibility, encode uploaded videos as MP4 (H.264 vi
   ```bash
   wrangler pages dev .
   ```
+
+### Admin upload v2 key conventions (R2 + manifests)
+- Image originals and variants written by `/api/admin/upload`:
+  - Photography: `photography/original/<id>.<ext>`, `photography/display/<id>.jpg`, `photography/thumb/<id>.jpg`
+  - Spincline: `spincline/<section>/original/<id>.<ext>`, `spincline/<section>/display/<id>.jpg`, `spincline/<section>/thumb/<id>.jpg`
+- Video multipart uploads written by `/api/admin/video/*`:
+  - Photography: `photography/video/<id>-<filename>`
+  - Spincline: `spincline/<section>/video/<id>-<filename>`
+- Manifest objects:
+  - `manifests/photography.json`
+  - `manifests/spincline.json`
+- Manifest writes always append one record and store JSON with `content-type: application/json` and `cache-control: no-store`.

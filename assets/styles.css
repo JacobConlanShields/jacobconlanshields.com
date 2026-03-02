@@ -1043,3 +1043,13 @@ textarea:focus{
 .hidden-page-card code{
   word-break:break-word;
 }
+
+.upload-limit-banner{
+  margin: 8px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #141414;
+  color: var(--muted);
+  font-size: 13px;
+}
