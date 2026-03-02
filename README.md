@@ -190,6 +190,15 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `PATCH /api/admin/item`
   - `DELETE /api/admin/item?id=<id>`
 
+### R2 key conventions (admin upload v2)
+- Images are written with per-root conventions:
+  - `photography/original/<id>.<ext>`, `photography/display/<id>.jpg`, `photography/thumb/<id>.jpg`
+  - `spincline/<section>/original/<id>.<ext>`, `spincline/<section>/display/<id>.jpg`, `spincline/<section>/thumb/<id>.jpg`
+- Video multipart uploads write to `spincline/<section>/video/<id>-<filename>` (and can also target `photography/video/` if enabled).
+- Manifests are append-only JSON arrays in R2:
+  - `manifests/photography.json`
+  - `manifests/spincline.json`
+
 ### Collection to bucket/prefix mapping
 - `spincline_design_build` → `SPINCLINE_BUCKET` + `design-and-build/`
 - `spincline_finished_products` → `SPINCLINE_BUCKET` + `finished-products/`
