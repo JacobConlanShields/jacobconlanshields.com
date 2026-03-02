@@ -268,3 +268,13 @@ For best browser playback compatibility, encode uploaded videos as MP4 (H.264 vi
   ```bash
   wrangler pages dev .
   ```
+
+### Admin upload v2 conventions (R2 + manifests)
+- `POST /api/admin/upload` accepts one image per request (`meta`, `original`, optional `display` + `thumb`) and writes into:
+  - `photography/original|display|thumb/<id>` for photography.
+  - `spincline/<section>/original|display|thumb/<id>` for spincline sections.
+- Image metadata is appended to manifest arrays in R2:
+  - `manifests/photography.json`
+  - `manifests/spincline.json`
+- Video uploads use multipart endpoints under `/api/admin/video/*` (`mpu-create`, `mpu-part`, `mpu-complete`) and store video keys under `.../video/` prefixes.
+- `GET /api/admin/health` now reports `uploadMaxMb` from `UPLOAD_MAX_MB` (default `100`) so `/admin/upload` can enforce client-side per-request size checks.
