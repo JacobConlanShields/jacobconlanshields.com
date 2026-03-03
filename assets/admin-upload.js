@@ -265,24 +265,34 @@ function showOverlay(show) {
   }
 }
 
+function isFileDragEvent(event) {
+  const types = event.dataTransfer?.types;
+  if (!types) return false;
+  return Array.from(types).includes('Files');
+}
+
 function setupDragAndDrop() {
   window.addEventListener('dragenter', (event) => {
+    if (!isFileDragEvent(event)) return;
     event.preventDefault();
     dragDepth += 1;
     showOverlay(true);
   });
 
   window.addEventListener('dragover', (event) => {
+    if (!isFileDragEvent(event)) return;
     event.preventDefault();
   });
 
   window.addEventListener('dragleave', (event) => {
+    if (!isFileDragEvent(event)) return;
     event.preventDefault();
     dragDepth = Math.max(0, dragDepth - 1);
     if (dragDepth === 0) showOverlay(false);
   });
 
   window.addEventListener('drop', (event) => {
+    if (!isFileDragEvent(event)) return;
     event.preventDefault();
     dragDepth = 0;
     showOverlay(false);
