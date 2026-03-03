@@ -7,9 +7,12 @@ export async function onRequest({ request, env }) {
   }
 
   const missing = missingUploadConfig(env);
+  const uploadMaxMb = Number(env.UPLOAD_MAX_MB || 100) || 100;
+
   if (missing.length) {
-    return withCors(json({ ok: false, missing }));
+    return withCors(json({ ok: false, missing, uploadMaxMb }));
   }
 
-  return withCors(json({ ok: true }));
+  return withCors(json({ ok: true, uploadMaxMb }));
 }
+
