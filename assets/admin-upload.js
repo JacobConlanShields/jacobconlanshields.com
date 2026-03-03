@@ -13,6 +13,7 @@ const dropOverlay = document.getElementById('drop-overlay');
 
 let uploadMaxMb = 100;
 let dragDepth = 0;
+let isFileDragActive = false;
 
 function secondaryConfig() {
   return rootSelect.value === 'photography'
@@ -257,6 +258,7 @@ async function addFiles(fileList) {
 }
 
 function showOverlay(show) {
+  isFileDragActive = show;
   if (dropTarget) {
     dropTarget.classList.toggle('is-active', show);
   }
@@ -271,6 +273,11 @@ function isFileDragEvent(event) {
   return Array.from(types).includes('Files');
 }
 
+function resetDragOverlay() {
+  dragDepth = 0;
+  if (isFileDragActive) showOverlay(false);
+}
+
 function setupDragAndDrop() {
   window.addEventListener('dragenter', (event) => {
     if (!isFileDragEvent(event)) return;
@@ -282,6 +289,7 @@ function setupDragAndDrop() {
   window.addEventListener('dragover', (event) => {
     if (!isFileDragEvent(event)) return;
     event.preventDefault();
+    if (!isFileDragActive) showOverlay(true);
   });
 
   window.addEventListener('dragleave', (event) => {
@@ -294,9 +302,15 @@ function setupDragAndDrop() {
   window.addEventListener('drop', (event) => {
     if (!isFileDragEvent(event)) return;
     event.preventDefault();
-    dragDepth = 0;
-    showOverlay(false);
+    resetDragOverlay();
     if (event.dataTransfer?.files?.length) addFiles(event.dataTransfer.files);
+  });
+
+  window.addEventListener('dragend', resetDragOverlay);
+  window.addEventListener('blur', resetDragOverlay);
+  window.addEventListener('mouseup', resetDragOverlay);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') resetDragOverlay();
   });
 }
 
