@@ -120,14 +120,14 @@ There are **no automated tests** at the moment. Manual validation is expected.
   - `/admin/hidden-pages/`
 - Cloudflare Pages Functions now include media APIs under `/functions/api/**`.
 - Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
-- Admin uploads support both standard image upload and resumable multipart video uploads.
+- Admin uploads now have a canonical image-first implementation at `/admin/upload` with destination-aware queue cards and sequential Upload all behavior.
 - Admin upload file rows include destination-aware metadata fields (Title + Location/Description), per-file remove, and slide-in metadata panels; title defaults from filename.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
 - Photography now uses a dedicated manifest-backed Mosaic system (`/api/photos`, `/api/photos/upload`, `/photos/*`) with metadata stored in `manifest/photos.json` in `PHOTO_BUCKET`; this runs alongside legacy D1 media APIs for existing sections.
-- `/api/photos/upload` accepts both legacy parallel fields and `meta` JSON (clientId, destination, title/location/description, width/height) so the admin UI can map upload results back to each tile.
+- `/api/admin/upload` is the canonical image upload API. It accepts multipart `meta` JSON plus `original`/optional `display`/`thumb`, writes to R2 bucket prefixes, and appends to `manifests/photography.json` or `manifests/spincline.json`.
 
 ## 2026 upload reliability notes
-- `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload using a locally bundled dependency (`/assets/vendor/heic2any.js`) rather than a CDN dynamic import.
+- `/admin/upload` must treat HEIC/HEIF as best-effort: attempt `createImageBitmap` for preview/resize, and if unsupported still upload original file with a card warning (no default `heic2any` import).
 - Image uploads use presigned R2 PUT URLs (`/api/admin/image/init` + `/api/admin/image/complete`) so large image uploads avoid function body limits.
 - `/api/admin/health` reports whether required upload bindings/secrets are present so preview environments can show an actionable “not configured” banner.
 - `/api/admin/image/init` returns structured JSON for missing config (`503 missing_config`) instead of opaque 500s and logs with `[admin:image:init]` prefix.
