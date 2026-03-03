@@ -66,6 +66,7 @@ export async function onRequestPost({ request, env }) {
       destination: String(entryMeta.destination || 'photography'),
       title: String(entryMeta.title || titles[i] || file.name.replace(/\.[^.]+$/, '')),
       location: String(entryMeta.location || entryMeta.description || locations[i] || ''),
+      description: String(entryMeta.description || entryMeta.location || locations[i] || ''),
       width,
       height,
       createdAt: new Date().toISOString(),
