@@ -8,7 +8,8 @@ const uploadAllBtn = document.getElementById('upload-all');
 const queueEl = document.getElementById('queue');
 const batchStatus = document.getElementById('batch-status');
 const limitBanner = document.getElementById('limit-banner');
-const dropOverlay = document.getElementById('drop-overlay');
+const dropTarget = document.getElementById('drop-target');
+const dropTargetActiveText = document.getElementById('drop-target-active-text');
 
 let uploadMaxMb = 100;
 let dragDepth = 0;
@@ -256,7 +257,9 @@ async function addFiles(fileList) {
 }
 
 function showOverlay(show) {
-  dropOverlay.hidden = !show;
+  if (!dropTarget || !dropTargetActiveText) return;
+  dropTarget.classList.toggle('is-active', show);
+  dropTargetActiveText.hidden = !show;
 }
 
 function setupDragAndDrop() {

@@ -34,13 +34,20 @@
         <input id="files" type="file" accept="image/*" multiple />
       </label>
 
-      <button id="upload-all" type="button">Upload all</button>
+    </div>
+
+    <div id="drop-target" class="drop-target" aria-live="polite">
+      <p class="small-note">Drag photos here, or use the file picker above.</p>
+      <p id="drop-target-active-text" class="drop-target-active-text" hidden>Drop files to add</p>
     </div>
 
     <div class="small-note" id="batch-status">No files queued.</div>
-    <div id="drop-overlay" class="drop-overlay" hidden>Drop files to add</div>
 
     <div id="queue" class="admin-grid"></div>
+
+    <div class="upload-actions-bottom">
+      <button id="upload-all" type="button">Upload all</button>
+    </div>
   </main>
 
   <script type="module" src="/assets/admin-upload.js"></script>

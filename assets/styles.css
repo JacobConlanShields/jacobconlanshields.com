@@ -1044,17 +1044,24 @@ textarea:focus{
   word-break:break-word;
 }
 
-.drop-overlay{
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(10, 10, 10, 0.45);
-  border: 2px dashed var(--line);
+.drop-target{
+  margin: 12px 0;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 90%, #1f1f1f 10%);
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.drop-target-active-text{
+  margin: 8px 0 0;
   color: var(--text);
-  font-size: 1.2rem;
-  z-index: 999;
-  pointer-events: none;
+  font-weight: 600;
+}
+
+.drop-target.is-active{
+  border-color: #84a9ff;
+  background: color-mix(in srgb, var(--panel) 75%, #1f3f7a 25%);
 }
 
 .upload-warning{ color: #ffcc80; }
