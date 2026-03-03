@@ -1053,15 +1053,30 @@ textarea:focus{
   transition: border-color 140ms ease, background-color 140ms ease;
 }
 
-.drop-target-active-text{
-  margin: 8px 0 0;
-  color: var(--text);
-  font-weight: 600;
-}
-
 .drop-target.is-active{
   border-color: #84a9ff;
   background: color-mix(in srgb, var(--panel) 75%, #1f3f7a 25%);
+}
+
+.drop-overlay{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 20, 20, 0.45);
+  z-index: 999;
+  pointer-events: none;
+}
+
+.drop-overlay-text{
+  margin: 0;
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--line);
 }
 
 .upload-warning{ color: #ffcc80; }
