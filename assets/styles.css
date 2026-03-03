@@ -1007,6 +1007,19 @@ textarea:focus{
 .upload-meta button{ cursor:pointer; }
 .upload-meta button:disabled{ opacity:.6; cursor:not-allowed; }
 .upload-actions-bottom{ margin-top:14px; }
+.upload-drop-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display:grid;
+  place-items:center;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  font-size: 1.2rem;
+  letter-spacing: .01em;
+  pointer-events: none;
+}
+
 .small-note{ font-size:13px; color:var(--muted); }
 
 .admin-links,
