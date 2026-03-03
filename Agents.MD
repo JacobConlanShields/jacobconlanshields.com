@@ -127,7 +127,8 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `/api/photos/upload` accepts both legacy parallel fields and `meta` JSON (clientId, destination, title/location/description, width/height) so the admin UI can map upload results back to each tile.
 
 ## 2026 upload reliability notes
-- `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload using a locally bundled dependency (`/assets/vendor/heic2any.js`) rather than a CDN dynamic import.
+- `/admin/upload` is the canonical uploader (`/assets/admin-upload.js`) and uses one queue flow for file select + drag/drop.
+- HEIC/HEIF is handled as best-effort with `createImageBitmap`; if decode fails, original upload still proceeds and card-level warning explains preview/resize is unavailable.
 - Image uploads use presigned R2 PUT URLs (`/api/admin/image/init` + `/api/admin/image/complete`) so large image uploads avoid function body limits.
 - `/api/admin/health` reports whether required upload bindings/secrets are present so preview environments can show an actionable “not configured” banner.
 - `/api/admin/image/init` returns structured JSON for missing config (`503 missing_config`) instead of opaque 500s and logs with `[admin:image:init]` prefix.

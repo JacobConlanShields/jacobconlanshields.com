@@ -140,7 +140,7 @@ If you want to test the Cloudflare Pages Function locally:
 
 ### Admin routes (Cloudflare Access protected)
 - `/admin/`: admin hub page for internal tools.
-- `/admin/upload/`: media upload console for images and resumable multipart video uploads.
+- `/admin/upload/`: canonical image upload console (single-file or sequential “Upload all”).
 - `/admin/hidden-pages/`: private index of routes not linked in the public top navigation.
 - These routes are intended to be protected by Cloudflare Access (Google login) in production.
 
@@ -155,8 +155,7 @@ This repo now includes a durable media system using Cloudflare Pages Functions +
 ### New pages
 - `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
 - `/pages/photography/`: API-driven Mosaic layout (trimmed-mean global sizing + packed absolute positioning + drag pinning + full-size overlay viewer).
-- `/admin/upload/`: admin upload console for images and resumable multipart video uploads.
-- `/admin/upload/` now renders destination-aware per-file metadata cards (Title + Location/Description), prefilled titles from filenames, remove actions, and slide-in metadata panels.
+- `/admin/upload/`: canonical admin image uploader with drag/drop, destination root + spincline section controls, per-card metadata fields, per-card upload buttons, and sequential “Upload all”.
 - `/admin/hidden-pages/`: admin index of hidden routes.
 
 ### Data model (D1)
@@ -179,6 +178,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `POST /api/admin/image/init`
   - `POST /api/admin/image/complete`
   - `GET /api/admin/health`
+  - `POST /api/admin/upload` (canonical multipart image upload endpoint: `meta`, `original`, optional `display`, optional `thumb`)
   - `POST /api/admin/upload-image` (legacy fallback endpoint)
   - `POST /api/admin/upload-poster`
   - `POST /api/admin/multipart/init`
@@ -220,15 +220,18 @@ Configure in Cloudflare Pages project settings:
 2. Pages Functions do not require `X-Admin-Token`; edge access control is the source of truth.
 3. Never commit secrets into source code or client bundles.
 
-### Tonight upload checklist
+### Upload checklist
 1. Sign in through Cloudflare Access and open `/admin/upload`.
-2. Pick the destination collection and select one or more files.
-3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload using a locally bundled dependency (`heic2any`) instead of CDN dynamic imports.
-4. Click **Upload all files** (or upload per file).
-5. Confirm each card shows success + created item URL.
-6. Verify on `/spincline` or `/photography` that new items render.
-   - Spincline still renders from `/api/media`.
-   - Photography Mosaic renders from `/api/photos` + `/photos/<key>`.
+2. Pick `Destination Root` (`photography` or `spincline`) and (if spincline) choose a section.
+3. Select files or drag/drop anywhere on the page.
+4. Confirm each file card shows preview, title, and secondary field (Location for photography / Description for spincline).
+5. Click **Upload** per card or **Upload all**.
+6. Confirm each card shows `Success`.
+
+### HEIC/HEIF handling
+- The canonical uploader does **not** import `heic2any`.
+- It attempts preview/resize with `createImageBitmap(file)`.
+- If decoding fails (common for HEIC/HEIF), upload still proceeds with the original file and the card shows a warning: `Preview/resize unavailable for this format on this browser.`
 
 ### R2 CORS settings for direct uploads (required)
 If you see `TypeError: Failed to fetch` during R2 PUT requests, check bucket CORS first.
