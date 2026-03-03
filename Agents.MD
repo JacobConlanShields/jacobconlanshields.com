@@ -134,3 +134,12 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - When uploads fail, UI errors now include failing step (init/put/complete), host, HTTP status when available, response body (if present), and a likely-cause hint.
 - If a PUT request fails without an HTTP status, treat R2 bucket CORS as the first thing to verify.
 - R2 bucket CORS must include `ExposeHeaders: ETag` and should allow both production origin and preview Pages origins.
+
+
+## 2026 canonical admin upload refresh
+- `/admin/upload/` is now consolidated to one canonical implementation using external script `/assets/admin-upload.js` (no inline upload app clones).
+- Upload destination is split into root (`photography` or `spincline`) and conditional spincline section (`design-and-build`, `finished-products`, `in-action`).
+- Drag/drop targets the whole page and queues image cards with title + destination-aware secondary metadata (`Location` for photography, `Description` for spincline).
+- HEIC/unsupported formats use best-effort previews with `createImageBitmap`; if preview/resize fails, original upload still proceeds and card shows a warning.
+- New `POST /api/admin/upload` accepts multipart `{meta, original, display?, thumb?}`, writes to R2 prefixes, and appends records to `manifests/photography.json` or `manifests/spincline.json`.
+- `GET /api/admin/health` now includes `uploadMaxMb` (default 100) for client-side request size guardrails.
