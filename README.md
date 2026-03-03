@@ -155,8 +155,8 @@ This repo now includes a durable media system using Cloudflare Pages Functions +
 ### New pages
 - `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
 - `/pages/photography/`: API-driven Mosaic layout (trimmed-mean global sizing + packed absolute positioning + drag pinning + full-size overlay viewer).
-- `/admin/upload/`: admin upload console for images and resumable multipart video uploads.
-- `/admin/upload/` now renders destination-aware per-file metadata cards (Title + Location/Description), prefilled titles from filenames, remove actions, and slide-in metadata panels.
+- `/admin/upload/`: canonical image upload console with destination controls, drag/drop queue cards, per-card uploads, and Upload all sequencing.
+- `/admin/upload/` now uses `/assets/admin-upload.js` as the single implementation for queueing, preview generation, HEIC-safe fallback behavior, and multipart form uploads to `/api/admin/upload`.
 - `/admin/hidden-pages/`: admin index of hidden routes.
 
 ### Data model (D1)
@@ -176,8 +176,6 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `GET /api/photos` (manifest-backed Photography listing)
   - `GET /photos/<r2Key...>` (same-origin stream proxy for PHOTO_BUCKET objects)
 - Admin (protected by Cloudflare Access on `/admin/*` and `/api/admin/*`):
-  - `POST /api/admin/image/init`
-  - `POST /api/admin/image/complete`
   - `GET /api/admin/health`
   - `POST /api/admin/upload-image` (legacy fallback endpoint)
   - `POST /api/admin/upload-poster`
@@ -186,7 +184,7 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `GET /api/admin/multipart/status?key=<key>`
   - `POST /api/admin/multipart/complete`
   - `POST /api/admin/multipart/abort`
-  - `POST /api/photos/upload` (Photography manifest + originals/display uploads; accepts legacy fields and `meta` JSON with clientId/destination/title/location/description/width/height)
+  - `POST /api/admin/upload` (canonical image upload endpoint; accepts `meta` JSON + original/display/thumb multipart files and appends to manifests)
   - `PATCH /api/admin/item`
   - `DELETE /api/admin/item?id=<id>`
 
@@ -222,10 +220,10 @@ Configure in Cloudflare Pages project settings:
 
 ### Tonight upload checklist
 1. Sign in through Cloudflare Access and open `/admin/upload`.
-2. Pick the destination collection and select one or more files.
-3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload using a locally bundled dependency (`heic2any`) instead of CDN dynamic imports.
-4. Click **Upload all files** (or upload per file).
-5. Confirm each card shows success + created item URL.
+2. Pick destination root (`photography` or `spincline`) and, for spincline, the section.
+3. Select files or drag/drop anywhere on the page to create queue cards.
+4. Click **Upload all** (or upload per card).
+5. For browser formats that cannot be previewed/resized (common with HEIC), the card warns and still uploads the original file.
 6. Verify on `/spincline` or `/photography` that new items render.
    - Spincline still renders from `/api/media`.
    - Photography Mosaic renders from `/api/photos` + `/photos/<key>`.

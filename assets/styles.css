@@ -1043,3 +1043,19 @@ textarea:focus{
 .hidden-page-card code{
   word-break:break-word;
 }
+
+.drop-overlay{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 10, 10, 0.45);
+  border: 2px dashed var(--line);
+  color: var(--text);
+  font-size: 1.2rem;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.upload-warning{ color: #ffcc80; }
+.upload-error{ color: #ff9f9f; }
