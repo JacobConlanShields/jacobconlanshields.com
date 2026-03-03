@@ -1043,3 +1043,39 @@ textarea:focus{
 .hidden-page-card code{
   word-break:break-word;
 }
+
+.drop-target{
+  margin: 12px 0;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 90%, #1f1f1f 10%);
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.drop-target-active-text{
+  margin: 8px 0 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.drop-target.is-active{
+  border-color: #84a9ff;
+  background: color-mix(in srgb, var(--panel) 75%, #1f3f7a 25%);
+}
+
+.drop-overlay{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #f2f2f2;
+  z-index: 1000;
+  pointer-events: none;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.upload-warning{ color: #ffcc80; }
+.upload-error{ color: #ff9f9f; }
