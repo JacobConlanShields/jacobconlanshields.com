@@ -12,19 +12,19 @@
     <h1>Spincline</h1>
     <p class="lede">Design-to-build progression and in-action field footage.</p>
 
-    <section class="media-section row-block row-block--tight">
+    <section class="media-section row-block row-block--tight" id="design-build">
       <div class="row-head"><h2 class="row-title">Design &amp; Build</h2><div class="row-controls"><button class="icon-btn" data-row="spincline-design" data-dir="-1">◀</button><button class="icon-btn" data-row="spincline-design" data-dir="1">▶</button></div></div>
       <div class="status" id="status-design"></div>
       <div class="row" id="spincline-design"></div>
     </section>
 
-    <section class="media-section row-block row-block--tight">
+    <section class="media-section row-block row-block--tight" id="finished-products">
       <div class="row-head"><h2 class="row-title">Finished Products</h2><div class="row-controls"><button class="icon-btn" data-row="spincline-finished" data-dir="-1">◀</button><button class="icon-btn" data-row="spincline-finished" data-dir="1">▶</button></div></div>
       <div class="status" id="status-finished"></div>
       <div class="row" id="spincline-finished"></div>
     </section>
 
-    <section class="media-section row-block row-block--tight">
+    <section class="media-section row-block row-block--tight" id="in-action">
       <div class="row-head"><h2 class="row-title">In Action</h2><div class="row-controls"><button class="icon-btn" data-row="spincline-action" data-dir="-1">◀</button><button class="icon-btn" data-row="spincline-action" data-dir="1">▶</button></div></div>
       <div class="status" id="status-action"></div>
       <div class="row" id="spincline-action"></div>
@@ -42,7 +42,7 @@
       const media = item.media_type === "video"
         ? `<video controls playsinline preload="metadata" ${item.posterUrl ? `poster="${item.posterUrl}"` : ""}><source src="${item.url}" /></video>`
         : `<img src="${item.url}" alt="${item.title || "Spincline media"}" loading="lazy" />`;
-      return `<article class="media-card card"><div class="media-card-media">${media}</div><div class="media-card-body"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || ""}</p></div></article>`;
+      return `<article class="media-card card"><div class="media-card-media">${media}</div><div class="media-card-body"><h3 class="media-card-title">${item.title || "Untitled"}</h3><p class="media-card-description">${item.description || item.location || ""}</p></div></article>`;
     }
 
     async function loadCollection(collection, rowId, statusId) {
