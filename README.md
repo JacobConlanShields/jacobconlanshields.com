@@ -154,7 +154,8 @@ This repo now includes a durable media system using Cloudflare Pages Functions +
 
 ### New pages
 - `/pages/spincline/`: three API-driven media carousels (Design & Build, Finished Products, In Action videos).
-- `/pages/photography/`: API-driven Mosaic layout (trimmed-mean global sizing + packed absolute positioning + drag pinning + full-size overlay viewer).
+- `/pages/photography/`: API-driven Mosaic layout with runtime short-side sizing, drag/repack behavior, progressive thumb→display loading, and original-only modal opens.
+- `/admin/photography/`: admin-only photography layout page that persists drag/drop order to R2 metadata JSON.
 - `/admin/upload/`: admin upload console for images and resumable multipart video uploads.
 - `/admin/upload/` now renders destination-aware per-file metadata cards (Title + Location/Description), prefilled titles from filenames, remove actions, and slide-in metadata panels.
 - `/admin/hidden-pages/`: admin index of hidden routes.
@@ -186,7 +187,8 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `GET /api/admin/multipart/status?key=<key>`
   - `POST /api/admin/multipart/complete`
   - `POST /api/admin/multipart/abort`
-  - `POST /api/photos/upload` (Photography manifest + originals/display uploads; accepts legacy fields and `meta` JSON with clientId/destination/title/location/description/width/height)
+  - `POST /api/photos/upload` (Photography upload endpoint; accepts legacy single-file payloads and new multipart variant payloads with `thumbFile`, `displayFile`, `originalFile`, and `meta`).
+  - `POST /api/photos/layout` (admin-only layout order persistence)
   - `PATCH /api/admin/item`
   - `DELETE /api/admin/item?id=<id>`
 
@@ -194,11 +196,13 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 - `spincline_design_build` → `SPINCLINE_BUCKET` + `design-and-build/`
 - `spincline_finished_products` → `SPINCLINE_BUCKET` + `finished-products/`
 - `spincline_in_action` → `SPINCLINE_BUCKET` + `in-action/`
-- `photography` (legacy D1 image flow) → `PHOTO_BUCKET` + root prefix (`""`)
-- Mosaic Photography manifest objects:
-  - originals: `photos/original/<id>.<ext>`
-  - display: `photos/display/<id>.jpg`
-  - manifest: `manifest/photos.json`
+- `photography` → `PHOTO_BUCKET` + `photography/` object tree:
+  - `photography/thumb/<id>.webp`
+  - `photography/display/<id>.webp`
+  - `photography/original/<id>.<ext>`
+  - `photography/meta/<id>.json`
+  - `photography/meta/index.json`
+  - `photography/meta/layout.json`
 
 Public base URLs used for playback/rendering:
 - `SPINCLINE_MEDIA_BASE = https://pub-a0784713bd834a079424dc14cf218eea.r2.dev`
@@ -223,12 +227,14 @@ Configure in Cloudflare Pages project settings:
 ### Tonight upload checklist
 1. Sign in through Cloudflare Access and open `/admin/upload`.
 2. Pick the destination collection and select one or more files.
-3. If a selected image is HEIC/HEIF, the uploader converts it to JPEG before preview + upload using a locally bundled dependency (`heic2any`) instead of CDN dynamic imports.
-4. Click **Upload all files** (or upload per file).
-5. Confirm each card shows success + created item URL.
-6. Verify on `/spincline` or `/photography` that new items render.
+3. If a selected image is HEIC/HEIF, the uploader converts it in-browser and also reads EXIF orientation/capture date (`heic2any` + `exifr`).
+4. Photography uploads now generate thumb/display WebP variants and upload `thumbFile`/`displayFile`/`originalFile` plus per-item metadata in one multipart request to `/api/photos/upload`.
+5. Click **Upload all files** (or upload per file).
+6. Confirm each card shows success + created item URL.
+7. Verify on `/spincline` or `/photography` that new items render.
    - Spincline still renders from `/api/media`.
-   - Photography Mosaic renders from `/api/photos` + `/photos/<key>`.
+   - Photography Mosaic reads `photography/meta/index.json` + `photography/meta/layout.json` and serves files via `/photos/<key>`.
+8. Use `/admin/photography/` to drag/reorder and persist layout.json.
 
 ### R2 CORS settings for direct uploads (required)
 If you see `TypeError: Failed to fetch` during R2 PUT requests, check bucket CORS first.
