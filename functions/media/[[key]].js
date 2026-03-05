@@ -21,7 +21,8 @@ function decodeKey(param = '') {
     return joined
       .split('/')
       .map((segment) => decodeURIComponent(segment))
-      .join('/');
+      .join('/')
+      .replace(/^\/+/, '');
   } catch {
     return '';
   }

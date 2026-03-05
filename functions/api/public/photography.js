@@ -9,6 +9,32 @@ function encodeURIComponentPath(key = '') {
     .join('/');
 }
 
+function normalizeManifestKey(value) {
+  if (!value) return null;
+  let key = String(value).trim();
+  if (!key) return null;
+
+  // Some manifests may contain full public URLs instead of bare object keys.
+  if (key.startsWith('http://') || key.startsWith('https://')) {
+    try {
+      const url = new URL(key);
+      key = url.pathname || '';
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    key = decodeURIComponent(key);
+  } catch {
+    // keep raw value when it contains malformed escapes
+  }
+
+  // R2 object keys are stored without a leading slash.
+  key = key.replace(/^\/+/, '');
+  return key || null;
+}
+
 function fallbackTitle(item = {}) {
   if (item.id) return String(item.id);
   const sourceKey = item.originalKey || item.displayKey || item.thumbKey || '';
@@ -27,9 +53,9 @@ function proxiedUrl(key) {
 function enrichRecord(raw) {
   if (!raw || typeof raw !== 'object') return null;
 
-  const thumbKey = raw.thumbKey || null;
-  const displayKey = raw.displayKey || null;
-  const originalKey = raw.originalKey || null;
+  const thumbKey = normalizeManifestKey(raw.thumbKey || raw.thumb || raw.thumbnailKey || raw.thumbnail);
+  const displayKey = normalizeManifestKey(raw.displayKey || raw.display || raw.previewKey || raw.imageKey);
+  const originalKey = normalizeManifestKey(raw.originalKey || raw.original || raw.sourceKey || raw.fileKey);
 
   return {
     ...raw,
