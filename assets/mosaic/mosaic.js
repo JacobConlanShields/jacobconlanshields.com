@@ -29,11 +29,11 @@ const els = {
 
 init().catch((err) => {
   console.error(err);
-  els.status.textContent = 'Unable to load photos right now.';
+  els.status.textContent = 'Could not load photos.';
 });
 
 async function init() {
-  const photos = await fetch('/api/photos', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
+  const photos = await fetch('/api/public/photography', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
   state.photos = Array.isArray(photos) ? photos : [];
 
   if (!state.photos.length) {
@@ -65,15 +65,15 @@ function renderCards() {
     imageWrap.className = 'mosaic-image-wrap';
     const img = document.createElement('img');
     img.className = 'mosaic-image';
-    img.src = keyUrl(photo.displayKey || photo.originalKey);
-    img.alt = photo.title || 'Photography image';
+    img.src = photo.thumbUrl || photo.displayUrl || photo.originalUrl || '';
+    img.alt = photo.title || fallbackTitle(photo) || 'Photography image';
     img.loading = 'lazy';
     img.decoding = 'async';
     imageWrap.appendChild(img);
 
     const text = document.createElement('div');
     text.className = 'mosaic-text';
-    text.innerHTML = `<h2 class="mosaic-title">${escapeHtml(photo.title || 'Untitled')}</h2><p class="mosaic-location">${escapeHtml(photo.location || photo.description || '')}</p>`;
+    text.innerHTML = `<h2 class="mosaic-title">${escapeHtml(photo.title || fallbackTitle(photo) || 'Untitled')}</h2><p class="mosaic-location">${escapeHtml(photo.location || photo.description || '')}</p>`;
 
     card.append(imageWrap, text);
     card.style.transition = reduceMotion ? 'none' : `transform ${CONFIG.animationMs}ms ${CONFIG.ease}`;
@@ -91,7 +91,7 @@ function renderCards() {
       height: 0,
       x: 0,
       y: 0,
-      originalKey: photo.originalKey,
+      overlayUrl: photo.displayUrl || photo.originalUrl,
     };
     state.cards.set(photo.id, record);
 
@@ -231,12 +231,12 @@ function bindCardInteractions(card) {
     drag = null;
   });
 
-  card.image.addEventListener('dblclick', () => openOverlay(card.originalKey, card.image.alt));
+  card.image.addEventListener('dblclick', () => openOverlay(card.overlayUrl, card.image.alt));
   card.image.addEventListener('pointerup', () => {
     const now = Date.now();
     const prev = state.lastTap;
     if (prev && prev.id === card.id && (now - prev.at) <= CONFIG.doubleTapMs) {
-      openOverlay(card.originalKey, card.image.alt);
+      openOverlay(card.overlayUrl, card.image.alt);
       state.lastTap = null;
     } else {
       state.lastTap = { id: card.id, at: now };
@@ -298,21 +298,17 @@ function bindOverlay() {
     if (ev.key === 'Escape' && !backdrop.hidden) close();
   });
 
-  window.openPhotoOverlay = (key, alt) => {
+  window.openPhotoOverlay = (url, alt) => {
     backdrop.hidden = false;
-    img.src = keyUrl(key);
+    img.src = url || '';
     img.alt = alt || 'Photo';
     img.style.maxWidth = '100%';
     document.body.classList.add('overlay-open');
   };
 }
 
-function openOverlay(key, alt) {
-  if (window.openPhotoOverlay) window.openPhotoOverlay(key, alt);
-}
-
-function keyUrl(key) {
-  return `/photos/${key.split('/').map(encodeURIComponent).join('/')}`;
+function openOverlay(url, alt) {
+  if (window.openPhotoOverlay) window.openPhotoOverlay(url, alt);
 }
 
 function clamp(v, min, max) {
@@ -326,4 +322,12 @@ function escapeHtml(v) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+function fallbackTitle(photo) {
+  if (photo?.id) return String(photo.id);
+  const key = photo?.originalKey || photo?.displayKey || photo?.thumbKey;
+  if (!key) return '';
+  const filename = String(key).split('/').pop() || '';
+  return filename.replace(/\.[^.]+$/, '');
 }
