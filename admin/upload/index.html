@@ -15,10 +15,15 @@
     <div class="upload-meta upload-controls">
       <label>Destination
         <select id="collection">
-          <option value="spincline_design_build">Spincline: Design &amp; Build</option>
-          <option value="spincline_finished_products">Spincline: Finished Products</option>
-          <option value="spincline_in_action">Spincline: In Action (Video)</option>
           <option value="photography">Photography</option>
+          <option value="spincline">Spincline</option>
+        </select>
+      </label>
+      <label id="spincline-subsection-label" hidden>Spincline Section
+        <select id="spincline-subsection">
+          <option value="spincline_design_build">Design &amp; Build</option>
+          <option value="spincline_finished_products">Finished Products</option>
+          <option value="spincline_in_action">In Action (Video)</option>
         </select>
       </label>
       <input id="files" type="file" multiple accept="image/*,video/*" />
@@ -43,6 +48,8 @@
     const queue = document.getElementById('queue');
     const filesInput = document.getElementById('files');
     const collectionInput = document.getElementById('collection');
+    const spinclineSubsectionInput = document.getElementById('spincline-subsection');
+    const spinclineSubsectionLabel = document.getElementById('spincline-subsection-label');
     const batchStatus = document.getElementById('batch-status');
     const uploadAllBtns = [document.getElementById('upload-all'), document.getElementById('upload-all-bottom')];
     const corsHelp = document.getElementById('cors-help');
@@ -54,6 +61,19 @@
       photography: '/photography',
     };
 
+    function selectedCollection() {
+      return collectionInput.value === 'spincline' ? spinclineSubsectionInput.value : 'photography';
+    }
+
+    function syncDestinationSelects() {
+      const showSpinclineSections = collectionInput.value === 'spincline';
+      spinclineSubsectionLabel.hidden = !showSpinclineSections;
+      spinclineSubsectionInput.disabled = !showSpinclineSections;
+
+      const collection = selectedCollection();
+      filesInput.accept = collection === 'spincline_in_action' ? 'image/*,video/*' : 'image/*';
+    }
+
     const selectedItems = [];
     let uploadsInProgress = false;
 
@@ -61,7 +81,7 @@
       return fetch(path, { ...opts, credentials: 'same-origin' });
     }
 
-    function destinationConfig(value = collectionInput.value) {
+    function destinationConfig(value = selectedCollection()) {
       return value === 'photography'
         ? { secondaryLabel: 'Location', secondaryKind: 'location', secondaryField: 'location', isPhoto: true }
         : { secondaryLabel: 'Description', secondaryKind: 'description', secondaryField: 'description', isPhoto: false };
@@ -380,7 +400,7 @@
       if (!item || !card || item.conversionError) return;
 
       const file = item.uploadFile;
-      const collection = collectionInput.value;
+      const collection = selectedCollection();
       const title = card.querySelector('.title').value.trim();
       const secondary = card.querySelector('.secondary-input').value.trim();
       const description = secondary;
@@ -560,7 +580,14 @@
       updateBatchSummary();
     });
 
-    collectionInput.addEventListener('change', syncMetadataFields);
+    collectionInput.addEventListener('change', () => {
+      syncDestinationSelects();
+      syncMetadataFields();
+    });
+    spinclineSubsectionInput.addEventListener('change', () => {
+      syncDestinationSelects();
+      syncMetadataFields();
+    });
     uploadAllBtns.forEach((btn) => btn.addEventListener('click', uploadAll));
 
     async function checkUploadHealth() {
@@ -584,6 +611,7 @@
       }
     }
 
+    syncDestinationSelects();
     updateBatchSummary();
     checkUploadHealth();
     window.addEventListener('beforeunload', () => selectedItems.forEach(cleanupItem));
