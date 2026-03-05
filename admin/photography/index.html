@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" data-admin-layout="true">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Photography Layout — Jacob Shields</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <link rel="stylesheet" href="/assets/mosaic/mosaic.css" />
+</head>
+<body>
+  <main>
+    <p class="nav"><a href="/admin">← Back to admin</a></p>
+    <h1>Photography Layout (Admin)</h1>
+    <div class="status" id="photo-status">Loading...</div>
+    <section class="mosaic-shell" id="mosaic-shell">
+      <div class="mosaic-container" id="mosaic-container"></div>
+    </section>
+  </main>
+
+  <section class="photo-overlay" id="photo-overlay" hidden>
+    <div class="photo-overlay-toolbar">
+      <button class="photo-overlay-toggle" type="button">100%</button>
+      <button class="photo-overlay-close" type="button" aria-label="Close viewer">Close</button>
+    </div>
+    <div class="photo-overlay-scroll">
+      <img class="photo-overlay-image" alt="Expanded photo" />
+    </div>
+  </section>
+
+  <script type="module" src="/assets/mosaic/mosaic.js"></script>
+</body>
+</html>
