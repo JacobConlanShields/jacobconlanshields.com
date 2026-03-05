@@ -35,6 +35,7 @@ export async function onRequestPost({ request, env }) {
     }
   }
   const displayBlobs = form.getAll('displayFiles').filter((f) => f instanceof File);
+  const thumbBlobs = form.getAll('thumbFiles').filter((f) => f instanceof File);
 
   const manifest = await readPhotosManifest(env);
   const byId = new Map(manifest.map((item) => [item.id, item]));
@@ -43,7 +44,7 @@ export async function onRequestPost({ request, env }) {
   for (let i = 0; i < files.length; i += 1) {
     const file = files[i];
     const id = crypto.randomUUID();
-    const originalKey = `photos/original/${id}.${extFromName(file.name)}`;
+    const originalKey = `photography/original/${id}.${extFromName(file.name)}`;
     await env.PHOTO_BUCKET.put(originalKey, file.stream(), {
       httpMetadata: { contentType: file.type || 'application/octet-stream' },
     });
@@ -51,8 +52,17 @@ export async function onRequestPost({ request, env }) {
     let displayKey = null;
     const displayFile = displayBlobs[i];
     if (displayFile && displayFile.size > 0) {
-      displayKey = `photos/display/${id}.jpg`;
+      displayKey = `photography/display/${id}.jpg`;
       await env.PHOTO_BUCKET.put(displayKey, displayFile.stream(), {
+        httpMetadata: { contentType: 'image/jpeg' },
+      });
+    }
+
+    let thumbKey = null;
+    const thumbFile = thumbBlobs[i];
+    if (thumbFile && thumbFile.size > 0) {
+      thumbKey = `photography/thumb/${id}.jpg`;
+      await env.PHOTO_BUCKET.put(thumbKey, thumbFile.stream(), {
         httpMetadata: { contentType: 'image/jpeg' },
       });
     }
@@ -72,7 +82,7 @@ export async function onRequestPost({ request, env }) {
       createdAt: new Date().toISOString(),
       originalKey,
       displayKey,
-      thumbKey: null,
+      thumbKey,
       filename: safeName(file.name),
     };
 

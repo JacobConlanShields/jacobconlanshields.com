@@ -208,6 +208,10 @@
       try { return new URL(url, location.origin).host; } catch { return 'unknown-host'; }
     }
 
+    function encodePathSegments(path = '') {
+      return String(path).split('/').map(encodeURIComponent).join('/');
+    }
+
     function makeUploadError({ step, url, status = null, detail = '' }) {
       const statusText = status == null ? 'no HTTP response' : `HTTP ${status}`;
       return { step, status, url, message: `Step ${step} failed (${statusText}) on host ${hostOf(url)}. ${detail}`.trim() };
@@ -239,19 +243,23 @@
       } catch { return {}; }
     }
 
-    async function makeDisplayVariant(file, maxLongSide = 1600) {
+    async function makeResizedJpegVariant(file, maxLongSide, quality = 0.88) {
       if (!file.type.startsWith('image/')) return null;
-      const bmp = await createImageBitmap(file);
-      const scale = Math.min(1, maxLongSide / Math.max(bmp.width, bmp.height));
-      const w = Math.max(1, Math.round(bmp.width * scale));
-      const h = Math.max(1, Math.round(bmp.height * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
-      bmp.close?.();
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
-      return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
+      try {
+        const bmp = await createImageBitmap(file);
+        const scale = Math.min(1, maxLongSide / Math.max(bmp.width, bmp.height));
+        const w = Math.max(1, Math.round(bmp.width * scale));
+        const h = Math.max(1, Math.round(bmp.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+        bmp.close?.();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+        return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
+      } catch {
+        return null;
+      }
     }
 
     async function uploadPhotographyBatch(ids) {
@@ -267,10 +275,12 @@
         const title = card.querySelector('.title').value.trim();
         const location = card.querySelector('.secondary-input').value.trim();
         const dims = await imageDimensions(item.uploadFile);
-        const display = await makeDisplayVariant(item.uploadFile);
+        const display = await makeResizedJpegVariant(item.uploadFile, 1600, 0.88);
+        const thumb = await makeResizedJpegVariant(item.uploadFile, 560, 0.82);
 
         fd.append('files', item.uploadFile, item.uploadFile.name);
         fd.append('displayFiles', display || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), display?.name || 'empty.jpg');
+        fd.append('thumbFiles', thumb || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), thumb?.name || 'empty.jpg');
         meta.push({
           clientId,
           filename: item.originalFile.name,
@@ -301,7 +311,7 @@
         card.dataset.status = 'success';
         card.querySelector('progress').value = 100;
         card.querySelector('.status').textContent = 'Image upload complete.';
-        showResult(card, 'photography', { ...uploaded, url: `/photos/${uploaded.displayKey || uploaded.originalKey}` }, uploaded.location || '');
+        showResult(card, 'photography', { ...uploaded, url: `/media/${encodePathSegments(uploaded.displayKey || uploaded.originalKey || '')}` }, uploaded.location || '');
       }
 
       return payload.uploaded || 0;
