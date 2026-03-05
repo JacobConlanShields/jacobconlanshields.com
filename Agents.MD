@@ -125,6 +125,7 @@ There are **no automated tests** at the moment. Manual validation is expected.
 - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
 - Photography now uses a dedicated manifest-backed Mosaic system (`/api/photos`, `/api/photos/upload`, `/photos/*`) with metadata stored in `manifest/photos.json` in `PHOTO_BUCKET`; this runs alongside legacy D1 media APIs for existing sections.
 - `/api/photos/upload` accepts both legacy parallel fields and `meta` JSON (clientId, destination, title/location/description, width/height) so the admin UI can map upload results back to each tile.
+- Photography uploads now store variants under `photography/{thumb,display,original,meta}` in `PHOTO_BUCKET`; `/api/photos/upload` writes per-item metadata + `photography/meta/index.json`, and admin drag/repack writes `photography/meta/layout.json` via `/api/photos/layout`.
 
 ## 2026 upload reliability notes
 - `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload using a locally bundled dependency (`/assets/vendor/heic2any.js`) rather than a CDN dynamic import.

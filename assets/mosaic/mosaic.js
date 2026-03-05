@@ -1,16 +1,15 @@
 import { packMosaic } from '/assets/mosaic/mosaic-packer.js';
 
 const CONFIG = {
-  trimPct: 0.10,
-  targetVW: 0.25,
   gapPx: 16,
-  minUnitPx: 120,
-  maxUnitPx: 520,
-  settleTolerance: 0.02,
+  minUnitPx: 160,
+  maxUnitPx: 420,
+  unitScale: 0.25,
   debounceMs: 140,
   ease: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
   animationMs: 260,
   doubleTapMs: 250,
+  layoutDebounceMs: 420,
 };
 
 const state = {
@@ -19,6 +18,9 @@ const state = {
   globalUnitPx: 240,
   lastPinnedId: null,
   lastTap: null,
+  layoutOrder: [],
+  layoutTimer: null,
+  canPersistLayout: location.pathname.startsWith('/admin/'),
 };
 
 const els = {
@@ -33,8 +35,16 @@ init().catch((err) => {
 });
 
 async function init() {
-  const photos = await fetch('/api/public/photography', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
-  state.photos = Array.isArray(photos) ? photos : [];
+  const [indexRes, layoutRes] = await Promise.all([
+    fetch('/photos/photography/meta/index.json', { credentials: 'same-origin' }),
+    fetch('/photos/photography/meta/layout.json', { credentials: 'same-origin' }),
+  ]);
+  const index = indexRes.ok ? await indexRes.json() : [];
+  const layout = layoutRes.ok ? await layoutRes.json() : { order: [] };
+
+  const layoutOrder = Array.isArray(layout?.order) ? layout.order.map((v) => String(v)) : [];
+  state.layoutOrder = layoutOrder;
+  state.photos = orderPhotos(Array.isArray(index) ? index : [], layoutOrder);
 
   if (!state.photos.length) {
     els.status.innerHTML = 'No photos yet. Upload from <a href="/admin/upload">/admin/upload</a> to populate the mosaic.';
@@ -47,11 +57,21 @@ async function init() {
   if (document.fonts?.ready) await document.fonts.ready;
 
   await Promise.all([...state.cards.values()].map((c) => c.image?.decode?.().catch(() => null)));
-  sizeCardsTwoPass();
+  sizeCards();
   layoutCards({ animate: false });
 
   bindResize();
   bindOverlay();
+}
+
+function orderPhotos(photos, order) {
+  const rank = new Map(order.map((id, idx) => [String(id), idx]));
+  return photos.slice().sort((a, b) => {
+    const aRank = rank.has(String(a.id)) ? rank.get(String(a.id)) : Number.MAX_SAFE_INTEGER;
+    const bRank = rank.has(String(b.id)) ? rank.get(String(b.id)) : Number.MAX_SAFE_INTEGER;
+    if (aRank !== bRank) return aRank - bRank;
+    return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+  });
 }
 
 function renderCards() {
@@ -65,12 +85,13 @@ function renderCards() {
     imageWrap.className = 'mosaic-image-wrap';
     const img = document.createElement('img');
     img.className = 'mosaic-image';
-    const imageCandidates = [photo.thumbUrl, photo.displayUrl, photo.originalUrl].filter(Boolean);
-    img.src = imageCandidates[0] || '';
+    const thumbSrc = photo.thumbUrl || (photo.thumbKey ? `/photos/${photo.thumbKey}` : null);
+    const displaySrc = photo.displayUrl || (photo.displayKey ? `/photos/${photo.displayKey}` : null);
+    const originalSrc = photo.originalUrl || (photo.originalKey ? `/photos/${photo.originalKey}` : null);
+    img.src = thumbSrc || displaySrc || originalSrc || '';
     img.alt = photo.title || 'Photography image';
     img.loading = 'lazy';
     img.decoding = 'async';
-    bindImageFallback(img, imageCandidates);
     imageWrap.appendChild(img);
 
     const text = document.createElement('div');
@@ -86,72 +107,56 @@ function renderCards() {
       node: card,
       image: img,
       imageWrap,
-      title: text.querySelector('.mosaic-title'),
-      location: text.querySelector('.mosaic-location'),
-      ratio: photo.width > 0 && photo.height > 0 ? photo.width / photo.height : 1,
+      ratio: Number(photo.aspect) || (photo.width > 0 && photo.height > 0 ? photo.width / photo.height : 1),
       width: 0,
       height: 0,
       x: 0,
       y: 0,
-      overlaySrc: photo.displayUrl || photo.originalUrl || null,
+      thumbSrc,
+      displaySrc,
+      originalSrc,
+      displayLoaded: false,
     };
     state.cards.set(photo.id, record);
 
     bindCardInteractions(record);
+    bindDisplaySwap(record);
   }
 }
 
-function sizeCardsTwoPass() {
-  const viewportTarget = window.innerWidth * CONFIG.targetVW;
-  state.globalUnitPx = clamp(viewportTarget, CONFIG.minUnitPx, CONFIG.maxUnitPx);
+function bindDisplaySwap(card) {
+  if (!card.displaySrc || card.displaySrc === card.thumbSrc) return;
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting || card.displayLoaded) continue;
+      card.displayLoaded = true;
+      const hi = new Image();
+      hi.onload = () => { card.image.src = card.displaySrc; };
+      hi.src = card.displaySrc;
+      observer.disconnect();
+    }
+  }, { rootMargin: '300px 0px' });
+  observer.observe(card.node);
+}
 
+function sizeCards() {
+  const containerWidth = els.container.clientWidth || window.innerWidth;
+  state.globalUnitPx = clamp(containerWidth * CONFIG.unitScale, CONFIG.minUnitPx, CONFIG.maxUnitPx);
   applyImageSizing();
-  let measured = measureTrimmedMean();
-  if (!measured) return;
-
-  state.globalUnitPx = clamp(state.globalUnitPx * (viewportTarget / measured), CONFIG.minUnitPx, CONFIG.maxUnitPx);
-  applyImageSizing();
-
-  measured = measureTrimmedMean();
-  if (!measured) return;
-
-  if (Math.abs(measured - viewportTarget) / viewportTarget > CONFIG.settleTolerance) {
-    state.globalUnitPx = clamp(state.globalUnitPx * (viewportTarget / measured), CONFIG.minUnitPx, CONFIG.maxUnitPx);
-    applyImageSizing();
-  }
-
   measureCardRects();
 }
 
 function applyImageSizing() {
   for (const card of state.cards.values()) {
-    if (card.ratio >= 1) {
+    const ratio = card.ratio > 0 ? card.ratio : 1;
+    if (ratio >= 1) {
       card.imageWrap.style.height = `${state.globalUnitPx}px`;
-      card.imageWrap.style.width = `${state.globalUnitPx * card.ratio}px`;
+      card.imageWrap.style.width = `${state.globalUnitPx * ratio}px`;
     } else {
       card.imageWrap.style.width = `${state.globalUnitPx}px`;
-      card.imageWrap.style.height = `${state.globalUnitPx / card.ratio}px`;
+      card.imageWrap.style.height = `${state.globalUnitPx / ratio}px`;
     }
   }
-}
-
-function measureTrimmedMean() {
-  const samples = [];
-  for (const card of state.cards.values()) {
-    const rect = card.node.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) samples.push(Math.min(rect.width, rect.height));
-  }
-  if (!samples.length) return null;
-
-  const sorted = samples.sort((a, b) => a - b);
-  const n = sorted.length;
-  const k = Math.floor(n * CONFIG.trimPct);
-  if (n - 2 * k >= 5) {
-    const trimmed = sorted.slice(k, n - k);
-    return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
-  }
-  if (n >= 3) return sorted[Math.floor(n / 2)];
-  return sorted.reduce((a, b) => a + b, 0) / n;
 }
 
 function measureCardRects() {
@@ -169,8 +174,12 @@ function layoutCards({ pinned = null, animate = true } = {}) {
   const packed = packMosaic(cards, width, CONFIG.gapPx, pinned);
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const nextOrder = Object.entries(packed.positions)
+    .sort(([, a], [, b]) => a.y - b.y || a.x - b.x)
+    .map(([id]) => id);
   for (const [id, pos] of Object.entries(packed.positions)) {
     const card = state.cards.get(id);
+    if (!card) continue;
     card.x = pos.x;
     card.y = pos.y;
     if (!animate || reduceMotion) card.node.style.transition = 'none';
@@ -178,6 +187,7 @@ function layoutCards({ pinned = null, animate = true } = {}) {
     card.node.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
   }
   els.container.style.height = `${Math.ceil(packed.height)}px`;
+  state.layoutOrder = nextOrder;
 }
 
 function bindCardInteractions(card) {
@@ -226,6 +236,7 @@ function bindCardInteractions(card) {
         pinned: { id: card.id, x: dropX, y: dropY, w: card.width, h: card.height },
         animate: true,
       });
+      queueLayoutSave();
     } else {
       card.node.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
     }
@@ -233,17 +244,34 @@ function bindCardInteractions(card) {
     drag = null;
   });
 
-  card.image.addEventListener('dblclick', () => openOverlay(card.overlaySrc, card.image.alt));
+  card.image.addEventListener('dblclick', () => openOverlay(card.originalSrc || card.displaySrc || card.thumbSrc, card.image.alt));
   card.image.addEventListener('pointerup', () => {
     const now = Date.now();
     const prev = state.lastTap;
     if (prev && prev.id === card.id && (now - prev.at) <= CONFIG.doubleTapMs) {
-      openOverlay(card.overlaySrc, card.image.alt);
+      openOverlay(card.originalSrc || card.displaySrc || card.thumbSrc, card.image.alt);
       state.lastTap = null;
     } else {
       state.lastTap = { id: card.id, at: now };
     }
   });
+}
+
+function queueLayoutSave() {
+  if (!state.canPersistLayout) return;
+  clearTimeout(state.layoutTimer);
+  state.layoutTimer = setTimeout(async () => {
+    try {
+      await fetch('/api/photos/layout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ order: state.layoutOrder }),
+      });
+    } catch (error) {
+      console.warn('Could not persist layout order', error);
+    }
+  }, CONFIG.layoutDebounceMs);
 }
 
 function bindResize() {
@@ -252,7 +280,7 @@ function bindResize() {
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       state.lastPinnedId = null;
-      sizeCardsTwoPass();
+      sizeCards();
       layoutCards({ animate: false });
     }, CONFIG.debounceMs);
   });
@@ -312,23 +340,6 @@ function bindOverlay() {
 function openOverlay(src, alt) {
   if (!src) return;
   if (window.openPhotoOverlay) window.openPhotoOverlay(src, alt);
-}
-
-function bindImageFallback(img, candidates) {
-  if (!Array.isArray(candidates) || candidates.length <= 1) return;
-
-  let currentIndex = 0;
-
-  img.addEventListener('error', () => {
-    while (currentIndex + 1 < candidates.length) {
-      currentIndex += 1;
-      const next = candidates[currentIndex];
-      if (next && next !== img.src) {
-        img.src = next;
-        return;
-      }
-    }
-  });
 }
 
 function clamp(v, min, max) {

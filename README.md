@@ -186,7 +186,8 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
   - `GET /api/admin/multipart/status?key=<key>`
   - `POST /api/admin/multipart/complete`
   - `POST /api/admin/multipart/abort`
-  - `POST /api/photos/upload` (Photography manifest + originals/display uploads; accepts legacy fields and `meta` JSON with clientId/destination/title/location/description/width/height)
+  - `POST /api/photos/upload` (Photography uploader; supports legacy single-file + new multi-variant upload with thumb/display/original + per-item meta JSON)
+  - `POST /api/photos/layout` (Admin-only layout order persistence to `photography/meta/layout.json`)
   - `PATCH /api/admin/item`
   - `DELETE /api/admin/item?id=<id>`
 
@@ -194,11 +195,14 @@ wrangler d1 execute <DB_NAME> --file=db/schema.sql
 - `spincline_design_build` → `SPINCLINE_BUCKET` + `design-and-build/`
 - `spincline_finished_products` → `SPINCLINE_BUCKET` + `finished-products/`
 - `spincline_in_action` → `SPINCLINE_BUCKET` + `in-action/`
-- `photography` (legacy D1 image flow) → `PHOTO_BUCKET` + root prefix (`""`)
-- Mosaic Photography manifest objects:
-  - originals: `photos/original/<id>.<ext>`
-  - display: `photos/display/<id>.jpg`
-  - manifest: `manifest/photos.json`
+- `photography` → `PHOTO_BUCKET` + `photography/` prefix tree:
+  - thumb: `photography/thumb/<id>.webp`
+  - display: `photography/display/<id>.webp`
+  - original: `photography/original/<id>.<ext>`
+  - per-item meta: `photography/meta/<id>.json`
+  - index: `photography/meta/index.json`
+  - layout: `photography/meta/layout.json`
+- Legacy compatibility manifest is also written to `manifest/photos.json` for older clients.
 
 Public base URLs used for playback/rendering:
 - `SPINCLINE_MEDIA_BASE = https://pub-a0784713bd834a079424dc14cf218eea.r2.dev`
