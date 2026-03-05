@@ -1,24 +1,25 @@
 import { packMosaic } from '/assets/mosaic/mosaic-packer.js';
 
 const CONFIG = {
-  trimPct: 0.10,
-  targetVW: 0.25,
   gapPx: 16,
-  minUnitPx: 120,
-  maxUnitPx: 520,
-  settleTolerance: 0.02,
+  minUnitPx: 160,
+  maxUnitPx: 420,
+  unitVW: 0.25,
   debounceMs: 140,
   ease: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
   animationMs: 260,
   doubleTapMs: 250,
+  layoutWriteDebounceMs: 420,
 };
 
 const state = {
   photos: [],
   cards: new Map(),
   globalUnitPx: 240,
-  lastPinnedId: null,
   lastTap: null,
+  layoutOrder: [],
+  layoutTimer: null,
+  canWriteLayout: Boolean(window.__ENABLE_PHOTO_LAYOUT_WRITE__),
 };
 
 const els = {
@@ -33,8 +34,9 @@ init().catch((err) => {
 });
 
 async function init() {
-  const photos = await fetch('/api/public/photography', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
-  state.photos = Array.isArray(photos) ? photos : [];
+  const data = await loadPhotoData();
+  state.photos = orderByLayout(data.items || [], data.layout?.order || []);
+  state.layoutOrder = state.photos.map((p) => p.id);
 
   if (!state.photos.length) {
     els.status.innerHTML = 'No photos yet. Upload from <a href="/admin/upload">/admin/upload</a> to populate the mosaic.';
@@ -45,17 +47,75 @@ async function init() {
   renderCards();
 
   if (document.fonts?.ready) await document.fonts.ready;
-
-  await Promise.all([...state.cards.values()].map((c) => c.image?.decode?.().catch(() => null)));
-  sizeCardsTwoPass();
+  sizeCards();
   layoutCards({ animate: false });
 
   bindResize();
   bindOverlay();
 }
 
+async function loadPhotoData() {
+  try {
+    const [indexResp, layoutResp] = await Promise.all([
+      fetch('/photos/photography/meta/index.json', { credentials: 'same-origin' }),
+      fetch('/photos/photography/meta/layout.json', { credentials: 'same-origin' }),
+    ]);
+    if (indexResp.ok) {
+      const items = await indexResp.json();
+      const layout = layoutResp.ok ? await layoutResp.json() : { order: [] };
+      return { items, layout };
+    }
+  } catch {}
+
+  const fallback = await fetch('/api/public/photography', { credentials: 'same-origin' });
+  if (!fallback.ok) throw new Error('Bad response');
+  return fallback.json();
+}
+
+function orderByLayout(items, order) {
+  const byId = new Map(items.map((item) => [item.id, normalizePhoto(item)]));
+  const ordered = [];
+  for (const id of order) {
+    const found = byId.get(id);
+    if (found) {
+      ordered.push(found);
+      byId.delete(id);
+    }
+  }
+  ordered.push(...byId.values());
+  return ordered;
+}
+
+function normalizePhoto(photo) {
+  const aspect = photo.aspect || (photo.width > 0 && photo.height > 0 ? photo.width / photo.height : 1);
+  return {
+    ...photo,
+    aspect,
+    thumbUrl: photo.thumbUrl || toUrl(photo.thumbKey),
+    displayUrl: photo.displayUrl || toUrl(photo.displayKey),
+    originalUrl: photo.originalUrl || toUrl(photo.originalKey),
+  };
+}
+
+function toUrl(key) {
+  return key ? `/photos/${key.split('/').map(encodeURIComponent).join('/')}` : null;
+}
+
 function renderCards() {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const io = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const id = entry.target.dataset.id;
+      const card = state.cards.get(id);
+      if (card?.displayLoaded || !card.photo.displayUrl) continue;
+      card.displayLoaded = true;
+      const next = new Image();
+      next.onload = () => { card.image.src = card.photo.displayUrl; };
+      next.src = card.photo.displayUrl;
+    }
+  }, { rootMargin: '300px' });
+
   for (const photo of state.photos) {
     const card = document.createElement('article');
     card.className = 'mosaic-card';
@@ -65,12 +125,10 @@ function renderCards() {
     imageWrap.className = 'mosaic-image-wrap';
     const img = document.createElement('img');
     img.className = 'mosaic-image';
-    const imageCandidates = [photo.thumbUrl, photo.displayUrl, photo.originalUrl].filter(Boolean);
-    img.src = imageCandidates[0] || '';
+    img.src = photo.thumbUrl || photo.displayUrl || photo.originalUrl || '';
     img.alt = photo.title || 'Photography image';
     img.loading = 'lazy';
     img.decoding = 'async';
-    bindImageFallback(img, imageCandidates);
     imageWrap.appendChild(img);
 
     const text = document.createElement('div');
@@ -81,49 +139,16 @@ function renderCards() {
     card.style.transition = reduceMotion ? 'none' : `transform ${CONFIG.animationMs}ms ${CONFIG.ease}`;
     els.container.appendChild(card);
 
-    const record = {
-      id: photo.id,
-      node: card,
-      image: img,
-      imageWrap,
-      title: text.querySelector('.mosaic-title'),
-      location: text.querySelector('.mosaic-location'),
-      ratio: photo.width > 0 && photo.height > 0 ? photo.width / photo.height : 1,
-      width: 0,
-      height: 0,
-      x: 0,
-      y: 0,
-      overlaySrc: photo.displayUrl || photo.originalUrl || null,
-    };
+    const record = { id: photo.id, photo, node: card, image: img, imageWrap, ratio: photo.aspect || 1, width: 0, height: 0, x: 0, y: 0, displayLoaded: false };
     state.cards.set(photo.id, record);
-
     bindCardInteractions(record);
+    io.observe(card);
   }
 }
 
-function sizeCardsTwoPass() {
-  const viewportTarget = window.innerWidth * CONFIG.targetVW;
-  state.globalUnitPx = clamp(viewportTarget, CONFIG.minUnitPx, CONFIG.maxUnitPx);
-
-  applyImageSizing();
-  let measured = measureTrimmedMean();
-  if (!measured) return;
-
-  state.globalUnitPx = clamp(state.globalUnitPx * (viewportTarget / measured), CONFIG.minUnitPx, CONFIG.maxUnitPx);
-  applyImageSizing();
-
-  measured = measureTrimmedMean();
-  if (!measured) return;
-
-  if (Math.abs(measured - viewportTarget) / viewportTarget > CONFIG.settleTolerance) {
-    state.globalUnitPx = clamp(state.globalUnitPx * (viewportTarget / measured), CONFIG.minUnitPx, CONFIG.maxUnitPx);
-    applyImageSizing();
-  }
-
-  measureCardRects();
-}
-
-function applyImageSizing() {
+function sizeCards() {
+  const viewportTarget = clamp(els.container.clientWidth * CONFIG.unitVW, CONFIG.minUnitPx, CONFIG.maxUnitPx);
+  state.globalUnitPx = viewportTarget;
   for (const card of state.cards.values()) {
     if (card.ratio >= 1) {
       card.imageWrap.style.height = `${state.globalUnitPx}px`;
@@ -133,25 +158,7 @@ function applyImageSizing() {
       card.imageWrap.style.height = `${state.globalUnitPx / card.ratio}px`;
     }
   }
-}
-
-function measureTrimmedMean() {
-  const samples = [];
-  for (const card of state.cards.values()) {
-    const rect = card.node.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) samples.push(Math.min(rect.width, rect.height));
-  }
-  if (!samples.length) return null;
-
-  const sorted = samples.sort((a, b) => a - b);
-  const n = sorted.length;
-  const k = Math.floor(n * CONFIG.trimPct);
-  if (n - 2 * k >= 5) {
-    const trimmed = sorted.slice(k, n - k);
-    return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
-  }
-  if (n >= 3) return sorted[Math.floor(n / 2)];
-  return sorted.reduce((a, b) => a + b, 0) / n;
+  measureCardRects();
 }
 
 function measureCardRects() {
@@ -167,14 +174,16 @@ function layoutCards({ pinned = null, animate = true } = {}) {
   const width = els.container.clientWidth;
   const cards = [...state.cards.values()].map((c) => ({ id: c.id, w: c.width, h: c.height }));
   const packed = packMosaic(cards, width, CONFIG.gapPx, pinned);
-
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const orderedByPosition = Object.entries(packed.positions).sort((a, b) => (a[1].y - b[1].y) || (a[1].x - b[1].x)).map(([id]) => id);
+  state.layoutOrder = orderedByPosition;
+
   for (const [id, pos] of Object.entries(packed.positions)) {
     const card = state.cards.get(id);
     card.x = pos.x;
     card.y = pos.y;
-    if (!animate || reduceMotion) card.node.style.transition = 'none';
-    else card.node.style.transition = `transform ${CONFIG.animationMs}ms ${CONFIG.ease}`;
+    card.node.style.transition = !animate || reduceMotion ? 'none' : `transform ${CONFIG.animationMs}ms ${CONFIG.ease}`;
     card.node.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
   }
   els.container.style.height = `${Math.ceil(packed.height)}px`;
@@ -185,16 +194,7 @@ function bindCardInteractions(card) {
 
   card.node.addEventListener('pointerdown', (ev) => {
     if (ev.button !== 0) return;
-    const baseX = card.x;
-    const baseY = card.y;
-    drag = {
-      id: ev.pointerId,
-      startX: ev.clientX,
-      startY: ev.clientY,
-      baseX,
-      baseY,
-      moved: false,
-    };
+    drag = { id: ev.pointerId, startX: ev.clientX, startY: ev.clientY, baseX: card.x, baseY: card.y, moved: false };
     card.node.setPointerCapture(ev.pointerId);
     card.node.classList.add('dragging');
     card.node.style.transition = 'none';
@@ -221,24 +221,20 @@ function bindCardInteractions(card) {
     card.node.releasePointerCapture(ev.pointerId);
 
     if (drag.moved) {
-      state.lastPinnedId = card.id;
-      layoutCards({
-        pinned: { id: card.id, x: dropX, y: dropY, w: card.width, h: card.height },
-        animate: true,
-      });
+      layoutCards({ pinned: { id: card.id, x: dropX, y: dropY, w: card.width, h: card.height }, animate: true });
+      scheduleLayoutWrite();
     } else {
       card.node.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
     }
-
     drag = null;
   });
 
-  card.image.addEventListener('dblclick', () => openOverlay(card.overlaySrc, card.image.alt));
+  card.image.addEventListener('dblclick', () => openOverlay(card.photo.originalUrl, card.image.alt));
   card.image.addEventListener('pointerup', () => {
     const now = Date.now();
     const prev = state.lastTap;
     if (prev && prev.id === card.id && (now - prev.at) <= CONFIG.doubleTapMs) {
-      openOverlay(card.overlaySrc, card.image.alt);
+      openOverlay(card.photo.originalUrl, card.image.alt);
       state.lastTap = null;
     } else {
       state.lastTap = { id: card.id, at: now };
@@ -246,13 +242,29 @@ function bindCardInteractions(card) {
   });
 }
 
+function scheduleLayoutWrite() {
+  if (!state.canWriteLayout) return;
+  clearTimeout(state.layoutTimer);
+  state.layoutTimer = setTimeout(async () => {
+    try {
+      await fetch('/api/photos/layout', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ order: state.layoutOrder }),
+      });
+    } catch (err) {
+      console.warn('Failed to persist layout', err);
+    }
+  }, CONFIG.layoutWriteDebounceMs);
+}
+
 function bindResize() {
   let timeout = null;
   window.addEventListener('resize', () => {
     clearTimeout(timeout);
     timeout = setTimeout(() => {
-      state.lastPinnedId = null;
-      sizeCardsTwoPass();
+      sizeCards();
       layoutCards({ animate: false });
     }, CONFIG.debounceMs);
   });
@@ -264,7 +276,6 @@ function bindOverlay() {
   const closeBtn = backdrop.querySelector('.photo-overlay-close');
   const toggleBtn = backdrop.querySelector('.photo-overlay-toggle');
   const scrollArea = backdrop.querySelector('.photo-overlay-scroll');
-
   let mode = 'fit';
 
   function close() {
@@ -293,12 +304,8 @@ function bindOverlay() {
 
   closeBtn.addEventListener('click', close);
   toggleBtn.addEventListener('click', toggle);
-  backdrop.addEventListener('click', (ev) => {
-    if (ev.target === backdrop) close();
-  });
-  window.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && !backdrop.hidden) close();
-  });
+  backdrop.addEventListener('click', (ev) => { if (ev.target === backdrop) close(); });
+  window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !backdrop.hidden) close(); });
 
   window.openPhotoOverlay = (src, alt) => {
     backdrop.hidden = false;
@@ -314,32 +321,10 @@ function openOverlay(src, alt) {
   if (window.openPhotoOverlay) window.openPhotoOverlay(src, alt);
 }
 
-function bindImageFallback(img, candidates) {
-  if (!Array.isArray(candidates) || candidates.length <= 1) return;
-
-  let currentIndex = 0;
-
-  img.addEventListener('error', () => {
-    while (currentIndex + 1 < candidates.length) {
-      currentIndex += 1;
-      const next = candidates[currentIndex];
-      if (next && next !== img.src) {
-        img.src = next;
-        return;
-      }
-    }
-  });
-}
-
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
 function escapeHtml(v) {
-  return String(v)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+  return String(v).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 }

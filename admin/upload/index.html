@@ -37,6 +37,7 @@
   </main>
 
   <script src="/assets/vendor/heic2any.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
   <script>
 
     const queue = document.getElementById('queue');
@@ -91,7 +92,7 @@
 
     async function convertHeicToJpeg(file) {
       if (typeof window.heic2any !== 'function') throw new Error('HEIC converter not loaded');
-      const converted = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      const converted = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.95 });
       const blob = Array.isArray(converted) ? converted[0] : converted;
       if (!(blob instanceof Blob)) throw new Error('HEIC conversion did not return a Blob');
       return new File([blob], jpgNameFrom(file.name), { type: 'image/jpeg' });
@@ -228,6 +229,93 @@
       result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a>`;
     }
 
+    async function readExif(file) {
+      if (!window.exifr || !file.type.startsWith('image/')) return {};
+      try {
+        const data = await window.exifr.parse(file, ['Orientation', 'DateTimeOriginal', 'CreateDate']);
+        return {
+          orientation: data?.Orientation || null,
+          capturedAt: data?.DateTimeOriginal?.toISOString?.() || data?.CreateDate?.toISOString?.() || null,
+        };
+      } catch {
+        return {};
+      }
+    }
+
+    async function toWebpVariant(file, { shortestSide, quality }) {
+      const bmp = await createImageBitmap(file);
+      const short = Math.min(bmp.width, bmp.height);
+      const scale = Math.min(1, shortestSide / short);
+      const w = Math.max(1, Math.round(bmp.width * scale));
+      const h = Math.max(1, Math.round(bmp.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close?.();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+      return { blob, width: bmp.width, height: bmp.height };
+    }
+
+    async function maybeDownscaleOriginal(file, maxLongSide = 8000) {
+      const bmp = await createImageBitmap(file);
+      const long = Math.max(bmp.width, bmp.height);
+      if (long <= maxLongSide) {
+        const w = bmp.width;
+        const h = bmp.height;
+        bmp.close?.();
+        return { file, width: w, height: h };
+      }
+      const scale = maxLongSide / long;
+      const w = Math.max(1, Math.round(bmp.width * scale));
+      const h = Math.max(1, Math.round(bmp.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close?.();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, file.type || 'image/jpeg', 0.95));
+      return {
+        file: blob ? new File([blob], file.name, { type: file.type || 'image/jpeg' }) : file,
+        width: w,
+        height: h,
+      };
+    }
+
+    async function processPhotographyVariants(item) {
+      const source = item.uploadFile;
+      const lower = (item.originalFile?.name || '').toLowerCase();
+      const isOriginalHeic = lower.endsWith('.heic') || lower.endsWith('.heif');
+      const originalType = item.originalFile?.type || source.type;
+      const exif = await readExif(source);
+
+      let originalFile = source;
+      if (isOriginalHeic) {
+        originalFile = new File([source], jpgNameFrom(item.originalFile.name), { type: 'image/jpeg' });
+      } else if (originalType === 'image/png') {
+        originalFile = item.originalFile;
+      }
+
+      const originalSized = await maybeDownscaleOriginal(originalFile);
+      const thumbVariant = await toWebpVariant(source, { shortestSide: 480, quality: 0.70 });
+      const displayVariant = await toWebpVariant(source, { shortestSide: 2200, quality: 0.82 });
+
+      const thumbFile = new File([thumbVariant.blob], `${item.clientId}.webp`, { type: 'image/webp' });
+      const displayFile = new File([displayVariant.blob], `${item.clientId}.webp`, { type: 'image/webp' });
+
+      return {
+        originalFile: originalSized.file,
+        thumbFile,
+        displayFile,
+        width: originalSized.width,
+        height: originalSized.height,
+        aspect: originalSized.width / originalSized.height,
+        capturedAt: exif.capturedAt || null,
+        orientation: exif.orientation || null,
+      };
+    }
+
+
     async function imageDimensions(file) {
       if (!file.type.startsWith('image/')) return {};
       try {
@@ -236,22 +324,9 @@
         const height = bmp.height;
         bmp.close?.();
         return { width, height, aspect_ratio: width / height };
-      } catch { return {}; }
-    }
-
-    async function makeDisplayVariant(file, maxLongSide = 1600) {
-      if (!file.type.startsWith('image/')) return null;
-      const bmp = await createImageBitmap(file);
-      const scale = Math.min(1, maxLongSide / Math.max(bmp.width, bmp.height));
-      const w = Math.max(1, Math.round(bmp.width * scale));
-      const h = Math.max(1, Math.round(bmp.height * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
-      bmp.close?.();
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
-      return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
+      } catch {
+        return {};
+      }
     }
 
     async function uploadPhotographyBatch(ids) {
@@ -266,20 +341,24 @@
 
         const title = card.querySelector('.title').value.trim();
         const location = card.querySelector('.secondary-input').value.trim();
-        const dims = await imageDimensions(item.uploadFile);
-        const display = await makeDisplayVariant(item.uploadFile);
-
-        fd.append('files', item.uploadFile, item.uploadFile.name);
-        fd.append('displayFiles', display || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), display?.name || 'empty.jpg');
+        const variants = await processPhotographyVariants(item);
+        fd.append('thumbFiles', variants.thumbFile, variants.thumbFile.name);
+        fd.append('displayFiles', variants.displayFile, variants.displayFile.name);
+        fd.append('originalFiles', variants.originalFile, variants.originalFile.name);
         meta.push({
           clientId,
+          id: clientId,
           filename: item.originalFile.name,
+          originalName: item.originalFile.name,
           title,
           location,
           description: location,
           destination: 'photography',
-          width: dims.width || null,
-          height: dims.height || null,
+          width: variants.width || null,
+          height: variants.height || null,
+          aspect: variants.aspect || null,
+          capturedAt: variants.capturedAt,
+          orientation: variants.orientation,
         });
 
         card.dataset.status = 'uploading';
@@ -287,6 +366,7 @@
         card.querySelector('progress').value = 40;
       }
 
+      fd.append('destination', 'photography');
       fd.append('meta', JSON.stringify(meta));
 
       const resp = await api('/api/photos/upload', { method: 'POST', body: fd });
