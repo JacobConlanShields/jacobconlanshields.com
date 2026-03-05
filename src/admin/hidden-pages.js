@@ -15,6 +15,11 @@ export const hiddenPages = [
     "description": "← Back to home"
   },
   {
+    "path": "/pages/sprints-in-the-park/",
+    "title": "Sprints in the Park",
+    "description": "Location: Cleveland Park, East Nashville"
+  },
+  {
     "path": "/pages/writing/relative-momentum/",
     "title": "Relative Momentum — Jacob Conlon Shields",
     "description": "Home • Projects • Writing • QV Podcast • Contact"
@@ -32,7 +37,7 @@ export const hiddenPages = [
 ];
 
 export const hiddenPagesMeta = {
-  generatedAt: "2026-02-25T09:37:16.744Z",
+  generatedAt: "2026-03-05T09:29:30.572Z",
   source: 'scripts/generate-hidden-pages.mjs',
   publicNavHrefs: [
   "/",
