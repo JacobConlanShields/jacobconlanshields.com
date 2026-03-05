@@ -29,12 +29,12 @@ const els = {
 
 init().catch((err) => {
   console.error(err);
-  els.status.textContent = 'Unable to load photos right now.';
+  els.status.textContent = 'Could not load photos.';
 });
 
 async function init() {
-  const photos = await fetch('/api/photos', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
-  state.photos = Array.isArray(photos) ? photos : [];
+  const photos = await fetch('/api/public/photography', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
+  state.photos = Array.isArray(photos) ? photos.map(normalizePhoto) : [];
 
   if (!state.photos.length) {
     els.status.innerHTML = 'No photos yet. Upload from <a href="/admin/upload">/admin/upload</a> to populate the mosaic.';
@@ -65,7 +65,7 @@ function renderCards() {
     imageWrap.className = 'mosaic-image-wrap';
     const img = document.createElement('img');
     img.className = 'mosaic-image';
-    img.src = keyUrl(photo.displayKey || photo.originalKey);
+    img.src = photo.thumbUrl || photo.displayUrl || photo.originalUrl;
     img.alt = photo.title || 'Photography image';
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -91,7 +91,8 @@ function renderCards() {
       height: 0,
       x: 0,
       y: 0,
-      originalKey: photo.originalKey,
+      displayUrl: photo.displayUrl,
+      originalUrl: photo.originalUrl,
     };
     state.cards.set(photo.id, record);
 
@@ -231,12 +232,12 @@ function bindCardInteractions(card) {
     drag = null;
   });
 
-  card.image.addEventListener('dblclick', () => openOverlay(card.originalKey, card.image.alt));
+  card.image.addEventListener('dblclick', () => openOverlay(card.displayUrl || card.originalUrl, card.image.alt));
   card.image.addEventListener('pointerup', () => {
     const now = Date.now();
     const prev = state.lastTap;
     if (prev && prev.id === card.id && (now - prev.at) <= CONFIG.doubleTapMs) {
-      openOverlay(card.originalKey, card.image.alt);
+      openOverlay(card.displayUrl || card.originalUrl, card.image.alt);
       state.lastTap = null;
     } else {
       state.lastTap = { id: card.id, at: now };
@@ -300,7 +301,7 @@ function bindOverlay() {
 
   window.openPhotoOverlay = (key, alt) => {
     backdrop.hidden = false;
-    img.src = keyUrl(key);
+    img.src = key;
     img.alt = alt || 'Photo';
     img.style.maxWidth = '100%';
     document.body.classList.add('overlay-open');
@@ -311,12 +312,39 @@ function openOverlay(key, alt) {
   if (window.openPhotoOverlay) window.openPhotoOverlay(key, alt);
 }
 
-function keyUrl(key) {
-  return `/photos/${key.split('/').map(encodeURIComponent).join('/')}`;
-}
-
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
+}
+
+function normalizePhoto(item) {
+  const title = item?.title || fallbackTitle(item);
+  const displayUrl = item?.displayUrl || item?.originalUrl || mediaUrl(item?.displayKey || item?.originalKey);
+  const originalUrl = item?.originalUrl || mediaUrl(item?.originalKey);
+  const thumbUrl = item?.thumbUrl || displayUrl || originalUrl;
+
+  return {
+    ...item,
+    id: String(item?.id || item?.originalKey || item?.displayKey || item?.thumbKey || crypto.randomUUID()),
+    title,
+    location: item?.location || '',
+    description: item?.description || '',
+    thumbUrl,
+    displayUrl,
+    originalUrl,
+    width: Number(item?.width) || 0,
+    height: Number(item?.height) || 0,
+  };
+}
+
+function fallbackTitle(item) {
+  const source = item?.originalKey || item?.displayKey || item?.thumbKey || item?.id || 'Untitled';
+  const name = String(source).split('/').pop() || 'Untitled';
+  return name.replace(/\.[^.]+$/, '');
+}
+
+function mediaUrl(key) {
+  if (!key) return null;
+  return `/media/${String(key).split('/').map(encodeURIComponent).join('/')}`;
 }
 
 function escapeHtml(v) {
