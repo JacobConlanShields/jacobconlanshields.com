@@ -91,10 +91,18 @@
 
     async function convertHeicToJpeg(file) {
       if (typeof window.heic2any !== 'function') throw new Error('HEIC converter not loaded');
-      const converted = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-      const blob = Array.isArray(converted) ? converted[0] : converted;
-      if (!(blob instanceof Blob)) throw new Error('HEIC conversion did not return a Blob');
-      return new File([blob], jpgNameFrom(file.name), { type: 'image/jpeg' });
+      try {
+        const converted = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+        const blob = Array.isArray(converted) ? converted[0] : converted;
+        if (!(blob instanceof Blob)) throw new Error('HEIC conversion did not return a Blob');
+        return new File([blob], jpgNameFrom(file.name), { type: 'image/jpeg' });
+      } catch (err) {
+        const msg = String(err?.message || err || 'HEIC conversion failed');
+        if (msg.includes('Content Security Policy') || msg.includes('violates') || msg.includes('worker-src')) {
+          throw new Error('HEIC conversion blocked by CSP (worker/blob). Contact admin to allow worker-src blob: on /admin/upload.');
+        }
+        throw err;
+      }
     }
 
     function cleanupItem(item) {
@@ -254,6 +262,10 @@
       return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
     }
 
+    async function makeThumbVariant(file, maxLongSide = 640) {
+      return makeDisplayVariant(file, maxLongSide);
+    }
+
     async function uploadPhotographyBatch(ids) {
       const cards = ids.map((id) => queue.querySelector(`[data-client-id="${id}"]`)).filter(Boolean);
       const fd = new FormData();
@@ -268,9 +280,11 @@
         const location = card.querySelector('.secondary-input').value.trim();
         const dims = await imageDimensions(item.uploadFile);
         const display = await makeDisplayVariant(item.uploadFile);
+        const thumb = await makeThumbVariant(item.uploadFile);
 
         fd.append('files', item.uploadFile, item.uploadFile.name);
         fd.append('displayFiles', display || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), display?.name || 'empty.jpg');
+        fd.append('thumbFiles', thumb || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), thumb?.name || 'empty.jpg');
         meta.push({
           clientId,
           filename: item.originalFile.name,

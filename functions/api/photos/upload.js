@@ -35,6 +35,7 @@ export async function onRequestPost({ request, env }) {
     }
   }
   const displayBlobs = form.getAll('displayFiles').filter((f) => f instanceof File);
+  const thumbBlobs = form.getAll('thumbFiles').filter((f) => f instanceof File);
 
   const manifest = await readPhotosManifest(env);
   const byId = new Map(manifest.map((item) => [item.id, item]));
@@ -57,6 +58,15 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
+    let thumbKey = null;
+    const thumbFile = thumbBlobs[i];
+    if (thumbFile && thumbFile.size > 0) {
+      thumbKey = `photos/thumb/${id}.jpg`;
+      await env.PHOTO_BUCKET.put(thumbKey, thumbFile.stream(), {
+        httpMetadata: { contentType: 'image/jpeg' },
+      });
+    }
+
     const entryMeta = meta[i] || {};
     const width = Number(entryMeta.width || widths[i]) || null;
     const height = Number(entryMeta.height || heights[i]) || null;
@@ -72,7 +82,7 @@ export async function onRequestPost({ request, env }) {
       createdAt: new Date().toISOString(),
       originalKey,
       displayKey,
-      thumbKey: null,
+      thumbKey,
       filename: safeName(file.name),
     };
 
