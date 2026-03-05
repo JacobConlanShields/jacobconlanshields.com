@@ -29,11 +29,11 @@ const els = {
 
 init().catch((err) => {
   console.error(err);
-  els.status.textContent = 'Unable to load photos right now.';
+  els.status.textContent = 'Could not load photos.';
 });
 
 async function init() {
-  const photos = await fetch('/api/photos', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
+  const photos = await fetch('/api/public/photography', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
   state.photos = Array.isArray(photos) ? photos : [];
 
   if (!state.photos.length) {
@@ -65,7 +65,9 @@ function renderCards() {
     imageWrap.className = 'mosaic-image-wrap';
     const img = document.createElement('img');
     img.className = 'mosaic-image';
-    img.src = keyUrl(photo.displayKey || photo.originalKey);
+    const imageSources = uniqueSources([photo.thumbUrl, photo.displayUrl, photo.originalUrl]);
+    const overlaySources = uniqueSources([photo.displayUrl, photo.originalUrl]);
+    img.src = imageSources[0] || '';
     img.alt = photo.title || 'Photography image';
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -91,12 +93,33 @@ function renderCards() {
       height: 0,
       x: 0,
       y: 0,
-      originalKey: photo.originalKey,
+      imageSources,
+      overlaySources,
+      imageSourceIndex: 0,
+      imageTriedHeicConvert: false,
     };
     state.cards.set(photo.id, record);
 
+    bindImageFallback(record);
     bindCardInteractions(record);
   }
+}
+
+function bindImageFallback(card) {
+  card.image.addEventListener('error', async () => {
+    const next = card.imageSources[card.imageSourceIndex + 1];
+    if (next) {
+      card.imageSourceIndex += 1;
+      card.image.src = next;
+      return;
+    }
+
+    if (card.imageTriedHeicConvert) return;
+    const current = card.imageSources[card.imageSourceIndex] || card.image.currentSrc || card.image.src;
+    const converted = await maybeConvertHeicToDataUrl(current);
+    card.imageTriedHeicConvert = true;
+    if (converted) card.image.src = converted;
+  });
 }
 
 function sizeCardsTwoPass() {
@@ -231,12 +254,12 @@ function bindCardInteractions(card) {
     drag = null;
   });
 
-  card.image.addEventListener('dblclick', () => openOverlay(card.originalKey, card.image.alt));
+  card.image.addEventListener('dblclick', () => openOverlay(card.overlaySources, card.image.alt));
   card.image.addEventListener('pointerup', () => {
     const now = Date.now();
     const prev = state.lastTap;
     if (prev && prev.id === card.id && (now - prev.at) <= CONFIG.doubleTapMs) {
-      openOverlay(card.originalKey, card.image.alt);
+      openOverlay(card.overlaySources, card.image.alt);
       state.lastTap = null;
     } else {
       state.lastTap = { id: card.id, at: now };
@@ -264,6 +287,9 @@ function bindOverlay() {
   const scrollArea = backdrop.querySelector('.photo-overlay-scroll');
 
   let mode = 'fit';
+  let overlaySources = [];
+  let overlaySourceIndex = 0;
+  let overlayTriedHeicConvert = false;
 
   function close() {
     backdrop.hidden = true;
@@ -289,6 +315,21 @@ function bindOverlay() {
     }
   }
 
+  img.addEventListener('error', async () => {
+    const next = overlaySources[overlaySourceIndex + 1];
+    if (next) {
+      overlaySourceIndex += 1;
+      img.src = next;
+      return;
+    }
+
+    if (overlayTriedHeicConvert) return;
+    const current = overlaySources[overlaySourceIndex] || img.currentSrc || img.src;
+    const converted = await maybeConvertHeicToDataUrl(current);
+    overlayTriedHeicConvert = true;
+    if (converted) img.src = converted;
+  });
+
   closeBtn.addEventListener('click', close);
   toggleBtn.addEventListener('click', toggle);
   backdrop.addEventListener('click', (ev) => {
@@ -298,21 +339,80 @@ function bindOverlay() {
     if (ev.key === 'Escape' && !backdrop.hidden) close();
   });
 
-  window.openPhotoOverlay = (key, alt) => {
+  window.openPhotoOverlay = (sources, alt) => {
+    overlaySources = uniqueSources(Array.isArray(sources) ? sources : [sources]);
+    overlaySourceIndex = 0;
+    overlayTriedHeicConvert = false;
+
     backdrop.hidden = false;
-    img.src = keyUrl(key);
+    img.src = overlaySources[0] || '';
     img.alt = alt || 'Photo';
     img.style.maxWidth = '100%';
     document.body.classList.add('overlay-open');
   };
 }
 
-function openOverlay(key, alt) {
-  if (window.openPhotoOverlay) window.openPhotoOverlay(key, alt);
+function openOverlay(sources, alt) {
+  if (!sources || (Array.isArray(sources) && !sources.length)) return;
+  if (window.openPhotoOverlay) window.openPhotoOverlay(sources, alt);
 }
 
-function keyUrl(key) {
-  return `/photos/${key.split('/').map(encodeURIComponent).join('/')}`;
+let heicConverterReady = null;
+
+async function ensureHeicConverter() {
+  if (typeof window.heic2any === 'function') return true;
+  if (!heicConverterReady) {
+    heicConverterReady = new Promise((resolve) => {
+      const existing = document.querySelector('script[data-heic-converter="1"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(typeof window.heic2any === 'function'), { once: true });
+        existing.addEventListener('error', () => resolve(false), { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = '/assets/vendor/heic2any.js';
+      script.async = true;
+      script.dataset.heicConverter = '1';
+      script.onload = () => resolve(typeof window.heic2any === 'function');
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  }
+  return heicConverterReady;
+}
+
+function isHeicLike(url = '') {
+  return /\.(heic|heif)(\?|$)/i.test(url);
+}
+
+async function maybeConvertHeicToDataUrl(url) {
+  if (!url || !isHeicLike(url)) return null;
+  if (!(await ensureHeicConverter())) return null;
+
+  try {
+    const resp = await fetch(url, { credentials: 'same-origin' });
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    const converted = await window.heic2any({ blob, toType: 'image/jpeg', quality: 0.9 });
+    const outBlob = Array.isArray(converted) ? converted[0] : converted;
+    return await blobToDataUrl(outBlob);
+  } catch (err) {
+    console.warn('HEIC conversion failed for', url, err);
+    return null;
+  }
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+    reader.onerror = () => reject(reader.error || new Error('Unable to read converted image'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function uniqueSources(list = []) {
+  return [...new Set(list.filter(Boolean))];
 }
 
 function clamp(v, min, max) {
