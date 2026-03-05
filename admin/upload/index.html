@@ -15,10 +15,15 @@
     <div class="upload-meta upload-controls">
       <label>Destination
         <select id="collection">
-          <option value="spincline_design_build">Spincline: Design &amp; Build</option>
-          <option value="spincline_finished_products">Spincline: Finished Products</option>
-          <option value="spincline_in_action">Spincline: In Action (Video)</option>
           <option value="photography">Photography</option>
+          <option value="spincline">Spincline</option>
+        </select>
+      </label>
+      <label id="spincline-subsection-wrap" hidden>Spincline section
+        <select id="spincline-subsection">
+          <option value="spincline_design_build">Design &amp; Build</option>
+          <option value="spincline_finished_products">Finished Products</option>
+          <option value="spincline_in_action">In Action (Video)</option>
         </select>
       </label>
       <input id="files" type="file" multiple accept="image/*,video/*" />
@@ -37,11 +42,14 @@
   </main>
 
   <script src="/assets/vendor/heic2any.js"></script>
+  <script src="/assets/vendor/exifr.js"></script>
   <script>
 
     const queue = document.getElementById('queue');
     const filesInput = document.getElementById('files');
     const collectionInput = document.getElementById('collection');
+    const spinclineSubsectionWrap = document.getElementById('spincline-subsection-wrap');
+    const spinclineSubsectionInput = document.getElementById('spincline-subsection');
     const batchStatus = document.getElementById('batch-status');
     const uploadAllBtns = [document.getElementById('upload-all'), document.getElementById('upload-all-bottom')];
     const corsHelp = document.getElementById('cors-help');
@@ -60,7 +68,17 @@
       return fetch(path, { ...opts, credentials: 'same-origin' });
     }
 
-    function destinationConfig(value = collectionInput.value) {
+    function effectiveDestination() {
+      return collectionInput.value === 'spincline' ? spinclineSubsectionInput.value : 'photography';
+    }
+
+    function syncDestinationMenus() {
+      const isSpincline = collectionInput.value === 'spincline';
+      spinclineSubsectionWrap.hidden = !isSpincline;
+      spinclineSubsectionInput.disabled = !isSpincline || uploadsInProgress;
+    }
+
+    function destinationConfig(value = effectiveDestination()) {
       return value === 'photography'
         ? { secondaryLabel: 'Location', secondaryKind: 'location', secondaryField: 'location', isPhoto: true }
         : { secondaryLabel: 'Description', secondaryKind: 'description', secondaryField: 'description', isPhoto: false };
@@ -104,6 +122,7 @@
     function setControlsDisabled(disabled) {
       uploadsInProgress = disabled;
       collectionInput.disabled = disabled;
+      spinclineSubsectionInput.disabled = disabled || collectionInput.value !== 'spincline';
       filesInput.disabled = disabled;
       uploadAllBtns.forEach((btn) => { btn.disabled = disabled || selectedItems.length === 0; });
       queue.querySelectorAll('input, textarea, button.start, button.remove').forEach((el) => {
@@ -228,6 +247,7 @@
       result.innerHTML = `Created item:<br>ID: <code>${item.id}</code><br>Title: ${item.title || '(untitled)'}<br>${secondaryLine}<br>URL: <a href="${item.url}" target="_blank" rel="noreferrer">${item.url}</a><br><a href="${publicLink}" target="_blank" rel="noreferrer">Open public page</a>`;
     }
 
+
     async function imageDimensions(file) {
       if (!file.type.startsWith('image/')) return {};
       try {
@@ -239,25 +259,79 @@
       } catch { return {}; }
     }
 
-    async function makeDisplayVariant(file, maxLongSide = 1600) {
-      if (!file.type.startsWith('image/')) return null;
+    async function readExifMeta(file) {
+      if (!window.exifr || !file.type.startsWith('image/')) return {};
+      try {
+        const exif = await window.exifr.parse(file, { tiff: true, ifd0: true, exif: true });
+        const capture = exif?.DateTimeOriginal || exif?.CreateDate || exif?.DateTime || null;
+        return { orientation: Number(exif?.Orientation) || null, captureDate: capture ? new Date(capture).toISOString() : null };
+      } catch {
+        return {};
+      }
+    }
+
+    async function loadBitmap(file) {
       const bmp = await createImageBitmap(file);
-      const scale = Math.min(1, maxLongSide / Math.max(bmp.width, bmp.height));
-      const w = Math.max(1, Math.round(bmp.width * scale));
-      const h = Math.max(1, Math.round(bmp.height * scale));
+      return { bmp, width: bmp.width, height: bmp.height };
+    }
+
+    async function canvasVariant(file, shortestSide, type = 'image/webp', quality = 0.82, maxLongSide = 8000) {
+      const { bmp, width, height } = await loadBitmap(file);
+      const baseScale = shortestSide / Math.min(width, height);
+      const maxScale = maxLongSide / Math.max(width, height);
+      const scale = Math.min(1, baseScale, maxScale);
+      const w = Math.max(1, Math.round(width * scale));
+      const h = Math.max(1, Math.round(height * scale));
       const canvas = document.createElement('canvas');
       canvas.width = w;
       canvas.height = h;
       canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
       bmp.close?.();
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
-      return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+      return blob;
+    }
+
+    async function buildPhotographyVariants(item) {
+      const file = item.uploadFile;
+      const lowerName = (item.originalFile?.name || file.name || '').toLowerCase();
+      const isPng = file.type === 'image/png' || lowerName.endsWith('.png');
+      const isJpeg = file.type === 'image/jpeg' || file.type === 'image/jpg' || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+      const isHeicInput = isHeic(item.originalFile || file);
+
+      const exif = await readExifMeta(file);
+      const dims = await imageDimensions(file);
+
+      const thumbBlob = await canvasVariant(file, 480, 'image/webp', 0.70);
+      const displayBlob = await canvasVariant(file, 2200, 'image/webp', 0.82);
+
+      let originalFile = file;
+      if (isHeicInput) {
+        const converted = await window.heic2any({ blob: item.originalFile || file, toType: 'image/jpeg', quality: 0.95 });
+        const asBlob = Array.isArray(converted) ? converted[0] : converted;
+        originalFile = new File([asBlob], jpgNameFrom(item.originalFile?.name || file.name), { type: 'image/jpeg' });
+      } else if (!isJpeg && !isPng) {
+        const origBlob = await canvasVariant(file, Math.min(dims.width || 4000, dims.height || 4000), 'image/jpeg', 0.95);
+        originalFile = new File([origBlob], (item.originalFile?.name || file.name).replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+      }
+
+      const thumbFile = new File([thumbBlob], (item.originalFile?.name || file.name).replace(/\.[^.]+$/, '') + '.thumb.webp', { type: 'image/webp' });
+      const displayFile = new File([displayBlob], (item.originalFile?.name || file.name).replace(/\.[^.]+$/, '') + '.display.webp', { type: 'image/webp' });
+
+      return {
+        thumbFile,
+        displayFile,
+        originalFile,
+        dims,
+        exif,
+      };
     }
 
     async function uploadPhotographyBatch(ids) {
       const cards = ids.map((id) => queue.querySelector(`[data-client-id="${id}"]`)).filter(Boolean);
       const fd = new FormData();
       const meta = [];
+
+      fd.append('destination', 'photography');
 
       for (const clientId of ids) {
         const item = selectedItems.find((entry) => entry.clientId === clientId);
@@ -266,25 +340,36 @@
 
         const title = card.querySelector('.title').value.trim();
         const location = card.querySelector('.secondary-input').value.trim();
-        const dims = await imageDimensions(item.uploadFile);
-        const display = await makeDisplayVariant(item.uploadFile);
+        const id = crypto.randomUUID();
 
-        fd.append('files', item.uploadFile, item.uploadFile.name);
-        fd.append('displayFiles', display || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), display?.name || 'empty.jpg');
+        card.dataset.status = 'uploading';
+        card.querySelector('.status').textContent = 'Preparing photography variants...';
+        card.querySelector('progress').value = 20;
+
+        const variants = await buildPhotographyVariants(item);
+
+        fd.append('id', id);
+        fd.append('thumbFile', variants.thumbFile, variants.thumbFile.name);
+        fd.append('displayFile', variants.displayFile, variants.displayFile.name);
+        fd.append('originalFile', variants.originalFile, variants.originalFile.name);
+
         meta.push({
+          id,
           clientId,
           filename: item.originalFile.name,
           title,
           location,
           description: location,
           destination: 'photography',
-          width: dims.width || null,
-          height: dims.height || null,
+          width: variants.dims.width || null,
+          height: variants.dims.height || null,
+          aspect: (variants.dims.width && variants.dims.height) ? variants.dims.width / variants.dims.height : null,
+          captureDate: variants.exif.captureDate || null,
+          orientation: variants.exif.orientation || null,
         });
 
-        card.dataset.status = 'uploading';
         card.querySelector('.status').textContent = 'Queued in batch upload...';
-        card.querySelector('progress').value = 40;
+        card.querySelector('progress').value = 45;
       }
 
       fd.append('meta', JSON.stringify(meta));
@@ -313,7 +398,7 @@
       if (!item || !card || item.conversionError) return;
 
       const file = item.uploadFile;
-      const collection = collectionInput.value;
+      const collection = effectiveDestination();
       const title = card.querySelector('.title').value.trim();
       const secondary = card.querySelector('.secondary-input').value.trim();
       const description = secondary;
@@ -493,7 +578,11 @@
       updateBatchSummary();
     });
 
-    collectionInput.addEventListener('change', syncMetadataFields);
+    collectionInput.addEventListener('change', () => {
+      syncDestinationMenus();
+      syncMetadataFields();
+    });
+    spinclineSubsectionInput.addEventListener('change', syncMetadataFields);
     uploadAllBtns.forEach((btn) => btn.addEventListener('click', uploadAll));
 
     async function checkUploadHealth() {
@@ -517,6 +606,7 @@
       }
     }
 
+    syncDestinationMenus();
     updateBatchSummary();
     checkUploadHealth();
     window.addEventListener('beforeunload', () => selectedItems.forEach(cleanupItem));
