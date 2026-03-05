@@ -37,6 +37,7 @@
   </main>
 
   <script src="/assets/vendor/heic2any.js"></script>
+  <script src="/assets/vendor/exifr-lite.umd.js"></script>
   <script>
 
     const queue = document.getElementById('queue');
@@ -239,10 +240,22 @@
       } catch { return {}; }
     }
 
-    async function makeDisplayVariant(file, maxLongSide = 1600) {
-      if (!file.type.startsWith('image/')) return null;
+    async function exifMeta(file) {
+      if (!window.exifr || !file.type.startsWith('image/')) return {};
+      try {
+        const data = await window.exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'Orientation']);
+        return {
+          capturedAt: data?.DateTimeOriginal?.toISOString?.() || data?.CreateDate?.toISOString?.() || null,
+          orientation: data?.Orientation ? String(data.Orientation) : null,
+        };
+      } catch {
+        return {};
+      }
+    }
+
+    async function renderVariant(file, { shortestSide, quality, type = 'image/webp', nameSuffix = '' }) {
       const bmp = await createImageBitmap(file);
-      const scale = Math.min(1, maxLongSide / Math.max(bmp.width, bmp.height));
+      const scale = Math.min(1, shortestSide / Math.min(bmp.width, bmp.height));
       const w = Math.max(1, Math.round(bmp.width * scale));
       const h = Math.max(1, Math.round(bmp.height * scale));
       const canvas = document.createElement('canvas');
@@ -250,8 +263,44 @@
       canvas.height = h;
       canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
       bmp.close?.();
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
-      return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : null;
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+      if (!blob) return null;
+      const base = file.name.replace(/\.[^.]+$/, '');
+      return new File([blob], `${base}${nameSuffix}.webp`, { type: 'image/webp' });
+    }
+
+    async function maybeDownscaleOriginal(file, maxLongSide = 8000) {
+      const dims = await imageDimensions(file);
+      if (!dims.width || !dims.height || Math.max(dims.width, dims.height) <= maxLongSide) return file;
+      const bmp = await createImageBitmap(file);
+      const scale = maxLongSide / Math.max(bmp.width, bmp.height);
+      const w = Math.max(1, Math.round(bmp.width * scale));
+      const h = Math.max(1, Math.round(bmp.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close?.();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, file.type || 'image/jpeg', file.type === 'image/png' ? 1 : 0.95));
+      return blob ? new File([blob], file.name, { type: file.type }) : file;
+    }
+
+    async function buildPhotographyPayload(file) {
+      const lower = file.name.toLowerCase();
+      const isPng = file.type === 'image/png' || lower.endsWith('.png');
+      const isJpeg = file.type === 'image/jpeg' || lower.endsWith('.jpg') || lower.endsWith('.jpeg');
+      const isHeifLike = isHeic(file);
+
+      let working = file;
+      if (isHeifLike) working = await convertHeicToJpeg(file);
+      const originalFile = isHeifLike ? new File([working], jpgNameFrom(file.name), { type: 'image/jpeg' }) : (isPng || isJpeg ? file : working);
+      const optimizedOriginal = await maybeDownscaleOriginal(originalFile);
+      const dims = await imageDimensions(optimizedOriginal);
+      const meta = await exifMeta(file);
+      const thumbFile = await renderVariant(optimizedOriginal, { shortestSide: 480, quality: 0.7, nameSuffix: '-thumb' });
+      const displayFile = await renderVariant(optimizedOriginal, { shortestSide: 2200, quality: 0.82, nameSuffix: '-display' });
+
+      return { originalFile: optimizedOriginal, thumbFile, displayFile, dims, exif: meta };
     }
 
     async function uploadPhotographyBatch(ids) {
@@ -266,20 +315,22 @@
 
         const title = card.querySelector('.title').value.trim();
         const location = card.querySelector('.secondary-input').value.trim();
-        const dims = await imageDimensions(item.uploadFile);
-        const display = await makeDisplayVariant(item.uploadFile);
+        const payload = await buildPhotographyPayload(item.originalFile || item.uploadFile);
 
-        fd.append('files', item.uploadFile, item.uploadFile.name);
-        fd.append('displayFiles', display || new File([''], 'empty.jpg', { type: 'application/octet-stream' }), display?.name || 'empty.jpg');
+        fd.append('originalFile', payload.originalFile, payload.originalFile.name);
+        if (payload.displayFile) fd.append('displayFile', payload.displayFile, payload.displayFile.name);
+        if (payload.thumbFile) fd.append('thumbFile', payload.thumbFile, payload.thumbFile.name);
+
         meta.push({
           clientId,
-          filename: item.originalFile.name,
           title,
           location,
           description: location,
           destination: 'photography',
-          width: dims.width || null,
-          height: dims.height || null,
+          width: payload.dims.width || null,
+          height: payload.dims.height || null,
+          capturedAt: payload.exif.capturedAt || null,
+          orientation: payload.exif.orientation || null,
         });
 
         card.dataset.status = 'uploading';
@@ -287,6 +338,7 @@
         card.querySelector('progress').value = 40;
       }
 
+      fd.append('destination', 'photography');
       fd.append('meta', JSON.stringify(meta));
 
       const resp = await api('/api/photos/upload', { method: 'POST', body: fd });
