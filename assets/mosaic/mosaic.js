@@ -29,11 +29,11 @@ const els = {
 
 init().catch((err) => {
   console.error(err);
-  els.status.textContent = 'Unable to load photos right now.';
+  els.status.textContent = 'Could not load photos.';
 });
 
 async function init() {
-  const photos = await fetch('/api/photos', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
+  const photos = await fetch('/api/public/photography', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : Promise.reject(new Error('Bad response')));
   state.photos = Array.isArray(photos) ? photos : [];
 
   if (!state.photos.length) {
@@ -65,10 +65,12 @@ function renderCards() {
     imageWrap.className = 'mosaic-image-wrap';
     const img = document.createElement('img');
     img.className = 'mosaic-image';
-    img.src = keyUrl(photo.displayKey || photo.originalKey);
+    const imageCandidates = [photo.thumbUrl, photo.displayUrl, photo.originalUrl].filter(Boolean);
+    img.src = imageCandidates[0] || '';
     img.alt = photo.title || 'Photography image';
     img.loading = 'lazy';
     img.decoding = 'async';
+    bindImageFallback(img, imageCandidates);
     imageWrap.appendChild(img);
 
     const text = document.createElement('div');
@@ -91,7 +93,7 @@ function renderCards() {
       height: 0,
       x: 0,
       y: 0,
-      originalKey: photo.originalKey,
+      overlaySrc: photo.displayUrl || photo.originalUrl || null,
     };
     state.cards.set(photo.id, record);
 
@@ -231,12 +233,12 @@ function bindCardInteractions(card) {
     drag = null;
   });
 
-  card.image.addEventListener('dblclick', () => openOverlay(card.originalKey, card.image.alt));
+  card.image.addEventListener('dblclick', () => openOverlay(card.overlaySrc, card.image.alt));
   card.image.addEventListener('pointerup', () => {
     const now = Date.now();
     const prev = state.lastTap;
     if (prev && prev.id === card.id && (now - prev.at) <= CONFIG.doubleTapMs) {
-      openOverlay(card.originalKey, card.image.alt);
+      openOverlay(card.overlaySrc, card.image.alt);
       state.lastTap = null;
     } else {
       state.lastTap = { id: card.id, at: now };
@@ -298,21 +300,35 @@ function bindOverlay() {
     if (ev.key === 'Escape' && !backdrop.hidden) close();
   });
 
-  window.openPhotoOverlay = (key, alt) => {
+  window.openPhotoOverlay = (src, alt) => {
     backdrop.hidden = false;
-    img.src = keyUrl(key);
+    img.src = src || '';
     img.alt = alt || 'Photo';
     img.style.maxWidth = '100%';
     document.body.classList.add('overlay-open');
   };
 }
 
-function openOverlay(key, alt) {
-  if (window.openPhotoOverlay) window.openPhotoOverlay(key, alt);
+function openOverlay(src, alt) {
+  if (!src) return;
+  if (window.openPhotoOverlay) window.openPhotoOverlay(src, alt);
 }
 
-function keyUrl(key) {
-  return `/photos/${key.split('/').map(encodeURIComponent).join('/')}`;
+function bindImageFallback(img, candidates) {
+  if (!Array.isArray(candidates) || candidates.length <= 1) return;
+
+  let currentIndex = 0;
+
+  img.addEventListener('error', () => {
+    while (currentIndex + 1 < candidates.length) {
+      currentIndex += 1;
+      const next = candidates[currentIndex];
+      if (next && next !== img.src) {
+        img.src = next;
+        return;
+      }
+    }
+  });
 }
 
 function clamp(v, min, max) {
