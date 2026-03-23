@@ -170,6 +170,13 @@ button:hover{ background: rgba(255,255,255,.06); }
   max-width: 70ch;
 }
 
+.podcast-cta-links{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+
 /* ONE grid only */
 .podcast-topgrid{
   display: grid;
