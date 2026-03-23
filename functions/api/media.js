@@ -1,5 +1,22 @@
 import { badRequest, getCollectionConfig, json, mediaUrl, publicBaseFor, withCors, handleOptions } from "../_lib/media.js";
 
+function bucketFor(r2Base, env) {
+  if (r2Base === "SPINCLINE") return env.SPINCLINE_BUCKET;
+  return env.PHOTO_BUCKET || env.MEDIA_BUCKET;
+}
+
+async function readManifest(bucket, collection) {
+  if (!bucket) return [];
+  const obj = await bucket.get(`manifests/${collection}.json`);
+  if (!obj) return [];
+  try {
+    const data = JSON.parse(await obj.text());
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === "OPTIONS") return handleOptions();
@@ -7,20 +24,20 @@ export async function onRequest(context) {
 
   const url = new URL(request.url);
   const collection = url.searchParams.get("collection");
-  if (!collection || !getCollectionConfig(collection)) {
+  const config = getCollectionConfig(collection);
+  if (!collection || !config) {
     return withCors(badRequest("Invalid collection"));
   }
 
-  const rows = await env.DB.prepare(
-    `SELECT id, collection, media_type, r2_base, r2_key, title, description, width, height, aspect_ratio, poster_r2_key, sort_index, created_at
-     FROM media_items WHERE collection = ? AND is_public = 1
-     ORDER BY sort_index DESC, created_at DESC`,
-  ).bind(collection).all();
+  const bucket = bucketFor(config.r2Base, env);
+  const items = await readManifest(bucket, collection);
 
-  const payload = (rows.results || []).map((item) => ({
+  const payload = items.map((item) => ({
     ...item,
-    url: mediaUrl(item.r2_base, item.r2_key),
-    posterUrl: item.poster_r2_key ? `${publicBaseFor(item.r2_base)}/${item.poster_r2_key}` : null,
+    url: mediaUrl(item.r2_base || config.r2Base, item.r2_key || item.displayKey || item.originalKey || ""),
+    posterUrl: item.poster_r2_key
+      ? `${publicBaseFor(item.r2_base || config.r2Base)}/${item.poster_r2_key}`
+      : null,
   }));
 
   const etagRaw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(payload)));

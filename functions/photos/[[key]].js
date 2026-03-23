@@ -1,5 +1,7 @@
 export async function onRequestGet({ params, env }) {
-  const key = decodeURIComponent(params.key || '');
+  const raw = params.key || '';
+  const joined = Array.isArray(raw) ? raw.join('/') : String(raw);
+  const key = joined.split('/').map((s) => { try { return decodeURIComponent(s); } catch { return s; } }).join('/');
   if (!key) return new Response('Not found', { status: 404 });
 
   const object = await env.PHOTO_BUCKET.get(key);

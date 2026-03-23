@@ -1,5 +1,5 @@
 const SPINCLINE_MEDIA_BASE = "https://pub-a0784713bd834a079424dc14cf218eea.r2.dev";
-const PHOTO_MEDIA_BASE = "https://pub-980fbe5c774b4339805365b9656ec9fe.r2.dev";
+const PHOTO_MEDIA_BASE = "https://pub-aad15324564c43c49955b96d781f71eb.r2.dev";
 
 export const COLLECTION_CONFIG = {
   spincline_design_build: { r2Base: "SPINCLINE", prefix: "design-and-build/", mediaType: "image" },
