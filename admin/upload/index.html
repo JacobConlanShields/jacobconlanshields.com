@@ -607,6 +607,7 @@
       try {
         const resp = await api('/api/admin/health');
         if (!resp.ok) {
+          // Non-200 from the function itself — likely a deploy/config issue worth surfacing
           envBanner.hidden = false;
           envBanner.textContent = `Uploads health check failed (${resp.status}).`;
           return;
@@ -617,9 +618,10 @@
           envBanner.textContent = 'Uploads are not configured in this environment (preview). Use production or add bindings/secrets for preview.';
           setControlsDisabled(true);
         }
-      } catch (error) {
-        envBanner.hidden = false;
-        envBanner.textContent = `Could not verify upload configuration: ${error.message || String(error)}`;
+      } catch {
+        // Network-level failure (function unreachable, no bindings in local dev, etc.)
+        // Don't block the UI — the real error will surface if an upload is attempted.
+        console.warn('[upload] Health check unreachable — skipping.');
       }
     }
 
@@ -652,7 +654,7 @@
       if (e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox();
     });
 
-    queue.addEventListener('dblclick', (e) => {
+    queue.addEventListener('click', (e) => {
       const thumb = e.target.closest('img.upload-thumb');
       if (!thumb || !thumb.src) return;
       openLightbox(thumb.src, thumb.alt);
