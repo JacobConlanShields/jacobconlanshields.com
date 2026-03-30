@@ -1,0 +1,128 @@
+[
+  {
+    "id": "alpine-sunrise",
+    "src": "https://picsum.photos/seed/alpine1/800/600",
+    "title": "Alpine Sunrise",
+    "location": "Grindelwald, Switzerland",
+    "date": "2024-07-12"
+  },
+  {
+    "id": "kyoto-temple",
+    "src": "https://picsum.photos/seed/kyoto2/400/600",
+    "title": "Temple at Dusk",
+    "location": "Kyoto, Japan",
+    "date": "2024-03-22"
+  },
+  {
+    "id": "sahara-dunes",
+    "src": "https://picsum.photos/seed/sahara3/900/400",
+    "title": "Sahara Dunes",
+    "location": "Merzouga, Morocco",
+    "date": "2023-11-05"
+  },
+  {
+    "id": "patagonia-glacier",
+    "src": "https://picsum.photos/seed/patagonia4/600/600",
+    "title": "Perito Moreno",
+    "location": "Santa Cruz, Argentina",
+    "date": "2024-01-18"
+  },
+  {
+    "id": "santorini-cliffs",
+    "src": "https://picsum.photos/seed/santorini5/500/700",
+    "title": "Caldera View",
+    "location": "Santorini, Greece",
+    "date": "2024-06-30"
+  },
+  {
+    "id": "new-york-skyline",
+    "src": "https://picsum.photos/seed/newyork6/1000/400",
+    "title": "Manhattan at Night",
+    "location": "New York, USA",
+    "date": "2023-12-31"
+  },
+  {
+    "id": "bali-rice",
+    "src": "https://picsum.photos/seed/bali7/600/800",
+    "title": "Tegallalang Terraces",
+    "location": "Ubud, Indonesia",
+    "date": "2024-05-14"
+  },
+  {
+    "id": "iceland-aurora",
+    "src": "https://picsum.photos/seed/iceland8/750/500",
+    "title": "Aurora Borealis",
+    "location": "Vík, Iceland",
+    "date": "2024-02-09"
+  },
+  {
+    "id": "peru-machu",
+    "src": "https://picsum.photos/seed/peru9/700/500",
+    "title": "Lost City",
+    "location": "Machu Picchu, Peru",
+    "date": "2023-09-20"
+  },
+  {
+    "id": "namib-desert",
+    "src": "https://picsum.photos/seed/namib10/450/650",
+    "title": "Dead Vlei",
+    "location": "Sossusvlei, Namibia",
+    "date": "2024-08-03"
+  },
+  {
+    "id": "vietnam-bay",
+    "src": "https://picsum.photos/seed/vietnam11/850/550",
+    "title": "Ha Long Karsts",
+    "location": "Ha Long Bay, Vietnam",
+    "date": "2024-04-17"
+  },
+  {
+    "id": "tuscany-hills",
+    "src": "https://picsum.photos/seed/tuscany12/800/500",
+    "title": "Val d'Orcia",
+    "location": "Siena, Italy",
+    "date": "2024-05-01"
+  },
+  {
+    "id": "queenstown-lake",
+    "src": "https://picsum.photos/seed/nz13/550/750",
+    "title": "Wakatipu Reflections",
+    "location": "Queenstown, New Zealand",
+    "date": "2024-01-07"
+  },
+  {
+    "id": "ladakh-monastery",
+    "src": "https://picsum.photos/seed/ladakh14/600/450",
+    "title": "Thiksey Gompa",
+    "location": "Ladakh, India",
+    "date": "2023-08-25"
+  },
+  {
+    "id": "faroe-cliffs",
+    "src": "https://picsum.photos/seed/faroe15/650/500",
+    "title": "Gásadalur Falls",
+    "location": "Vágar, Faroe Islands",
+    "date": "2024-07-28"
+  },
+  {
+    "id": "rio-vista",
+    "src": "https://picsum.photos/seed/rio16/900/600",
+    "title": "Sugarloaf View",
+    "location": "Rio de Janeiro, Brazil",
+    "date": "2024-02-20"
+  },
+  {
+    "id": "cappadocia-balloons",
+    "src": "https://picsum.photos/seed/cap17/700/450",
+    "title": "Dawn Balloons",
+    "location": "Göreme, Turkey",
+    "date": "2023-10-14"
+  },
+  {
+    "id": "oslo-fjord",
+    "src": "https://picsum.photos/seed/oslo18/500/600",
+    "title": "Oslofjord Winter",
+    "location": "Oslo, Norway",
+    "date": "2024-01-30"
+  }
+]

@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photo Mosaic — Jacob Conlan Shields</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=EB+Garamond:ital,wght@0,400;1,400&family=DM+Sans:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens ────────────────────────────────────── */
+    :root {
+      --font-heading: "Playfair Display", serif;
+      --font-body: "EB Garamond", serif;
+      --font-ui: "DM Sans", sans-serif;
+      --font-mono: "DM Mono", monospace;
+      --accent: #FFBCD9;
+      --bg: #0e0e0e;
+      --surface: #161616;
+      --border: rgba(255,255,255,0.07);
+      --text-primary: #f0f0f0;
+      --text-muted: rgba(255,255,255,0.4);
+      --label-h: 52px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+    }
+
+    /* ── Page chrome ──────────────────────────────────────── */
+    .page-header {
+      padding: 40px 24px 28px;
+      max-width: 1448px;
+      margin: 0 auto;
+    }
+    .page-header h1 {
+      font-family: var(--font-heading);
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+    .page-header p {
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* ── Mosaic wrapper ───────────────────────────────────── */
+    #mosaic-wrap {
+      max-width: 1448px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Loading skeleton ─────────────────────────────────── */
+    #loading-state {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 24px;
+      max-width: 1448px;
+      margin: 0 auto;
+    }
+    .skeleton-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 0.85; }
+    }
+
+    /* ── Mosaic container ─────────────────────────────────── */
+    #mosaic {
+      position: relative;
+      /* height set dynamically */
+    }
+
+    /* ── Tile ─────────────────────────────────────────────── */
+    .tile {
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: grab;
+      will-change: transform;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .tile:active { cursor: grabbing; }
+    .tile img {
+      display: block;
+      width: 100%;
+      /* height set inline */
+      object-fit: cover;
+      pointer-events: none;
+      draggable: false;
+    }
+    .tile-label {
+      padding: 7px 9px 8px;
+      height: var(--label-h);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+    .tile-title {
+      font-family: var(--font-heading);
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+    .tile-location {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+
+    /* ── Lightbox ─────────────────────────────────────────── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    #lightbox.visible {
+      display: flex;
+    }
+    #lightbox.open {
+      opacity: 1;
+    }
+    #lightbox img {
+      max-width: 100vw;
+      max-height: 100vh;
+      object-fit: contain;
+      transform: scale(0.92);
+      transition: transform 250ms ease-out;
+      pointer-events: none;
+    }
+    #lightbox.open img {
+      transform: scale(1);
+    }
+    #lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 8px 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    #lightbox-close:hover { color: var(--text-primary); }
+
+    /* ── Mobile: no drag cursor ───────────────────────────── */
+    @media (max-width: 639px) {
+      .tile { cursor: default; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>Photos</h1>
+  <p>A collection of places &amp; moments.</p>
+</header>
+
+<!-- Loading skeleton (shown while images load) -->
+<div id="loading-state"></div>
+
+<!-- Mosaic mount point -->
+<div id="mosaic-wrap" style="display:none">
+  <div id="mosaic"></div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" role="dialog" aria-modal="true">
+  <button id="lightbox-close" aria-label="Close lightbox">Close</button>
+  <img id="lightbox-img" src="" alt="" />
+</div>
+
+<script>
+/*
+ * ════════════════════════════════════════════════════════════
+ *  MOSAIC — IMPLEMENTATION NOTES
+ * ════════════════════════════════════════════════════════════
+ *
+ *  MaxRects Best Short Side Fit (BSSF)
+ *  ────────────────────────────────────
+ *  We maintain a list of "free rectangles" that represent
+ *  unoccupied regions in an infinitely tall, fixed-width bin.
+ *  For each tile (processed largest-area first) we find the
+ *  free rect that results in the smallest wasted short side
+ *  when the tile is placed in it (Best Short Side Fit score =
+ *  min(freeW - tileW, freeH - tileH)). Once placed, the free
+ *  rect is replaced by up to two non-overlapping remainders
+ *  (guillotine split: right strip + bottom strip, split axis
+ *  chosen by longer leftover dimension). Fully-contained free
+ *  rects are pruned after every placement. The algorithm is
+ *  O(n²) in the number of free rects but runs well under 30ms
+ *  for ≤ 60 tiles in practice.
+ *
+ *  Drag State Machine
+ *  ────────────────────
+ *
+ *    IDLE ──(mousedown, then move > 4px)──► DRAGGING
+ *      │                                        │
+ *      │                                   (mouseup)
+ *      │                                        │
+ *      │                                        ▼
+ *      └──────────────(anim done)────── DROPPING
+ *
+ *  IDLE     : tiles at full opacity, interactive, grab cursor
+ *  DRAGGING : grabbed tile follows pointer (position:fixed),
+ *             scaled 1.04, accent outline; all others dim
+ *  DROPPING : compute new insertion index from drop coords,
+ *             rerun layout, FLIP-animate all tiles to new pos
+ *
+ *  Sizing Formula
+ *  ───────────────
+ *  containerWidth  = min(1400, innerWidth − 48)
+ *  targetMeanWidth = containerWidth × 0.23   (desktop)
+ *                  = containerWidth × 0.33   (mobile < 640px)
+ *  baseHeight      = targetMeanWidth / mean(allClampedRatios)
+ *  tileWidth[i]    = ratio[i] × baseHeight
+ *  tileHeight[i]   = baseHeight  (photo portion only)
+ *  totalHeight[i]  = baseHeight + LABEL_H (52px)
+ * ════════════════════════════════════════════════════════════
+ */
+
+(function () {
+  'use strict';
+
+  /* ── Constants ──────────────────────────────────────────── */
+  const LABEL_H       = 52;
+  const RATIO_MIN     = 0.5;
+  const RATIO_MAX     = 2.5;
+  const MEAN_FRAC_D   = 0.23;   // desktop target fraction
+  const MEAN_FRAC_M   = 0.33;   // mobile target fraction
+  const MOBILE_BP     = 640;
+  const RESIZE_DEBOUNCE = 150;
+  const DRAG_THRESHOLD  = 4;    // px before drag activates
+
+  /* ── State ──────────────────────────────────────────────── */
+  let tilesData     = [];   // enriched tile objects with .ratio
+  let tileOrder     = [];   // indices into tilesData, user-reorderable
+  let tileElements  = {};   // id → DOM element
+  let placements    = [];   // last layout result [{id,x,y,width,height}]
+  let layoutReady   = false;
+  let dragState     = null; // null | { id, el, grabX, grabY, startX, startY, active }
+  let resizeTimer   = null;
+  let lastTapTime   = {};   // id → timestamp for double-tap detection
+
+  /* ── DOM refs ───────────────────────────────────────────── */
+  const loadingEl  = document.getElementById('loading-state');
+  const mosaicWrap = document.getElementById('mosaic-wrap');
+  const mosaic     = document.getElementById('mosaic');
+  const lightbox   = document.getElementById('lightbox');
+  const lbImg      = document.getElementById('lightbox-img');
+  const lbClose    = document.getElementById('lightbox-close');
+
+  /* ══════════════════════════════════════════════════════════
+   *  INIT
+   * ══════════════════════════════════════════════════════════ */
+  async function init() {
+    buildSkeleton();
+    try {
+      const resp = await fetch('mosaic-data.json');
+      const raw  = await resp.json();
+      tilesData  = await loadAllImages(raw);
+      tileOrder  = tilesData.map((_, i) => i);
+      buildTileElements();
+      loadingEl.style.display = 'none';
+      mosaicWrap.style.display = '';
+      runLayout(false);
+      layoutReady = true;
+      bindEvents();
+    } catch (err) {
+      loadingEl.innerHTML = `<p style="color:var(--text-muted);padding:24px;font-family:var(--font-ui);font-size:13px;">Failed to load mosaic data. ${err.message}</p>`;
+    }
+  }
+
+  /* ── Skeleton ───────────────────────────────────────────── */
+  function buildSkeleton() {
+    const frag = document.createDocumentFragment();
+    const heights = [180, 260, 200, 300, 170, 240, 220, 190, 280, 160, 210, 250];
+    heights.forEach(h => {
+      const el = document.createElement('div');
+      el.className = 'skeleton-tile';
+      el.style.width  = (120 + Math.random() * 120) + 'px';
+      el.style.height = h + 'px';
+      frag.appendChild(el);
+    });
+    loadingEl.appendChild(frag);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 1 — Image loading + ratio normalisation
+   * ══════════════════════════════════════════════════════════ */
+  function loadAllImages(raw) {
+    return new Promise((resolve) => {
+      const results = new Array(raw.length);
+      let pending   = raw.length;
+
+      raw.forEach((item, i) => {
+        const img = new Image();
+        img.onload = function () {
+          const naturalRatio = this.naturalWidth / this.naturalHeight;
+          const ratio = Math.min(RATIO_MAX, Math.max(RATIO_MIN, naturalRatio));
+          results[i] = { ...item, ratio, naturalRatio };
+          if (--pending === 0) resolve(results);
+        };
+        img.onerror = function () {
+          // fallback ratio 1.0 on error
+          results[i] = { ...item, ratio: 1.0, naturalRatio: 1.0 };
+          if (--pending === 0) resolve(results);
+        };
+        img.src = item.src;
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 2 — Tile sizing
+   * ══════════════════════════════════════════════════════════ */
+  function computeSizes() {
+    const isMobile = window.innerWidth < MOBILE_BP;
+    const containerWidth = Math.min(1400, window.innerWidth - 48);
+    const meanFrac = isMobile ? MEAN_FRAC_M : MEAN_FRAC_D;
+    const targetMeanWidth = containerWidth * meanFrac;
+
+    // Mean of all clamped ratios
+    const meanRatio = tilesData.reduce((s, t) => s + t.ratio, 0) / tilesData.length;
+    const baseHeight = targetMeanWidth / meanRatio;
+
+    return { containerWidth, baseHeight };
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 3 — Initial sort: largest area first (FFD)
+   * ══════════════════════════════════════════════════════════ */
+  function sortedOrderFFD(baseHeight) {
+    return [...tileOrder].sort((a, b) => {
+      const areaA = tilesData[a].ratio * baseHeight * (baseHeight + LABEL_H);
+      const areaB = tilesData[b].ratio * baseHeight * (baseHeight + LABEL_H);
+      return areaB - areaA;
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 4 — MaxRects BSSF
+   * ══════════════════════════════════════════════════════════ */
+  function maxRectsBSSF(orderedTiles, baseHeight, containerWidth) {
+    const freeRects  = [{ x: 0, y: 0, width: containerWidth, height: 1e9 }];
+    const placed     = [];
+
+    for (const tile of orderedTiles) {
+      const tw = tile.ratio * baseHeight;
+      const th = baseHeight + LABEL_H;
+
+      let bestScore = Infinity;
+      let bestIdx   = -1;
+
+      for (let i = 0; i < freeRects.length; i++) {
+        const fr = freeRects[i];
+        if (tw <= fr.width + 0.001 && th <= fr.height + 0.001) {
+          const score = Math.min(fr.width - tw, fr.height - th);
+          if (score < bestScore) {
+            bestScore = score;
+            bestIdx   = i;
+          }
+        }
+      }
+
+      if (bestIdx === -1) {
+        // Fallback: find the rect with max width to place on new row
+        let maxW = -1, fallbackIdx = 0;
+        for (let i = 0; i < freeRects.length; i++) {
+          if (freeRects[i].width > maxW) { maxW = freeRects[i].width; fallbackIdx = i; }
+        }
+        bestIdx = fallbackIdx;
+      }
+
+      const fr  = freeRects[bestIdx];
+      const px  = fr.x;
+      const py  = fr.y;
+
+      placed.push({ id: tile.id, x: px, y: py, width: tw, height: th });
+
+      // Guillotine split — prefer longer axis
+      const rightW  = fr.width  - tw;
+      const bottomH = fr.height - th;
+      const newRects = [];
+
+      if (rightW > 0.5 && bottomH > 0.5) {
+        if (rightW >= bottomH) {
+          // split horizontally: right rect full height, bottom rect full width
+          newRects.push({ x: px + tw, y: py,      width: rightW,       height: fr.height });
+          newRects.push({ x: fr.x,   y: py + th,  width: fr.width,     height: bottomH  });
+        } else {
+          newRects.push({ x: px + tw, y: py,      width: rightW,       height: th       });
+          newRects.push({ x: fr.x,   y: py + th,  width: fr.width,     height: bottomH  });
+        }
+      } else if (rightW > 0.5) {
+        newRects.push({ x: px + tw, y: py, width: rightW, height: fr.height });
+      } else if (bottomH > 0.5) {
+        newRects.push({ x: fr.x, y: py + th, width: fr.width, height: bottomH });
+      }
+
+      // Remove used rect, add new ones
+      freeRects.splice(bestIdx, 1);
+      for (const nr of newRects) freeRects.push(nr);
+
+      // Prune: remove rects fully contained in another
+      pruneContained(freeRects);
+    }
+
+    return placed;
+  }
+
+  function pruneContained(rects) {
+    for (let i = rects.length - 1; i >= 0; i--) {
+      const a = rects[i];
+      for (let j = 0; j < rects.length; j++) {
+        if (i === j) continue;
+        const b = rects[j];
+        if (b.x <= a.x && b.y <= a.y &&
+            b.x + b.width  >= a.x + a.width &&
+            b.y + b.height >= a.y + a.height) {
+          rects.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 5 — Whitespace centering
+   * ══════════════════════════════════════════════════════════ */
+  function centerWhitespace(placed, containerWidth) {
+    // Group tiles into rows by Y-overlap (> 50% of shorter height)
+    const used = new Array(placed.length).fill(false);
+    const rows = [];
+
+    for (let i = 0; i < placed.length; i++) {
+      if (used[i]) continue;
+      const row = [i];
+      used[i] = true;
+      const a = placed[i];
+
+      for (let j = i + 1; j < placed.length; j++) {
+        if (used[j]) continue;
+        const b = placed[j];
+        const overlapTop    = Math.max(a.y, b.y);
+        const overlapBottom = Math.min(a.y + a.height, b.y + b.height);
+        const overlapH      = overlapBottom - overlapTop;
+        const shorterH      = Math.min(a.height, b.height);
+        if (overlapH > 0.5 * shorterH) {
+          row.push(j);
+          used[j] = true;
+        }
+      }
+      rows.push(row);
+    }
+
+    const result = placed.map(p => ({ ...p })); // shallow clone
+
+    for (const rowIndices of rows) {
+      if (rowIndices.length < 2) continue;
+
+      // Sort row tiles left to right by current x
+      rowIndices.sort((a, b) => placed[a].x - placed[b].x);
+
+      const totalTileWidth = rowIndices.reduce((s, i) => s + placed[i].width, 0);
+      const deadSpace      = containerWidth - totalTileWidth;
+      const gap            = deadSpace / (rowIndices.length + 1);
+
+      if (gap < 0) continue; // tiles wider than container — skip
+
+      let cursor = gap;
+      for (const idx of rowIndices) {
+        result[idx].x = cursor;
+        cursor += placed[idx].width + gap;
+      }
+    }
+
+    return result;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 6 — Render
+   * ══════════════════════════════════════════════════════════ */
+  function buildTileElements() {
+    tilesData.forEach(tile => {
+      const el = document.createElement('div');
+      el.className   = 'tile';
+      el.dataset.id  = tile.id;
+
+      const img = document.createElement('img');
+      img.src = tile.src;
+      img.alt = tile.title;
+      img.draggable = false;
+
+      const label = document.createElement('div');
+      label.className = 'tile-label';
+
+      const titleEl = document.createElement('div');
+      titleEl.className   = 'tile-title';
+      titleEl.textContent = tile.title;
+
+      const locEl = document.createElement('div');
+      locEl.className   = 'tile-location';
+      locEl.textContent = tile.location;
+
+      label.appendChild(titleEl);
+      label.appendChild(locEl);
+      el.appendChild(img);
+      el.appendChild(label);
+
+      mosaic.appendChild(el);
+      tileElements[tile.id] = el;
+
+      // Double-click / double-tap lightbox
+      el.addEventListener('dblclick', () => openLightbox(tile.src, tile.title));
+      el.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (lastTapTime[tile.id] && now - lastTapTime[tile.id] < 350) {
+          e.preventDefault();
+          openLightbox(tile.src, tile.title);
+        }
+        lastTapTime[tile.id] = now;
+      });
+    });
+  }
+
+  function renderLayout(newPlacements, animate, oldPositions) {
+    const totalH = newPlacements.reduce((m, p) => Math.max(m, p.y + p.height), 0);
+    mosaic.style.height = totalH + 'px';
+
+    newPlacements.forEach((p, index) => {
+      const el = tileElements[p.id];
+      if (!el) return;
+
+      // Always set physical size
+      el.style.width  = Math.round(p.width)  + 'px';
+      el.style.height = Math.round(p.height) + 'px';
+
+      // Set photo img height (total - label)
+      const img = el.querySelector('img');
+      if (img) img.style.height = Math.round(p.height - LABEL_H) + 'px';
+
+      if (!animate) {
+        el.style.transition = 'none';
+        el.style.opacity    = '1';
+        el.style.transform  = `translate(${Math.round(p.x)}px,${Math.round(p.y)}px)`;
+      } else {
+        const old = oldPositions && oldPositions[p.id];
+        const ox  = old ? old.x : p.x;
+        const oy  = old ? old.y : p.y;
+
+        // Start from old position, no transition
+        el.style.transition = 'none';
+        el.style.opacity    = '0';
+        el.style.transform  = `translate(${Math.round(ox)}px,${Math.round(oy)}px)`;
+
+        requestAnimationFrame(() => {
+          const delay = index * 15;
+          el.style.transition = `transform 320ms cubic-bezier(0.25,0.46,0.45,0.94) ${delay}ms, opacity 280ms ease ${delay}ms`;
+          el.style.transform  = `translate(${Math.round(p.x)}px,${Math.round(p.y)}px)`;
+          el.style.opacity    = '1';
+        });
+      }
+
+      // Store current for future FLIP
+      el._currentX = p.x;
+      el._currentY = p.y;
+    });
+
+    placements = newPlacements;
+  }
+
+  /* ── Full layout pipeline ───────────────────────────────── */
+  function runLayout(animate, overrideOrder) {
+    const order = overrideOrder || tileOrder;
+    const { containerWidth, baseHeight } = computeSizes();
+
+    // FFD sort only on first layout; preserve order after user drags
+    const sortedOrder = animate
+      ? order.map(i => tilesData[i])
+      : sortedOrderFFD(baseHeight).map(i => tilesData[i]);
+
+    const rawPlacements = maxRectsBSSF(sortedOrder, baseHeight, containerWidth);
+    const finalPlacements = centerWhitespace(rawPlacements, containerWidth);
+
+    // Capture old positions for FLIP
+    let oldPositions = null;
+    if (animate) {
+      oldPositions = {};
+      tilesData.forEach(t => {
+        const el = tileElements[t.id];
+        if (el) oldPositions[t.id] = { x: el._currentX || 0, y: el._currentY || 0 };
+      });
+    }
+
+    // Update tileOrder to match the sorted order (only on first layout)
+    if (!animate) {
+      tileOrder = sortedOrder.map(t => tilesData.findIndex(d => d.id === t.id));
+    }
+
+    renderLayout(finalPlacements, animate, oldPositions);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 7 — Drag & Drop State Machine
+   * ══════════════════════════════════════════════════════════ */
+  function bindEvents() {
+    mosaic.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    // Touch events on mosaic (mobile layout recomputes, no drag)
+    if (window.innerWidth >= MOBILE_BP) {
+      mosaic.addEventListener('touchstart', onTouchStart, { passive: false });
+      document.addEventListener('touchmove', onTouchMove,  { passive: false });
+      document.addEventListener('touchend',  onTouchEnd,   { passive: false });
+    }
+
+    window.addEventListener('resize', onResize);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+    lightbox.addEventListener('click', (e) => {
+      if (e.target !== lbImg) closeLightbox();
+    });
+    lbClose.addEventListener('click', closeLightbox);
+  }
+
+  /* ── Mouse handlers ─────────────────────────────────────── */
+  function onMouseDown(e) {
+    if (window.innerWidth < MOBILE_BP) return;
+    const tileEl = e.target.closest('.tile');
+    if (!tileEl) return;
+    e.preventDefault();
+
+    const id    = tileEl.dataset.id;
+    const rect  = tileEl.getBoundingClientRect();
+    dragState = {
+      id,
+      el: tileEl,
+      grabX:  e.clientX - rect.left,
+      grabY:  e.clientY - rect.top,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: false,
+    };
+  }
+
+  function onMouseMove(e) {
+    if (!dragState) return;
+
+    if (!dragState.active) {
+      const dx = Math.abs(e.clientX - dragState.startX);
+      const dy = Math.abs(e.clientY - dragState.startY);
+      if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return;
+      activateDrag();
+    }
+
+    // Move dragged tile
+    const el = dragState.el;
+    el.style.left = (e.clientX - dragState.grabX) + 'px';
+    el.style.top  = (e.clientY - dragState.grabY) + 'px';
+  }
+
+  function onMouseUp(e) {
+    if (!dragState) return;
+
+    if (dragState.active) {
+      finishDrop(e.clientX, e.clientY);
+    } else {
+      dragState = null;
+    }
+  }
+
+  /* ── Touch handlers ─────────────────────────────────────── */
+  function onTouchStart(e) {
+    if (window.innerWidth < MOBILE_BP) return;
+    const tileEl = e.target.closest('.tile');
+    if (!tileEl || e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+    const rect  = tileEl.getBoundingClientRect();
+    dragState = {
+      id:    tileEl.dataset.id,
+      el:    tileEl,
+      grabX: touch.clientX - rect.left,
+      grabY: touch.clientY - rect.top,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      active: false,
+    };
+  }
+
+  function onTouchMove(e) {
+    if (!dragState) return;
+    const touch = e.touches[0];
+
+    if (!dragState.active) {
+      const dx = Math.abs(touch.clientX - dragState.startX);
+      const dy = Math.abs(touch.clientY - dragState.startY);
+      if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return;
+      activateDrag();
+    }
+
+    e.preventDefault();
+    const el = dragState.el;
+    el.style.left = (touch.clientX - dragState.grabX) + 'px';
+    el.style.top  = (touch.clientY - dragState.grabY) + 'px';
+  }
+
+  function onTouchEnd(e) {
+    if (!dragState) return;
+    if (dragState.active) {
+      const touch = e.changedTouches[0];
+      finishDrop(touch.clientX, touch.clientY);
+    } else {
+      dragState = null;
+    }
+  }
+
+  /* ── Drag activation ────────────────────────────────────── */
+  function activateDrag() {
+    const el = dragState.el;
+    dragState.active = true;
+
+    // Capture current visual position for smooth handoff
+    const rect = el.getBoundingClientRect();
+
+    // Switch from transform-positioned to fixed
+    el.style.transition  = 'none';
+    el.style.position    = 'fixed';
+    el.style.left        = rect.left + 'px';
+    el.style.top         = rect.top  + 'px';
+    el.style.zIndex      = '9999';
+    el.style.pointerEvents = 'none';
+    el.style.transform   = 'scale(1.04)';
+    el.style.boxShadow   = '0 0 0 2px #FFBCD9, 0 8px 32px rgba(0,0,0,0.5)';
+    el.style.opacity     = '1';
+    el.style.cursor      = 'grabbing';
+
+    // Dim all others
+    tilesData.forEach(t => {
+      if (t.id === dragState.id) return;
+      const other = tileElements[t.id];
+      other.style.transition = 'opacity 200ms ease, filter 200ms ease';
+      other.style.opacity    = '0.25';
+      other.style.filter     = 'grayscale(60%)';
+    });
+  }
+
+  /* ── Drop ───────────────────────────────────────────────── */
+  function finishDrop(clientX, clientY) {
+    const ds  = dragState;
+    dragState = null;
+
+    // Convert drop coords to mosaic-relative
+    const mosaicRect = mosaic.getBoundingClientRect();
+    const dropX = clientX - mosaicRect.left;
+    const dropY = clientY - mosaicRect.top;
+
+    // Find insertion index: nearest tile center, insert before/after
+    const newOrder = tileOrder.filter(i => tilesData[i].id !== ds.id);
+    let insertIdx  = newOrder.length; // default: end
+    let bestDist   = Infinity;
+
+    placements.forEach(p => {
+      if (p.id === ds.id) return;
+      const cx = p.x + p.width  / 2;
+      const cy = p.y + p.height / 2;
+      const dist = Math.hypot(dropX - cx, dropY - cy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        // Insert before or after based on horizontal half
+        const orderIdx = newOrder.findIndex(i => tilesData[i].id === p.id);
+        insertIdx = dropX < cx ? orderIdx : orderIdx + 1;
+      }
+    });
+
+    // Insert dragged tile at new position
+    const draggedIdx = tilesData.findIndex(t => t.id === ds.id);
+    newOrder.splice(insertIdx, 0, draggedIdx);
+    tileOrder = newOrder;
+
+    // Restore dragged tile to flow (transition to new layout position)
+    const el = ds.el;
+    const fixedRect  = el.getBoundingClientRect();
+    const fromX = fixedRect.left - mosaicRect.left;
+    const fromY = fixedRect.top  - mosaicRect.top;
+
+    el.style.position  = 'absolute';
+    el.style.left      = '0';
+    el.style.top       = '0';
+    el.style.zIndex    = '';
+    el.style.transform = `translate(${fromX}px,${fromY}px)`;
+    el.style.boxShadow = '';
+    el.style.pointerEvents = '';
+    el.style.cursor    = '';
+
+    // Fade out all tiles, then reanimate
+    tilesData.forEach(t => {
+      const other = tileElements[t.id];
+      other.style.transition = 'opacity 150ms ease';
+      other.style.opacity    = '0';
+      other.style.filter     = '';
+    });
+
+    setTimeout(() => {
+      runLayout(true, tileOrder);
+    }, 150);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 8 — Lightbox
+   * ══════════════════════════════════════════════════════════ */
+  function openLightbox(src, alt) {
+    lbImg.src = src;
+    lbImg.alt = alt || '';
+    lightbox.style.display  = 'flex';
+    lightbox.classList.add('visible');
+    // Force reflow then open
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        lightbox.classList.add('open');
+      });
+    });
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    lightbox.classList.remove('open');
+    setTimeout(() => {
+      lightbox.classList.remove('visible');
+      lightbox.style.display = 'none';
+      lbImg.src = '';
+      document.body.style.overflow = '';
+    }, 220);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+   *  STEP 9 — Resize
+   * ══════════════════════════════════════════════════════════ */
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!layoutReady) return;
+
+      // On mobile, rebind touch only if crossing breakpoint
+      runLayout(true, tileOrder);
+    }, RESIZE_DEBOUNCE);
+  }
+
+  /* ── Go ─────────────────────────────────────────────────── */
+  init();
+})();
+</script>
+</body>
+</html>
