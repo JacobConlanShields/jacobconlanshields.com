@@ -20,10 +20,18 @@
   touch-action: none;
   will-change: transform;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+  transition: box-shadow 200ms ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mosaic-card:hover:not(.dragging) {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.42);
 }
 
 .mosaic-card.dragging {
   cursor: grabbing;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.58), 0 8px 20px rgba(0, 0, 0, 0.32);
 }
 
 .mosaic-image-wrap {
