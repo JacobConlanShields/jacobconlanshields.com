@@ -7,12 +7,10 @@ const CONFIG = {
   unitVW: 0.25,
   debounceMs: 140,
   ease: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
-  springEase: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
   animationMs: 260,
   dropAnimationMs: 380,
   doubleTapMs: 300,
   dragThresholdPx: 6,
-  liftScaleMs: 120,
   maxTiltDeg: 6,
   layoutWriteDebounceMs: 420,
 };
@@ -141,7 +139,8 @@ function renderCards() {
     text.innerHTML = `<h2 class="mosaic-title">${escapeHtml(photo.title || 'Untitled')}</h2><p class="mosaic-location">${escapeHtml(photo.location || photo.description || '')}</p>`;
 
     card.append(imageWrap, text);
-    card.style.transition = reduceMotion ? 'none' : `transform ${CONFIG.animationMs}ms ${CONFIG.ease}`;
+    // Initial transition for layout shuffles; scale/rotate handled by CSS
+    card.style.transition = reduceMotion ? 'none' : `transform ${CONFIG.animationMs}ms ${CONFIG.ease}, box-shadow 200ms ease, scale 180ms ease`;
     els.container.appendChild(card);
 
     const record = { id: photo.id, photo, node: card, image: img, imageWrap, ratio: photo.aspect || 1, width: 0, height: 0, x: 0, y: 0, displayLoaded: false };
@@ -203,8 +202,8 @@ function layoutCards({ pinned = null, animate = true, dropId = null } = {}) {
     card.x = pos.x;
     card.y = pos.y;
     if (id === dropId) {
-      // Dropped card uses spring ease; already set by endDrag — don't override
-      card.node.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) scale(1) rotate(0deg)`;
+      // .dropping class on the card provides the spring transition via CSS
+      card.node.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
     } else {
       card.node.style.transition = !animate || reduceMotion ? 'none' : `transform ${CONFIG.animationMs}ms ${CONFIG.ease}`;
       card.node.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
@@ -214,81 +213,61 @@ function layoutCards({ pinned = null, animate = true, dropId = null } = {}) {
 }
 
 function bindCardInteractions(card) {
-  // drag state: null when idle
   let drag = null;
+  let velX = 0, lastMoveX = 0, lastMoveT = 0;
 
-  // velocity tracking for tilt
-  let velX = 0, velY = 0, lastMoveX = 0, lastMoveY = 0, lastMoveT = 0;
-
-  function applyDragTransform(x, y, { tilt = 0, scale = 1.04 } = {}) {
-    card.node.style.transform =
-      `translate3d(${x}px, ${y}px, 0) scale(${scale}) rotate(${tilt}deg)`;
+  // Position-only: no scale/rotate here — those are CSS properties now
+  function setPosition(x, y) {
+    card.node.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
-  function startDrag(ev) {
+  // Tilt via CSS rotate property (separate from transform position)
+  function setTilt(deg) {
+    card.node.style.rotate = `${deg}deg`;
+  }
+
+  card.node.addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0) return;
     drag = {
-      id: ev.pointerId,
+      pointerId: ev.pointerId,
       startX: ev.clientX,
       startY: ev.clientY,
       baseX: card.x,
       baseY: card.y,
       moved: false,
-      currentX: card.x,
-      currentY: card.y,
     };
-    velX = 0; velY = 0;
-    lastMoveX = ev.clientX; lastMoveY = ev.clientY; lastMoveT = performance.now();
+    velX = 0; lastMoveX = ev.clientX; lastMoveT = performance.now();
 
     card.node.setPointerCapture(ev.pointerId);
-    card.node.classList.add('dragging');
+    // Kill any in-flight transition so position sticks to pointer immediately
+    card.node.style.transition = 'none';
     card.node.style.zIndex = '30';
-
-    // lift: smooth scale-up over liftScaleMs, no transition on translate
-    card.node.style.transition =
-      `transform ${CONFIG.liftScaleMs}ms ${CONFIG.ease}, box-shadow ${CONFIG.liftScaleMs}ms ease`;
-    applyDragTransform(card.x, card.y, { scale: 1.04, tilt: 0 });
-
-    // After lift settles, kill the transition so drag is instant
-    setTimeout(() => {
-      if (drag) card.node.style.transition = 'none';
-    }, CONFIG.liftScaleMs + 10);
-  }
-
-  card.node.addEventListener('pointerdown', (ev) => {
-    if (ev.button !== 0) return;
-    startDrag(ev);
+    card.node.classList.add('dragging'); // CSS handles scale + shadow via .dragging
+    document.body.classList.add('is-dragging');
   });
 
   card.node.addEventListener('pointermove', (ev) => {
-    if (!drag || ev.pointerId !== drag.id) return;
+    if (!drag || ev.pointerId !== drag.pointerId) return;
 
     const dx = ev.clientX - drag.startX;
     const dy = ev.clientY - drag.startY;
-    const dist = Math.hypot(dx, dy);
 
-    if (!drag.moved && dist < CONFIG.dragThresholdPx) return;
+    if (!drag.moved && Math.hypot(dx, dy) < CONFIG.dragThresholdPx) return;
     drag.moved = true;
 
+    // Velocity for tilt
     const now = performance.now();
     const dt = Math.max(1, now - lastMoveT);
     velX = (ev.clientX - lastMoveX) / dt;
-    velY = (ev.clientY - lastMoveY) / dt;
-    lastMoveX = ev.clientX; lastMoveY = ev.clientY; lastMoveT = now;
+    lastMoveX = ev.clientX; lastMoveT = now;
 
-    const rawX = drag.baseX + dx;
-    const rawY = drag.baseY + dy;
-    drag.currentX = rawX;
-    drag.currentY = rawY;
-
-    // tilt based on horizontal velocity: max ±maxTiltDeg
-    const speed = Math.sqrt(velX * velX + velY * velY);
-    const tilt = clamp(velX * 60, -CONFIG.maxTiltDeg, CONFIG.maxTiltDeg);
-
-    applyDragTransform(rawX, Math.max(0, rawY), { scale: 1.04, tilt });
+    const tilt = clamp(velX * 50, -CONFIG.maxTiltDeg, CONFIG.maxTiltDeg);
+    setTilt(tilt);
+    setPosition(drag.baseX + dx, Math.max(0, drag.baseY + dy));
   });
 
-  function endDrag(ev, cancelled = false) {
-    if (!drag || ev.pointerId !== drag.id) return;
+  function finishDrag(ev, cancelled = false) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
 
     const dx = ev.clientX - drag.startX;
     const dy = ev.clientY - drag.startY;
@@ -296,41 +275,38 @@ function bindCardInteractions(card) {
     const dropY = Math.max(0, drag.baseY + dy);
     const moved = drag.moved && !cancelled;
 
-    card.node.classList.remove('dragging');
-    card.node.style.zIndex = '50'; // stay above others during spring
-    card.node.releasePointerCapture(ev.pointerId);
     drag = null;
+    card.node.releasePointerCapture(ev.pointerId);
+    card.node.classList.remove('dragging');
+    document.body.classList.remove('is-dragging');
+
+    // Reset tilt immediately (scale resets via CSS .dragging removal)
+    card.node.style.rotate = '0deg';
 
     if (moved) {
-      // spring-drop: animate to final packed position
-      card.node.style.transition =
-        `transform ${CONFIG.dropAnimationMs}ms ${CONFIG.springEase}, box-shadow 200ms ease`;
-      // Apply position immediately (will be corrected by layoutCards)
-      applyDragTransform(dropX, dropY, { scale: 1, tilt: 0 });
-
-      // Let the packer decide the real resting position
+      card.node.style.zIndex = '50';
+      // Add .dropping class so CSS provides the spring transition on transform
+      card.node.classList.add('dropping');
       requestAnimationFrame(() => {
         layoutCards({ pinned: { id: card.id, x: dropX, y: dropY, w: card.width, h: card.height }, animate: true, dropId: card.id });
         scheduleLayoutWrite();
-        setTimeout(() => { card.node.style.zIndex = ''; }, CONFIG.dropAnimationMs);
       });
-    } else {
-      // tap: spring back to original position with scale reset
-      card.node.style.transition =
-        `transform ${CONFIG.dropAnimationMs}ms ${CONFIG.springEase}, box-shadow 200ms ease`;
-      applyDragTransform(card.x, card.y, { scale: 1, tilt: 0 });
       setTimeout(() => {
+        card.node.classList.remove('dropping');
         card.node.style.zIndex = '';
-        card.node.style.transition = card.node.style.transition.replace(/transform[^,]+,?\s?/, '');
-      }, CONFIG.dropAnimationMs);
+      }, CONFIG.dropAnimationMs + 50);
+    } else {
+      // Tap — snap back (no movement needed, card never left its position visually)
+      card.node.style.zIndex = '';
+      setPosition(card.x, card.y);
     }
   }
 
   card.node.addEventListener('pointerup', (ev) => {
     const wasDragging = drag && drag.moved;
-    endDrag(ev, false);
+    finishDrag(ev, false);
 
-    // Double-tap detection (fires on click, not drag-release)
+    // Double-tap to open overlay (only on clean taps, not drag-releases)
     if (!wasDragging) {
       const now = Date.now();
       const prev = state.lastTap;
@@ -344,13 +320,16 @@ function bindCardInteractions(card) {
   });
 
   card.node.addEventListener('pointercancel', (ev) => {
-    if (!drag || ev.pointerId !== drag.id) return;
-    card.node.classList.remove('dragging');
-    card.node.style.transition = `transform ${CONFIG.dropAnimationMs}ms ${CONFIG.springEase}`;
-    applyDragTransform(card.x, card.y, { scale: 1, tilt: 0 });
-    card.node.releasePointerCapture(ev.pointerId);
-    card.node.style.zIndex = '';
+    if (!drag || ev.pointerId !== drag.pointerId) return;
     drag = null;
+    card.node.releasePointerCapture(ev.pointerId);
+    card.node.classList.remove('dragging');
+    document.body.classList.remove('is-dragging');
+    card.node.style.rotate = '0deg';
+    card.node.style.zIndex = '';
+    // Snap back without animation
+    card.node.style.transition = 'none';
+    setPosition(card.x, card.y);
   });
 
   card.image.addEventListener('dblclick', () => openOverlay(card.photo.originalUrl, card.image.alt));
