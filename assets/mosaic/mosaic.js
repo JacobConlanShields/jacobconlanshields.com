@@ -150,15 +150,29 @@ function sizeCards() {
   const viewportTarget = clamp(els.container.clientWidth * CONFIG.unitVW, CONFIG.minUnitPx, CONFIG.maxUnitPx);
   state.globalUnitPx = viewportTarget;
   for (const card of state.cards.values()) {
+    const unitPx = cardUnitPx(card.id, state.globalUnitPx, CONFIG.minUnitPx, CONFIG.maxUnitPx);
     if (card.ratio >= 1) {
-      card.imageWrap.style.height = `${state.globalUnitPx}px`;
-      card.imageWrap.style.width = `${state.globalUnitPx * card.ratio}px`;
+      card.imageWrap.style.height = `${unitPx}px`;
+      card.imageWrap.style.width = `${unitPx * card.ratio}px`;
     } else {
-      card.imageWrap.style.width = `${state.globalUnitPx}px`;
-      card.imageWrap.style.height = `${state.globalUnitPx / card.ratio}px`;
+      card.imageWrap.style.width = `${unitPx}px`;
+      card.imageWrap.style.height = `${unitPx / card.ratio}px`;
     }
   }
   measureCardRects();
+}
+
+// Returns a deterministic per-card unit size in [min, max], varied around base.
+// Uses the card's id as a seed so the layout is stable across reloads.
+function cardUnitPx(id, base, min, max) {
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const t = (hash >>> 0) / 0xffffffff; // deterministic 0–1 from id
+  const variation = 0.6 + t * 0.8;    // scale range: 0.6× – 1.4× of base
+  return clamp(base * variation, min, max);
 }
 
 function measureCardRects() {
