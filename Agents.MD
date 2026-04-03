@@ -1,138 +1,157 @@
 # Agents.MD — jacobconlanshields.com
 
-## Purpose of this document
-This file is a short onboarding guide for coding agents (Codex, Cursor, etc.). It explains the website's goals, structure, and hosting so you can make changes safely without breaking the site. Ensure all major changes are documented corectly in the ReadMe so the ReadMe file is always accurate and reflective of the current codebase. Ensure this document is also updated with major changes to accuratly reflect the codebase. 
+## System Integration
 
-## Project goals (high level)
-- Keep the site **simple, fast, and durable** (no build step, no heavy frameworks).
-- Make the content **easy to update** by non-engineers and interns.
-- Preserve a **minimal aesthetic** and clean navigation between sections.
+This project is part of the jcs-agent-dna system. Before working
+here, read the constitutional and strategic files in the submodule
+(or from the repo directly if no submodule is present):
 
-## Tech stack (languages + runtime)
-- **HTML** for page structure and content.
-- **CSS** for the global theme and layout rules.
-- **JavaScript** for light client-side interactivity (podcast playlists, modal video player, ebook viewer, contact form).
-- **Cloudflare Pages** for hosting, with an **optional Pages Function** for the YouTube feed proxy.
+**Load order:**
+1. constitutional/IDENTITY.md
+2. constitutional/VOICE.md
+3. strategic/SOUL.md
+4. tactical/MEMORY.md
+5. strategic/GOALS.md
+6. strategic/AGENTS.md
+7. strategic/USER.md
+8. tactical/PROJECTS.md
+9. tactical/CONTEXT.md
+10. tactical/CANON.md
 
-## Hosting and deployment (Cloudflare Pages)
-- This repo is deployed as a **static Cloudflare Pages** project.
-- There is **no build step**. Cloudflare Pages should be configured with:
-  - Framework preset: `None`
-  - Build command: *(empty)*
-  - Output directory: `.`
-- Optional Pages Function:
-  - `functions/yt.js` is deployed automatically by Cloudflare Pages.
-  - It runs at `https://<pages-domain>/yt?url=<encoded-feed-url>`.
-  - The podcast page can use this local Pages Function instead of the separate Worker if desired.
+Then read this file for project-specific context.
 
-## How to test locally
-Because there is no build step, local testing is simple:
-- **Static preview (fastest):**
-  - `python -m http.server 8000`
-  - Open the forwarded port and browse the site.
-- **Pages Functions preview (if you need the YouTube proxy):**
-  - `npm install -g wrangler`
-  - `wrangler pages dev .`
+**Repo:** github.com/JacobConlanShields/jcs-agent-dna
 
-There are **no automated tests** at the moment. Manual validation is expected.
+If the submodule is not present, add it:
+```bash
+git submodule add https://github.com/JacobConlanShields/jcs-agent-dna.git .jcs-agent-dna
+```
 
-## Site map and responsibilities
-### Home page
-- `index.html`
-- Purpose: landing page + primary navigation.
+---
 
-### Global styles
-- `assets/styles.css`
-- Purpose: theme, layout, cards, buttons, modal player, podcast layout, and ebook viewer.
+## This Project
 
-### Contact
-- `contact/index.html`
-- Purpose: displays email and a mailto-based form. The JavaScript builds a `mailto:` URL so no backend is required.
+jacobconlanshields.com is Jake's personal portfolio site. It is
+the public-facing hub for all creative work: Quality Values Podcast,
+Relative Momentum, Fight & Flight Conditioning, Spincline, and
+photography.
 
-### Projects
-- `pages/projects/index.html`
-- Purpose: lists core non-digital projects with short descriptions.
+This project connects to every other project in PROJECTS.md. It is
+the publishing layer for the entire system.
 
-### Digital Builds
-- `pages/digital-builds/index.html`
-- Purpose: hidden but live page for digital portfolio builds that are not yet linked from site navigation.
+---
 
-### Writing
-- `pages/writing/index.html`
-- Purpose: links to the Relative Momentum ebook and external writing platforms.
+## Principles (Project-Specific)
 
-### Scroll physics demo
-- `pages/scroll-shock/index.html`
-- `assets/scroll-shock-absorber.js`
-- Purpose: demonstrates a dedicated scroll container with boundary overscroll absorption (jerk-limited spring-damper behavior).
+These extend the system-wide principles in AGENTS.md and SOUL.md:
 
-### Relative Momentum ebook viewer
-- `pages/writing/relative-momentum/index.html`
-- Purpose: two-page spread with keyboard/mouse navigation and a high-resolution lightbox.
+- No build step. No frameworks. No dependencies beyond what ships
+  in the browser. Plain HTML, CSS, JavaScript.
+- The site must be updatable by non-engineers. Simplicity is not
+  optional.
+- Minimal aesthetic. Dark theme. JCS Style Guide v1.4: Playfair
+  Display, EB Garamond, DM Sans, DM Mono. Pink accent #FFBCD9.
+- Keep the README accurate. If you change the codebase, update
+  the README to match. If you change this file, keep it accurate
+  too.
 
-### Podcast page (key section)
-- `pages/podcast/index.html`
+---
 
-**Important note:** the podcast page is in its **original state** and may be advanced or redesigned later. Keep this flexibility in mind when editing.
+## Tech Stack
 
-**Purpose:** showcase YouTube videos quickly for followers and provide easy access to the latest podcast content (including quick clips and highlights).
+- HTML for structure
+- CSS for theme and layout (single global stylesheet at
+  `/assets/styles.css`)
+- JavaScript for client-side interactivity (podcast playlists,
+  modal video player, ebook viewer, contact form)
+- Cloudflare Pages for hosting (no build step, output directory
+  is repo root)
+- Cloudflare Pages Functions for APIs (`/functions/`)
+- Cloudflare D1 for media metadata (`db/schema.sql`)
+- Cloudflare R2 for media storage (Spincline + Photography buckets)
+- Cloudflare Access for admin route protection
 
-**How it works (current behavior):**
-- The page lists multiple **playlist sections** (rows) and a **clips column**.
-- JavaScript fetches YouTube playlist feeds (XML) for each playlist.
-- Fetching goes through a **proxy** to avoid browser CORS errors:
-  - Current proxy is a dedicated Cloudflare Worker URL.
-  - You can optionally switch to the local Pages Function (`/yt?url=...`) if desired.
-- Each playlist is rendered into **card rows** (horizontal scrolling).
-- The **Clips** section is a **sticky column** on the right for quick access.
-- Clicking a card opens a **modal video player** (embedded YouTube iframe).
-- The sections (in order) are:
-  1. Full Podcast (Latest)
-  2. Highlight Episodes
-  3. Movement Episodes
-  4. Science & Sustainability
-  5. Entrepreneurship Episodes
-  6. Clips (right column)
+---
 
-## Editing guidelines (to avoid breaking the site)
-- Keep HTML **semantic and minimal**; avoid introducing frameworks or build steps.
-- When adding new pages, follow the existing structure under `/pages/...` and reuse `/assets/styles.css`.
-- If you change playlist IDs or the proxy URL, verify the podcast page still loads playlists.
-- Avoid removing the modal player or proxy logic without providing a replacement.
-- Keep navigation links consistent so visitors can move between sections easily.
-- Keep `/admin/hidden-pages/` in sync with navigation visibility: hidden routes must be listed there, and routes revealed in public nav must be removed from that list.
+## Site Map
 
-## Quick checklist before shipping changes
-- Do pages still render with plain HTML/CSS/JS?
-- Do all navigation links work?
-- If the podcast page was touched, do video cards still load and open the modal?
-- If the contact form was touched, does it still open a mail client?
+### Public Pages
+- `/` — Homepage. Landing page + primary navigation.
+- `/pages/projects/` — Non-digital projects listing.
+- `/pages/podcast/` — Quality Values Podcast. YouTube playlist
+  feeds fetched via proxy, rendered as card rows with modal player.
+- `/pages/writing/` — Links to Relative Momentum ebook and
+  external platforms.
+- `/pages/writing/relative-momentum/` — Ebook viewer. Two-page
+  spread with keyboard/mouse navigation and lightbox.
+- `/pages/digital-builds/` — Hidden but live digital portfolio.
+- `/pages/spincline/` — Three API-driven media carousels.
+- `/pages/photography/` — Mosaic layout with drag pinning and
+  overlay viewer.
+- `/pages/scroll-shock/` — Scroll physics demo.
+- `/contact/` — Email contact via mailto form.
 
-## 2026 update: media platform additions
-- New media pages are now live under:
-  - `/pages/spincline/`
-  - `/pages/photography/`
-  - `/spincline/` (currently hidden from top nav; tracked in `/admin/hidden-pages/`)
-  - `/photography/` (currently hidden from top nav; tracked in `/admin/hidden-pages/`)
-- Admin pages are now live under:
-  - `/admin/`
-  - `/admin/upload/`
-  - `/admin/hidden-pages/`
-- Cloudflare Pages Functions now include media APIs under `/functions/api/**`.
-- Media metadata source-of-truth is D1 (`db/schema.sql`) while raw files are in R2.
-- Admin uploads support both standard image upload and resumable multipart video uploads.
-- Admin upload file rows include destination-aware metadata fields (Title + Location/Description), per-file remove, and slide-in metadata panels; title defaults from filename.
-- `/admin/*` and `/api/admin/*` are protected by Cloudflare Access. Admin API routes do not use `X-Admin-Token`.
-- Photography now uses a dedicated manifest-backed Mosaic system (`/api/photos`, `/api/photos/upload`, `/photos/*`) with metadata stored in `manifest/photos.json` in `PHOTO_BUCKET`; this runs alongside legacy D1 media APIs for existing sections.
-- `/api/photos/upload` accepts both legacy parallel fields and `meta` JSON (clientId, destination, title/location/description, width/height) so the admin UI can map upload results back to each tile.
-- Photography uploads now write variants and metadata under `photography/{thumb,display,original,meta}` and keep `photography/meta/index.json` + `photography/meta/layout.json` in sync.
-- `/admin/photography/` is the admin-only layout editor for persisting drag/repack order through `POST /api/photos/layout`; the public `/photography/` page is read-only.
+### Admin Pages (Cloudflare Access protected)
+- `/admin/` — Admin hub.
+- `/admin/upload/` — Media upload console (images + resumable
+  multipart video).
+- `/admin/hidden-pages/` — Registry of routes not in public nav.
+- `/admin/photography/` — Layout editor for mosaic order.
 
-## 2026 upload reliability notes
-- `/admin/upload` now handles HEIC/HEIF images by converting to JPEG in the browser before preview and upload using a locally bundled dependency (`/assets/vendor/heic2any.js`) rather than a CDN dynamic import.
-- Image uploads use presigned R2 PUT URLs (`/api/admin/image/init` + `/api/admin/image/complete`) so large image uploads avoid function body limits.
-- `/api/admin/health` reports whether required upload bindings/secrets are present so preview environments can show an actionable “not configured” banner.
-- `/api/admin/image/init` returns structured JSON for missing config (`503 missing_config`) instead of opaque 500s and logs with `[admin:image:init]` prefix.
-- When uploads fail, UI errors now include failing step (init/put/complete), host, HTTP status when available, response body (if present), and a likely-cause hint.
-- If a PUT request fails without an HTTP status, treat R2 bucket CORS as the first thing to verify.
-- R2 bucket CORS must include `ExposeHeaders: ETag` and should allow both production origin and preview Pages origins.
+### API Routes
+See README.md for the full API reference. Key endpoints:
+- `GET /api/media?collection=<collection>` — public media listing
+- `GET /api/photos` — photography manifest
+- `POST /api/photos/upload` — admin photo upload
+- `POST /api/photos/layout` — admin layout persistence
+- `/yt?url=<encoded-feed-url>` — YouTube feed proxy
+
+---
+
+## Environment Bindings
+
+Required in Cloudflare Pages project settings:
+- D1 binding: `DB`
+- R2 bindings: `SPINCLINE_BUCKET`, `PHOTO_BUCKET`
+- Secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+  `R2_SECRET_ACCESS_KEY`
+
+---
+
+## Local Development
+
+```bash
+# Static preview (no functions)
+python -m http.server 8000
+
+# Full preview with Pages Functions + D1
+wrangler pages dev .
+```
+
+No automated tests. Manual validation.
+
+---
+
+## Before Shipping
+
+- Pages render with plain HTML/CSS/JS (no build artifacts)
+- All navigation links work
+- Podcast cards load and modal player opens
+- Contact form opens mail client
+- Hidden routes tracked in `/admin/hidden-pages/`
+- README.md reflects current codebase
+- This file reflects current codebase
+
+---
+
+## Episodic Memory
+
+This section tracks project-specific learnings and decisions.
+Cross-project patterns get promoted to MEMORY.md in jcs-agent-dna.
+
+### Log
+
+#### 2026-04-02
+- Agents.MD rewritten to align with jcs-agent-dna system
+- CLAUDE.md created for Claude Code integration
+- Submodule integration established
