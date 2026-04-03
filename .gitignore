@@ -9,3 +9,4 @@ build/
 
 # Git Documentation Reference (Ignored from repo/deployment)
 GIT_REFERENCE.md
+en_backup.db
