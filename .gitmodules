@@ -1,0 +1,3 @@
+[submodule ".jcs-agent-dna"]
+	path = .jcs-agent-dna
+	url = https://github.com/JacobConlanShields/jcs-agent-dna.git

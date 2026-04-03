@@ -1,0 +1,11 @@
+# Common ignores
+node_modules/
+.DS_Store
+dist/
+build/
+.next/
+.env*
+*.log
+
+# Git Documentation Reference (Ignored from repo/deployment)
+GIT_REFERENCE.md
