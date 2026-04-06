@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="https://pub-aad15324564c43c49955b96d781f71eb.r2.dev/JCS%20Logo%20Black%20Background.png" />
+  <title>The System — Jacob Conlan Shields</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;1,400&family=DM+Sans:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet" />
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X00G23WVDJ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-X00G23WVDJ');
+  </script>
+  <style>
+    /* ── JCS v1.4 type tokens ─────────────────────────────── */
+    :root {
+      --font-heading: "Playfair Display", Georgia, serif;
+      --font-body:    "EB Garamond", Georgia, serif;
+      --font-ui:      "DM Sans", system-ui, sans-serif;
+      --font-mono:    "DM Mono", "Courier New", monospace;
+      --accent:       #FFBCD9;
+      --accent-bg:    rgba(255, 188, 217, 0.10);
+      --accent-dim:   rgba(255, 188, 217, 0.06);
+    }
+
+    /* ── Override base font for this page ────────────────── */
+    body { font-family: var(--font-ui); }
+
+    /* ── Page title block ─────────────────────────────────── */
+    .sys-title {
+      font-family: var(--font-heading);
+      font-size: clamp(1.55rem, 4.5vw, 2.5rem);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      margin: 0 0 6px;
+      color: var(--text);
+      line-height: 1.15;
+    }
+
+    .sys-byline {
+      font-family: var(--font-ui);
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0 0 20px;
+      letter-spacing: 0.01em;
+    }
+
+    .sys-byline span { opacity: 0.5; margin: 0 5px; }
+
+    /* ── Manifesto ─────────────────────────────────────────── */
+    .manifesto {
+      max-width: 66ch;
+      padding-bottom: 8px;
+    }
+
+    .manifesto h2 {
+      font-family: var(--font-heading);
+      font-size: clamp(1.1rem, 2.8vw, 1.35rem);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin: 36px 0 12px;
+    }
+
+    .manifesto h2:first-of-type { margin-top: 20px; }
+
+    .manifesto h3 {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--text);
+      margin: 22px 0 8px;
+    }
+
+    .manifesto p {
+      font-family: var(--font-body);
+      font-size: clamp(1rem, 2.2vw, 1.1rem);
+      line-height: 1.78;
+      color: var(--muted);
+      margin: 0 0 14px;
+    }
+
+    .manifesto .file-ref {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .manifesto .closing {
+      font-family: var(--font-ui);
+      font-size: 0.82rem;
+      color: rgba(242,242,242,.42);
+      margin-top: 32px;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Section label ─────────────────────────────────────── */
+    .section-label {
+      font-family: var(--font-ui);
+      font-size: 0.72rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(242,242,242,.38);
+      margin: 28px 0 10px;
+    }
+
+    .browser-heading {
+      font-family: var(--font-heading);
+      font-size: clamp(1.1rem, 2.8vw, 1.4rem);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin: 0 0 6px;
+    }
+
+    .browser-lede {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 0 0 14px;
+      max-width: 60ch;
+    }
+
+    /* ── Browser layout ────────────────────────────────────── */
+    .browser-layout {
+      display: grid;
+      grid-template-columns: 252px 1fr;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      min-height: 520px;
+      margin: 0 0 22px;
+    }
+
+    /* ── File tree ─────────────────────────────────────────── */
+    .file-tree {
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      overflow-y: auto;
+      padding: 10px 0;
+    }
+
+    .tree-list,
+    .tree-children {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .tree-folder-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 5px 14px;
+      cursor: pointer;
+      text-align: left;
+      font-family: var(--font-ui);
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: var(--text);
+      min-height: auto;
+      border-radius: 0;
+    }
+    .tree-folder-row:hover { background: rgba(255,255,255,0.04); }
+
+    .tree-chevron {
+      color: var(--accent);
+      font-size: 0.62rem;
+      width: 10px;
+      flex-shrink: 0;
+      display: inline-block;
+      transition: transform 0.18s ease;
+      transform: rotate(-90deg);
+    }
+    .tree-folder-li.open > .tree-folder-row .tree-chevron {
+      transform: rotate(0deg);
+    }
+
+    .tree-children { display: none; }
+    .tree-folder-li.open > .tree-children { display: block; }
+
+    .tree-file-btn {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 4px 14px 4px 30px;
+      cursor: pointer;
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--muted);
+      min-height: auto;
+      border-radius: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tree-file-btn:hover {
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+    .tree-file-btn.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* ── Reading pane ──────────────────────────────────────── */
+    .reading-pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .reading-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: rgba(242,242,242,.28);
+      font-family: var(--font-ui);
+      font-size: 0.82rem;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .reading-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+
+    .reading-back-btn {
+      background: none;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 3px 9px;
+      font-family: var(--font-ui);
+      font-size: 0.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      min-height: auto;
+      flex-shrink: 0;
+    }
+    .reading-back-btn:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+
+    .reading-filename {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--accent);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .reading-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 28px;
+    }
+
+    .reading-loading,
+    .reading-error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-family: var(--font-ui);
+      font-size: 0.82rem;
+      color: var(--muted);
+      padding: 20px;
+    }
+    .reading-error { color: rgba(255,100,100,0.7); }
+
+    /* ── Markdown body ─────────────────────────────────────── */
+    .md-body {
+      font-family: var(--font-body);
+      font-size: clamp(0.97rem, 1.8vw, 1.05rem);
+      line-height: 1.72;
+      color: var(--muted);
+    }
+    .md-body h1 {
+      font-family: var(--font-heading);
+      font-size: clamp(1.2rem, 3vw, 1.55rem);
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 14px;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .md-body h2 {
+      font-family: var(--font-heading);
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      font-weight: 600;
+      color: var(--text);
+      margin: 22px 0 10px;
+      letter-spacing: -0.01em;
+    }
+    .md-body h3 {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--text);
+      margin: 18px 0 8px;
+    }
+    .md-body h4 {
+      font-family: var(--font-ui);
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 16px 0 6px;
+    }
+    .md-body p { margin: 0 0 12px; }
+    .md-body strong { color: var(--text); font-weight: 600; }
+    .md-body em { font-style: italic; }
+    .md-body a { color: var(--accent); }
+    .md-body code {
+      font-family: var(--font-mono);
+      font-size: 0.84em;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .md-body pre {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 14px;
+      overflow-x: auto;
+      margin: 0 0 14px;
+    }
+    .md-body pre code {
+      background: none;
+      padding: 0;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+    .md-body ul, .md-body ol {
+      padding-left: 18px;
+      margin: 0 0 12px;
+    }
+    .md-body li { margin-bottom: 4px; }
+    .md-body hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 18px 0;
+    }
+    .md-body blockquote {
+      border-left: 2px solid var(--accent);
+      margin: 0 0 12px;
+      padding: 4px 0 4px 14px;
+      color: rgba(242,242,242,.55);
+    }
+
+    /* ── Mobile ────────────────────────────────────────────── */
+    @media (max-width: 680px) {
+      .browser-layout {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        border-radius: 12px;
+      }
+      .file-tree {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+        max-height: 280px;
+      }
+      .reading-pane {
+        min-height: 380px;
+      }
+      .reading-body {
+        padding: 14px 16px 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <!-- Nav -->
+    <p class="nav">
+      <a href="/">Home</a>
+      <span class="dot">•</span>
+      <a href="/pages/projects/">Projects</a>
+      <span class="dot">•</span>
+      <a href="/pages/writing/">Writing</a>
+      <span class="dot">•</span>
+      <a href="/pages/podcast/">QV Podcast</a>
+      <span class="dot">•</span>
+      <a href="/contact/">Contact</a>
+    </p>
+
+    <hr class="tight-hr" />
+
+    <!-- Page title -->
+    <h1 class="sys-title">The Architecture of Autonomous Creative Systems</h1>
+    <p class="sys-byline">
+      A Manifesto and Implementation Manual
+      <span>•</span>
+      Jacob Conlan Shields
+      <span>•</span>
+      jcs-agent-dna
+    </p>
+
+    <hr class="tight-hr" />
+
+    <!-- ══════════════════════════════════════════════════════
+         MANIFESTO
+    ═══════════════════════════════════════════════════════ -->
+    <section class="manifesto">
+
+      <h2>I. The Problem</h2>
+      <p>Every creative system eventually encounters the same failure. The person at its center becomes the bottleneck. They have more ideas than hours. More projects than attention. More ambition than bandwidth. The system that was meant to serve the creative work starts consuming it instead.</p>
+      <p>The conventional response is delegation — hire people, outsource tasks, build a team. But delegation has prerequisites: revenue to fund it, time to manage it, and a sufficiently defined process to hand off. Most creative systems never reach that threshold. They collapse under their own weight long before.</p>
+      <p>There is a third path. Not delegation to humans, not heroic personal output, but autonomous operation by artificial agents working within a carefully constructed constitutional framework. The creator sets direction, inputs creative material, and approves sensitive decisions. The agents handle execution, iteration, and maintenance. The system runs whether the creator is present or not.</p>
+      <p>This document describes the architecture of that system as built for one specific creator — an artist, athlete, podcaster, and systems builder deploying to Peace Corps in June 2026. The same principles apply broadly. The implementation is particular.</p>
+
+      <h2>II. The Philosophical Foundation</h2>
+
+      <h3>Quality as Primary</h3>
+      <p>Robert Pirsig spent a career articulating something that most systems ignore: quality is not a property of objects. It is not a checklist item. It is a living force that precedes the division of subject and object — something felt before it is analyzed. The knife that divides quality from non-quality is applied after the fact, not before.</p>
+      <p>This system is built on that premise. Every output, every decision, every rule is subordinate to quality in the Pirsig sense. When a protocol produces low-quality output, the protocol is wrong, not the creator. The system serves the work. The work does not serve the system.</p>
+
+      <h3>Via Negativa</h3>
+      <p>Nassim Taleb, building on ancient Stoic practice, argues that the most powerful improvements come from subtraction rather than addition. Adding features, adding complexity, adding rules creates fragility. Removing what does not work creates antifragility — systems that gain from disorder rather than merely survive it.</p>
+      <p>Every file in this system passed a subtraction test: if this section were removed, would anything important be lost? Every rule was held to the same standard. The result is a lean constitutional architecture rather than a comprehensive policy manual. Lean systems are harder to break. They are also easier to understand and maintain across agents, across tools, and across time.</p>
+
+      <h3>The Strange Loop</h3>
+      <p>Douglas Hofstadter demonstrated that consciousness itself emerges from strange loops — hierarchical systems where moving upward through levels of abstraction returns you to where you started. The self is not located in any neuron. It emerges from the pattern of their interaction.</p>
+      <p>This system is deliberately structured as a strange loop. Agents execute tasks, which generate evidence, which produces patterns, which triggers proposed rule changes, which — when approved — govern new execution. The intelligence of the system is not located in any single file. It emerges from their interaction over time.</p>
+      <p>Hofstadter also established the hard limit: Gödel's incompleteness theorem proves that any sufficiently powerful formal system will encounter truths it cannot prove from within itself. Every system that is powerful enough to be useful is also incomplete by necessity. The architecture of this system encodes that limit explicitly. When an agent reaches its Gödelian edge — when it is reasoning about its own rules rather than within them — it escalates. Not because it is weak, but because escalation at the right moment is the structurally correct response.</p>
+
+      <h3>Causal Reasoning Over Correlation</h3>
+      <p>Judea Pearl spent decades proving that most of what passes for analytical reasoning is actually pattern recognition dressed up as understanding. Association — seeing what correlates with what — is the lowest rung of his Ladder of Causation. It can predict. It cannot explain. It cannot reason about interventions. It cannot answer counterfactuals.</p>
+      <p>The agents in this system are required to operate at the appropriate rung of Pearl's ladder before committing to any action. A decision about what will happen if a particular action is taken is an intervention question (Rung 2). Answering it with association-level data (Rung 1) produces confident-sounding wrong answers. The uncertainty classification protocol exists to prevent this.</p>
+      <p>Taleb completes the picture. Where Pearl handles known unknowns through causal models, Taleb handles unknown unknowns — the things that are not just unknown but structurally resistant to quantification. When an agent detects it is in a Taleb situation rather than a Pearl situation, the response changes entirely: stop inferring, protect the downside, preserve optionality, escalate.</p>
+
+      <h2>III. The File System</h2>
+      <p>The system consists of plain markdown files organized in three tiers. Every agent, every tool, every workflow reads from these files. They are the constitution. The city — the n8n workflows, the API calls, the rendering pipeline — is built on top of them. The constitution must be right before the city is built.</p>
+
+      <h3>Constitutional Tier — Who We Are</h3>
+      <p>Constitutional files define identity, voice, and authority. They are human-edited only. No agent may modify them. They change rarely and only by deliberate decision. They are the skeleton that keeps the organism itself even as everything else changes.</p>
+      <p><span class="file-ref">IDENTITY.md</span> — Values, aesthetic, philosophy. Artist first. Consilience as lens. Functional simplicity as aesthetic.</p>
+      <p><span class="file-ref">VOICE.md</span> — Writing style and tone. Dry, declarative, no hype. Bukowski register. Fragments acceptable. No exclamation marks.</p>
+      <p><span class="file-ref">BOUNDARIES.md</span> — Decision authority and uncertainty protocol. Who decides what, under what conditions. The Gödelian edge made explicit.</p>
+
+      <h3>Strategic Tier — How We Operate</h3>
+      <p>Strategic files govern operating philosophy and working rules. They change slowly and only through deliberate review. They are timeless by design — no specific project names, no dates, no dollar figures. Anything that will age belongs in tactical files. Strategic files should outlive the current phase, the current projects, and the current tools.</p>
+      <p><span class="file-ref">SOUL.md</span> — Subconscious operating layer. The Carl Crawford model. The strange loop structure. Gödel as character. The distilled essence of the intellectual canon.</p>
+      <p><span class="file-ref">AGENTS.md</span> — Operating rules. Decision tier protocol. Uncertainty classification. Pearl's Ladder. Learning loop. Scaling sequence. The Test.</p>
+      <p><span class="file-ref">GOALS.md</span> — North star, mission, values. The destination: artist/athlete residency communities. The method: consilience, via negativa, durable foundations.</p>
+      <p><span class="file-ref">EPISTEMOLOGY.md</span> — Why the system reasons the way it does. Pearl, Taleb, Hofstadter, Hubbard, Goldratt, Hormozi, Moore as first principles.</p>
+      <p><span class="file-ref">USER.md</span> — How to work with Jake. Full transparency. Recommendations over options. No positive feedback without substance.</p>
+      <p><span class="file-ref">SPIRIT.md</span> — Why we build what we build. Not yet written. Placeholder for the deepest why.</p>
+
+      <h3>Tactical Tier — What Is Happening Now</h3>
+      <p>Tactical files track current state. They change freely and regularly. They are the right home for specific project names, dates, budget numbers, and tool configurations. When these details change — and they will — strategic and constitutional files remain untouched.</p>
+      <p><span class="file-ref">CONTEXT.md</span> — Operating context: budget state, tool stack, escalation path, file load order. The agent's map of its current environment.</p>
+      <p><span class="file-ref">PROJECTS.md</span> — Operational hub: active projects, cross-references, status, notebook queue.</p>
+      <p><span class="file-ref">CANON.md</span> — Full intellectual library. Every integrated book, thinker, and framework. Grows continuously.</p>
+      <p><span class="file-ref">MEMORY.md</span> — Accumulated learning across sessions. Autonomic and somatic memory layers. Anti-pattern register.</p>
+      <p><span class="file-ref">EVOLUTION.md</span> — Changelog and decision intelligence. Append-only record of all system changes and uncertain decisions. The raw material for the learning loop.</p>
+
+      <h2>IV. The Decision Architecture</h2>
+      <p>Every decision the system encounters belongs to one of three tiers. The tier determines who has authority and what protocol applies.</p>
+
+      <h3>Tier 1: Task Decisions</h3>
+      <p>Execution decisions within a single task. Local blast radius. If wrong, the error is correctable within that task. The Carl Crawford model applies: trust the first output on high-pattern, low-novelty work. Do not over-process.</p>
+      <p>The gate: any Tier 1 decision resolvable from file context, within a defined token threshold, requires no escalation. The gate exists because the cost of escalating a small decision reliably exceeds the cost of making it. The principle is Tim Ferriss's $20 support gate, calibrated to the current budget. The specific calibration lives in <span class="file-ref">CONTEXT.md</span> and updates as the budget evolves.</p>
+
+      <h3>Tier 2: Project Decisions</h3>
+      <p>Decisions that affect the trajectory, structure, or timeline of any active project. Medium blast radius. Before committing to any Tier 2 decision, the agent classifies uncertainty across three dimensions: data quantity, data relevance (the baseball/soccer distinction — how well does the available data actually capture the mechanism driving outcomes), and causal validity (is the reasoning at the correct rung of Pearl's ladder?).</p>
+      <p>The weakest dimension governs. A high-confidence estimate built on low-relevance data is more dangerous than a low-confidence estimate on high-relevance data, because the first one does not know what it does not know. Reversible Tier 2 decisions may proceed conservatively. Irreversible ones require approval of the agent's proposed path before committing.</p>
+
+      <h3>Tier 3: Goal Decisions</h3>
+      <p>Decisions affecting goals, strategic direction, or the constitutional layer. Always Jake. No exceptions. Urgency does not transfer authority.</p>
+
+      <h3>The Gödelian Escalation Rule</h3>
+      <p>When the agent cannot determine which tier a decision belongs to, it escalates. When it has followed the Tier 2 protocol and still cannot reach a decision it trusts, it escalates. When it detects it is reasoning about the system's own rules rather than within them, it escalates. These are the Gödelian limit cases. The system cannot evaluate them from within itself.</p>
+
+      <h2>V. The Learning Loop</h2>
+      <p>The system improves over time through a four-level feedback loop. Execution generates evidence. Evidence produces patterns. Patterns — when robust enough — produce proposed rule changes. Approved changes govern new execution. The loop closes.</p>
+      <p>Two principles govern the loop's operation. First: aggressive data collection. Every uncertain decision above Tier 1 is logged with its classification, its Pearl rung, its predicted outcome, and — when known — its actual outcome and the delta. The log is append-only. Nothing is deleted.</p>
+      <p>Second: conservative modification. The loop must complete enough cycles to distinguish signal from noise before rules change. A pattern observed twice is interesting. A pattern observed consistently across ten or more instances with no counter-examples is a candidate for rule change. The gap between collection rate and modification rate is where the system's reliability lives.</p>
+      <p>Pattern detection is threshold-based. When a decision type accumulates sufficient instances with consistent prediction deviation, it surfaces as PENDING REVIEW in <span class="file-ref">EVOLUTION.md</span>. The agent surfaces. Jake decides.</p>
+
+      <h3>The Quarterly Audit</h3>
+      <p>Once per quarter, aligned with the EOS Rocks cadence, the system produces a structural coherence report. This is not a summary of activity. It is an audit of alignment: do the files still cohere with each other? Do they still reflect Jake? Have any contradictions accumulated through incremental updates? Are the active Rocks still connected to the goals?</p>
+      <p>The quarterly report is the mechanism that keeps the strange loop honest. Individual file updates can be locally sensible and globally corrupting. The quarterly review catches that drift before it compounds.</p>
+
+      <h2>VI. The Economic Architecture</h2>
+      <p>The system operates on a constraint: a modest monthly budget that must fund both AI reasoning and infrastructure. This constraint is not a limitation to work around. It is Goldratt's bottleneck made explicit. Everything subordinates to it.</p>
+
+      <h3>The Resource Ordering</h3>
+      <p>Free first. Cheap second. Fast last. The ordering is permanent. The thresholds shift as the system generates revenue and reinvestment capital grows. When the free path exists and quality clears the bar, take it. When it does not, take the cheapest viable path. Purchase speed only when the free or cheap path would block a critical deadline, when an opportunity closes before the slower path resolves, or when the free path demonstrably cannot reach required quality.</p>
+
+      <h3>The Labor Floor</h3>
+      <p>All time-versus-cost tradeoffs are calibrated against a floor labor rate — the minimum acceptable rate for trading time for money. Any agent action that saves more time than the floor rate justifies is worth executing. Any escalation that costs more of Jake's time than the decision is worth is a net loss. Current calibration lives in <span class="file-ref">CONTEXT.md</span>.</p>
+
+      <h3>The Scaling Sequence</h3>
+      <p>The system grows through reinvestment, not external capital. Hormozi's three-stage sequence governs: Stage 1, prove the model — one offer, one pipeline, profitable before anything else is touched. Stage 2, add leverage — only after Stage 1 generates reinvestment capital. Stage 3, build continuity — only after Stage 2 is stable.</p>
+      <p>The Crossing the Chasm constraint applies to each stage: the beachhead must be fully won before adjacent markets are pursued. The mainstream is not reached by spreading across multiple segments simultaneously. Concentrate force, win the niche, use it as a reference base, then expand. Do not diversify revenue until the first stream is self-funding.</p>
+
+      <h2>VII. The Infrastructure Stack</h2>
+      <p>The constitutional .md files are the brain. The infrastructure is the body. Three layers are required for autonomous operation.</p>
+
+      <h3>Layer 1: Orchestration</h3>
+      <p>n8n running on managed hosting provides the workflow engine. It keeps running whether the creator is present or not. Scheduled triggers fire at defined intervals. Webhook triggers fire on external events — a new order, a Stripe payment, a Telegram message. Every trigger calls the Claude API, which reads the .md files and decides what to do.</p>
+
+      <h3>Layer 2: Reasoning</h3>
+      <p>The Claude API provides the intelligence layer. It is not a chatbot in this context. It is a reasoning engine that reads a constitutional framework, classifies a decision, and takes or recommends an action. The .md files are its context window on every call. The quality of those files directly determines the quality of its decisions.</p>
+
+      <h3>Layer 3: Communication</h3>
+      <p>Telegram provides the human-in-the-loop channel. Routine flags go to the main channel: weekly summaries, Tier 2 decisions awaiting review, pattern flags. Fire-level flags go to a dedicated channel: failed customer orders, irreversible decisions requiring approval, anything that cannot wait for the weekly check-in.</p>
+      <p>The communication architecture is designed for weekly check-ins, not daily oversight. The agent queues non-urgent items and delivers them in a coherent summary. Jake reviews, approves, and returns to his work. The system continues without him between sessions.</p>
+
+      <h2>VIII. What This Is and Is Not</h2>
+      <p>This is not a replacement for creative work. It is the infrastructure that protects creative work from being consumed by operational overhead. The artist still makes the art. The athlete still trains. The podcaster still interviews. The agent system handles the pipeline: intake, rendering, fulfillment, maintenance, iteration.</p>
+      <p>This is not a get-rich-quick scheme or a shortcut. It is a long-game architecture built for durability. Goldratt's constraint governs: the bottleneck before June 2026 is proving the first autonomous pipeline. Everything else subordinates to that. Once proven, reinvestment builds Stage 2. Stage 2 funds Stage 3. The flywheel turns.</p>
+      <p>This is not a finished system. <span class="file-ref">SPIRIT.md</span> is unwritten. The learning loop has generated no data yet. The quarterly audit has never run. The strange loop is real but young. It improves through use. It gets more capable as evidence accumulates. The architecture is right. The maturity comes with time.</p>
+      <p>The work speaks for itself. People encounter it and give it the benefit of the doubt — not because of credentials or marketing, but because the quality earned it. The system runs. Agents build in the background. Jake creates, checks in periodically, clears ambiguities, approves sensitive actions. The gap between vision and execution narrows over time because the infrastructure keeps compounding.</p>
+
+      <h2>IX. The Files as a Unit</h2>
+      <p>These files do not work in isolation. The intelligence of the system — like the consciousness Hofstadter describes — emerges from their interaction. No single file is the system. The system is the pattern.</p>
+      <p>An agent reading <span class="file-ref">SOUL.md</span> without <span class="file-ref">AGENTS.md</span> has character without protocol. An agent reading <span class="file-ref">AGENTS.md</span> without <span class="file-ref">BOUNDARIES.md</span> has process without authority. An agent reading <span class="file-ref">BOUNDARIES.md</span> without <span class="file-ref">EPISTEMOLOGY.md</span> has rules without reasons. An agent reading all of them without <span class="file-ref">GOALS.md</span> has a constitution without a compass.</p>
+      <p>The files must cohere. That is why the quarterly audit focuses on structural alignment rather than individual file quality. A locally beautiful change that creates contradiction elsewhere degrades the system. The whole governs.</p>
+      <p>These files are designed to outlive their current phase. They contain no specific project names, no specific dates, no specific dollar figures that will age. The principles are permanent. The calibrations live in <span class="file-ref">CONTEXT.md</span> and update as circumstances evolve. The constitution should still make sense ten years from now, applied to whatever Jake is building then.</p>
+      <p>That is the ambition. Build it once. Build it right. Let it compound.</p>
+
+      <p class="closing">Nashville, Tennessee &nbsp;•&nbsp; April 2026</p>
+    </section>
+
+    <hr class="tight-hr" />
+
+    <!-- ══════════════════════════════════════════════════════
+         FILE BROWSER
+    ═══════════════════════════════════════════════════════ -->
+    <p class="section-label">File System</p>
+    <h2 class="browser-heading">Browse the Files</h2>
+    <p class="browser-lede">The constitutional files, live from the repo. Click any file to read it.</p>
+
+    <div class="browser-layout" id="browserLayout">
+      <!-- File tree -->
+      <nav class="file-tree" id="fileTree" aria-label="File tree"></nav>
+
+      <!-- Reading pane -->
+      <div class="reading-pane" id="readingPane">
+        <div class="reading-empty" id="readingEmpty">Select a file to read it.</div>
+        <div id="readingContent" style="display:none; display:flex; flex-direction:column; height:100%;">
+          <div class="reading-header">
+            <button class="reading-back-btn" id="readingBack" type="button">← Back</button>
+            <span class="reading-filename" id="readingFilename"></span>
+          </div>
+          <div class="reading-body" id="readingBody"></div>
+        </div>
+        <div class="reading-loading" id="readingLoading" style="display:none;">Loading…</div>
+        <div class="reading-error" id="readingError" style="display:none;">Couldn't load file. Check your connection.</div>
+      </div>
+    </div>
+
+    <hr class="tight-hr" />
+    <p><a href="/">← Back to home</a></p>
+  </main>
+
+  <script>
+    /* ── File tree definition ────────────────────────────── */
+    const TREE = [
+      {
+        name: 'constitutional',
+        tier: 'Constitutional — Who We Are',
+        open: true,
+        files: [
+          { name: 'IDENTITY.md',  path: 'constitutional/IDENTITY.md' },
+          { name: 'VOICE.md',     path: 'constitutional/VOICE.md' },
+          { name: 'BOUNDARIES.md',path: 'constitutional/BOUNDARIES.md' },
+        ]
+      },
+      {
+        name: 'strategic',
+        tier: 'Strategic — How We Operate',
+        open: true,
+        files: [
+          { name: 'SOUL.md',        path: 'strategic/SOUL.md' },
+          { name: 'AGENTS.md',      path: 'strategic/AGENTS.md' },
+          { name: 'GOALS.md',       path: 'strategic/GOALS.md' },
+          { name: 'EPISTEMOLOGY.md',path: 'strategic/EPISTEMOLOGY.md' },
+          { name: 'USER.md',        path: 'strategic/USER.md' },
+          { name: 'SPIRIT.md',      path: 'strategic/SPIRIT.md' },
+        ]
+      },
+      {
+        name: 'tactical',
+        tier: 'Tactical — What Is Happening Now',
+        open: true,
+        files: [
+          { name: 'CONTEXT.md',  path: 'tactical/CONTEXT.md' },
+          { name: 'PROJECTS.md', path: 'tactical/PROJECTS.md' },
+          { name: 'CANON.md',    path: 'tactical/CANON.md' },
+          { name: 'MEMORY.md',   path: 'tactical/MEMORY.md' },
+        ]
+      },
+      {
+        name: 'changelog',
+        tier: 'Changelog',
+        open: true,
+        files: [
+          { name: 'EVOLUTION.md', path: 'changelog/EVOLUTION.md' },
+        ]
+      },
+    ];
+
+    const RAW_BASE = 'https://raw.githubusercontent.com/JacobConlanShields/jcs-agent-dna/main/';
+
+    /* ── Build tree HTML ─────────────────────────────────── */
+    function buildTree() {
+      const treeEl = document.getElementById('fileTree');
+      const ul = document.createElement('ul');
+      ul.className = 'tree-list';
+
+      TREE.forEach(folder => {
+        const li = document.createElement('li');
+        li.className = 'tree-folder-li' + (folder.open ? ' open' : '');
+        li.setAttribute('data-folder', folder.name);
+
+        const btn = document.createElement('button');
+        btn.className = 'tree-folder-row';
+        btn.type = 'button';
+        btn.setAttribute('aria-expanded', folder.open ? 'true' : 'false');
+        btn.innerHTML = `<span class="tree-chevron">▾</span><span class="tree-folder-name">${folder.name}/</span>`;
+        btn.addEventListener('click', () => toggleFolder(li, btn));
+
+        const children = document.createElement('ul');
+        children.className = 'tree-children';
+
+        folder.files.forEach(file => {
+          const fli = document.createElement('li');
+          const fbtn = document.createElement('button');
+          fbtn.className = 'tree-file-btn';
+          fbtn.type = 'button';
+          fbtn.textContent = file.name;
+          fbtn.setAttribute('data-path', file.path);
+          fbtn.addEventListener('click', () => openFile(file.path, file.name, fbtn));
+          fli.appendChild(fbtn);
+          children.appendChild(fli);
+        });
+
+        li.appendChild(btn);
+        li.appendChild(children);
+        ul.appendChild(li);
+      });
+
+      treeEl.appendChild(ul);
+    }
+
+    function toggleFolder(li, btn) {
+      const open = li.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    /* ── File open ───────────────────────────────────────── */
+    let activeBtn = null;
+
+    function openFile(path, name, btn) {
+      // Mark active
+      if (activeBtn) activeBtn.classList.remove('active');
+      activeBtn = btn;
+      btn.classList.add('active');
+
+      // Show loading
+      setPane('loading');
+      document.getElementById('readingFilename').textContent = name;
+
+      fetch(RAW_BASE + path)
+        .then(r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(md => {
+          document.getElementById('readingBody').innerHTML =
+            '<div class="md-body">' + renderMarkdown(md) + '</div>';
+          setPane('content');
+          // On mobile, scroll to pane
+          if (window.innerWidth <= 680) {
+            document.getElementById('readingPane').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        })
+        .catch(() => setPane('error'));
+    }
+
+    function setPane(state) {
+      document.getElementById('readingEmpty').style.display   = state === 'empty'   ? '' : 'none';
+      document.getElementById('readingContent').style.display = state === 'content' ? 'flex' : 'none';
+      document.getElementById('readingLoading').style.display = state === 'loading' ? '' : 'none';
+      document.getElementById('readingError').style.display   = state === 'error'   ? '' : 'none';
+    }
+
+    document.getElementById('readingBack').addEventListener('click', () => {
+      if (activeBtn) activeBtn.classList.remove('active');
+      activeBtn = null;
+      setPane('empty');
+      // On mobile, scroll back to tree
+      if (window.innerWidth <= 680) {
+        document.getElementById('fileTree').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+
+    /* ── Markdown renderer ───────────────────────────────── */
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function inlineMd(s) {
+      // Bold + italic
+      s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+      // Bold
+      s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
+      // Italic
+      s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+      s = s.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+      // Inline code
+      s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+      // Links
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      return s;
+    }
+
+    function renderMarkdown(md) {
+      const lines = md.split('\n');
+      let out = '';
+      let inCode = false, codeLang = '', codeBuf = '';
+      let inUl = false, inOl = false;
+      let paraLines = [];
+
+      function flushPara() {
+        if (!paraLines.length) return;
+        out += '<p>' + inlineMd(paraLines.join(' ').trim()) + '</p>\n';
+        paraLines = [];
+      }
+      function flushUl() { if (inUl) { out += '</ul>\n'; inUl = false; } }
+      function flushOl() { if (inOl) { out += '</ol>\n'; inOl = false; } }
+      function flushLists() { flushUl(); flushOl(); }
+
+      for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const line = raw;
+
+        // Fenced code block
+        if (line.startsWith('```')) {
+          if (inCode) {
+            out += '<pre><code>' + escHtml(codeBuf.replace(/\n$/, '')) + '</code></pre>\n';
+            inCode = false; codeBuf = ''; codeLang = '';
+          } else {
+            flushPara(); flushLists();
+            inCode = true; codeLang = line.slice(3).trim();
+          }
+          continue;
+        }
+        if (inCode) { codeBuf += raw + '\n'; continue; }
+
+        // Heading
+        const hm = line.match(/^(#{1,6})\s+(.+)$/);
+        if (hm) {
+          flushPara(); flushLists();
+          const lvl = hm[1].length;
+          out += `<h${lvl}>${inlineMd(hm[2])}</h${lvl}>\n`;
+          continue;
+        }
+
+        // HR
+        if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+          flushPara(); flushLists();
+          out += '<hr>\n';
+          continue;
+        }
+
+        // Blockquote
+        const bqm = line.match(/^>\s?(.*)$/);
+        if (bqm) {
+          flushPara(); flushLists();
+          out += `<blockquote><p>${inlineMd(bqm[1])}</p></blockquote>\n`;
+          continue;
+        }
+
+        // Unordered list
+        const ulm = line.match(/^[-*+]\s+(.+)$/);
+        if (ulm) {
+          flushPara();
+          if (!inUl) { flushOl(); out += '<ul>\n'; inUl = true; }
+          out += `<li>${inlineMd(ulm[1])}</li>\n`;
+          continue;
+        }
+
+        // Ordered list
+        const olm = line.match(/^\d+\.\s+(.+)$/);
+        if (olm) {
+          flushPara();
+          if (!inOl) { flushUl(); out += '<ol>\n'; inOl = true; }
+          out += `<li>${inlineMd(olm[1])}</li>\n`;
+          continue;
+        }
+
+        // Blank line
+        if (line.trim() === '') {
+          flushPara(); flushLists();
+          continue;
+        }
+
+        // Paragraph text
+        flushLists();
+        paraLines.push(line);
+      }
+
+      flushPara(); flushLists();
+      if (inCode) out += '<pre><code>' + escHtml(codeBuf) + '</code></pre>\n';
+
+      return out;
+    }
+
+    /* ── Init ────────────────────────────────────────────── */
+    buildTree();
+  </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+en_backup.db
+*.db
+node_modules
+.git
