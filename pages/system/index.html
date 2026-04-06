@@ -53,10 +53,76 @@
 
     .sys-byline span { opacity: 0.5; margin: 0 5px; }
 
+    /* ── Page description ─────────────────────────────────── */
+    .sys-description {
+      font-family: var(--font-body);
+      font-size: clamp(0.97rem, 2vw, 1.05rem);
+      line-height: 1.72;
+      color: var(--muted);
+      max-width: 66ch;
+      margin: 0 0 22px;
+    }
+
+    /* ── Manifesto container ───────────────────────────────── */
+    .manifesto-container {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      margin: 0 0 22px;
+      overflow: hidden;
+    }
+
+    .manifesto-body-wrap {
+      position: relative;
+    }
+
+    .manifesto-body-wrap.collapsed {
+      max-height: 340px;
+      overflow: hidden;
+    }
+
+    .manifesto-fade {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      background: linear-gradient(to bottom, transparent, var(--panel));
+      pointer-events: none;
+    }
+
+    .manifesto-body-wrap:not(.collapsed) .manifesto-fade {
+      display: none;
+    }
+
+    .manifesto-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      background: none;
+      border: none;
+      border-top: 1px solid var(--line);
+      padding: 10px 16px;
+      font-family: var(--font-ui);
+      font-size: 0.78rem;
+      color: var(--muted);
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      min-height: auto;
+      border-radius: 0;
+      gap: 6px;
+    }
+    .manifesto-toggle:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .manifesto-toggle-icon {
+      font-size: 0.65rem;
+      color: var(--accent);
+    }
+
     /* ── Manifesto ─────────────────────────────────────────── */
     .manifesto {
       max-width: 66ch;
-      padding-bottom: 8px;
+      padding: 24px 28px 20px;
     }
 
     .manifesto h2 {
@@ -380,6 +446,9 @@
 
     /* ── Mobile ────────────────────────────────────────────── */
     @media (max-width: 680px) {
+      .manifesto {
+        padding: 18px 18px 16px;
+      }
       .browser-layout {
         grid-template-columns: 1fr;
         min-height: auto;
@@ -429,9 +498,15 @@
 
     <hr class="tight-hr" />
 
+    <!-- Page description -->
+    <p class="sys-description">These documents were written by computers, for computers — with my ideas, guidance, and edits. This is the architecture behind how my AI agents operate: a set of markdown files that define identity, values, voice, and decision-making for every agent that works on my projects. The manifesto explains the philosophy. The files below are the implementation.</p>
+
     <!-- ══════════════════════════════════════════════════════
          MANIFESTO
     ═══════════════════════════════════════════════════════ -->
+    <div class="manifesto-container">
+      <div class="manifesto-body-wrap collapsed" id="manifestoWrap">
+        <div class="manifesto-fade" id="manifestoFade"></div>
     <section class="manifesto">
 
       <h2>I. The Problem</h2>
@@ -554,8 +629,12 @@
 
       <p class="closing">Nashville, Tennessee &nbsp;•&nbsp; April 2026</p>
     </section>
-
-    <hr class="tight-hr" />
+      </div><!-- /manifesto-body-wrap -->
+      <button class="manifesto-toggle" id="manifestoToggle" type="button">
+        <span class="manifesto-toggle-icon" id="manifestoToggleIcon">▼</span>
+        <span id="manifestoToggleLabel">Read more</span>
+      </button>
+    </div><!-- /manifesto-container -->
 
     <!-- ══════════════════════════════════════════════════════
          FILE BROWSER
@@ -844,6 +923,20 @@
 
     /* ── Init ────────────────────────────────────────────── */
     buildTree();
+
+    /* ── Manifesto toggle ───────────────────────────────── */
+    (function () {
+      const wrap   = document.getElementById('manifestoWrap');
+      const btn    = document.getElementById('manifestoToggle');
+      const label  = document.getElementById('manifestoToggleLabel');
+      const icon   = document.getElementById('manifestoToggleIcon');
+
+      btn.addEventListener('click', function () {
+        const collapsed = wrap.classList.toggle('collapsed');
+        label.textContent = collapsed ? 'Read more' : 'Read less';
+        icon.textContent  = collapsed ? '▼' : '▲';
+      });
+    })();
   </script>
 </body>
 </html>
