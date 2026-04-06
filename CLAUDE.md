@@ -6,21 +6,23 @@ Read the jcs-agent-dna files in this order before starting work:
 
 1. .jcs-agent-dna/constitutional/IDENTITY.md
 2. .jcs-agent-dna/constitutional/VOICE.md
-3. .jcs-agent-dna/strategic/SOUL.md
-4. .jcs-agent-dna/tactical/MEMORY.md
+3. .jcs-agent-dna/constitutional/BOUNDARIES.md
+4. .jcs-agent-dna/strategic/SOUL.md
 5. .jcs-agent-dna/strategic/GOALS.md
 6. .jcs-agent-dna/strategic/AGENTS.md
 7. .jcs-agent-dna/strategic/USER.md
-8. .jcs-agent-dna/tactical/PROJECTS.md
-9. .jcs-agent-dna/tactical/CONTEXT.md
-10. .jcs-agent-dna/tactical/CANON.md
+8. .jcs-agent-dna/strategic/EPISTEMOLOGY.md
+9. .jcs-agent-dna/tactical/MEMORY.md
+10. .jcs-agent-dna/tactical/PROJECTS.md
+11. .jcs-agent-dna/tactical/CONTEXT.md
+
+Then read Agents.MD in this repo for project-specific context.
 
 If the submodule is missing, clone it:
 ```bash
 git submodule add https://github.com/JacobConlanShields/jcs-agent-dna.git .jcs-agent-dna
+git submodule update --init --recursive
 ```
-
-Then read Agents.MD in this repo for project-specific context.
 
 ## Project Summary
 
@@ -39,3 +41,5 @@ media storage. Cloudflare Access protects admin routes.
 - Admin routes are protected by Cloudflare Access, not tokens
 - HEIC uploads convert to JPEG client-side before upload
 - R2 presigned URLs target r2.cloudflarestorage.com, never r2.dev
+- All decisions above Tier 1 follow BOUNDARIES.md protocol
+- Irreversible changes to public pages require Jake's approval
